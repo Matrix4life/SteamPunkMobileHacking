@@ -1,7 +1,10 @@
 /**
  * STEAMBREACH Native Bridge
- * Initializes Capacitor plugins for mobile. Safe to import on web — 
- * all calls are no-ops when running in browser.
+ * All functions are no-ops on web. Capacitor plugins only load
+ * when running inside a native shell (iOS/Android).
+ * 
+ * Uses @vite-ignore dynamic imports so Rollup won't try to
+ * resolve @capacitor/* packages at build time.
  */
 
 const isNative = () => {
@@ -10,14 +13,16 @@ const isNative = () => {
   } catch { return false; }
 };
 
+// Trick Vite: @vite-ignore prevents Rollup from resolving these
+const cap = (pkg) => import(/* @vite-ignore */ `@capacitor/${pkg}`);
+
 // --- STATUS BAR ---
 export async function initStatusBar() {
   if (!isNative()) return;
   try {
-    const { StatusBar, Style } = await import('@capacitor/status-bar');
+    const { StatusBar, Style } = await cap('status-bar');
     await StatusBar.setStyle({ style: Style.Dark });
     await StatusBar.setBackgroundColor({ color: '#0a0a0a' });
-    // On iOS, overlay status bar so game fills full screen
     await StatusBar.setOverlaysWebView({ overlay: true });
   } catch (e) {
     console.warn('[native] StatusBar unavailable:', e.message);
@@ -28,10 +33,8 @@ export async function initStatusBar() {
 export async function initKeyboard() {
   if (!isNative()) return;
   try {
-    const { Keyboard } = await import('@capacitor/keyboard');
-    // Don't auto-scroll the page when keyboard shows — we handle layout ourselves
+    const { Keyboard } = await cap('keyboard');
     await Keyboard.setScroll({ isDisabled: true });
-    // Keep input visible by resizing body
     await Keyboard.setResizeMode({ mode: 'body' });
   } catch (e) {
     console.warn('[native] Keyboard unavailable:', e.message);
@@ -45,7 +48,7 @@ async function getHaptics() {
   if (!isNative()) return null;
   if (HapticsModule) return HapticsModule;
   try {
-    const { Haptics } = await import('@capacitor/haptics');
+    const { Haptics } = await cap('haptics');
     HapticsModule = Haptics;
     return Haptics;
   } catch { return null; }
@@ -80,7 +83,7 @@ export async function hapticSuccess() {
 export async function hideSplash() {
   if (!isNative()) return;
   try {
-    const { SplashScreen } = await import('@capacitor/splash-screen');
+    const { SplashScreen } = await cap('splash-screen');
     await SplashScreen.hide();
   } catch (e) {
     console.warn('[native] SplashScreen unavailable:', e.message);
@@ -94,6 +97,5 @@ export async function initNative() {
     initStatusBar(),
     initKeyboard(),
   ]);
-  // Hide splash after plugins init
   setTimeout(() => hideSplash(), 200);
 }

@@ -52,7 +52,7 @@ import DarknetShop from './components/DarknetShop';
 import UnifiedMarket from './components/UnifiedMarket';
 import { PARTS_BY_ID, getSellPrice, getRigEffects, generateUnifiedMarket, generateBTCPrice, formatBTC } from './constants/rigParts';
 import { useMobile } from './hooks/useMobile';
-import MobileQuickBar from './components/MobileQuickBar';
+import MobileTouchUI from './components/MobileTouchUI';
 import { initNative, hapticLight, hapticMedium, hapticSuccess, hapticError } from './native';
 
 
@@ -69,6 +69,7 @@ const STEAMBREACH = () => {
   const [isProcessing, setIsProcessing] = useState(false);
 
   const { isMobile, isKeyboardOpen } = useMobile();
+  const [showMobileKeyboard, setShowMobileKeyboard] = useState(false);
 
   const [devMode, setDevMode] = useState(false);
   const [showHelpMenu, setShowHelpMenu] = useState(false);
@@ -138,9 +139,9 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
     initNative();
   }, []);
 
-  // PERSISTENT FOCUS KEEPER — grabs focus back after any steal
+  // PERSISTENT FOCUS KEEPER — grabs focus back after any steal (desktop only)
   useEffect(() => {
-    if (screen !== 'game') return;
+    if (screen !== 'game' || isMobile) return;
     const focusKeeper = setInterval(() => {
       if (inputRef.current && !isProcessing && !showHelpMenu && document.activeElement !== inputRef.current) {
         // Don't steal focus from buttons, inputs, or active text selections
@@ -152,7 +153,7 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
       }
     }, 500);
     return () => clearInterval(focusKeeper);
-  }, [screen, isProcessing, showHelpMenu]);
+  }, [screen, isProcessing, showHelpMenu, isMobile]);
 
   const activeState = useRef({ heat, botnet, proxies, walletFrozen });
   useEffect(() => { activeState.current = { heat, botnet, proxies, walletFrozen }; }, [heat, botnet, proxies, walletFrozen]);
@@ -2449,16 +2450,18 @@ ${wantedTier === 'MANHUNT' ? '[!!!] REDUCE HEAT IMMEDIATELY. Your entire network
     }
   };
 
-  // Mobile quick bar handlers
+  // Mobile touch UI handler
   const executeQuickCommand = useCallback((cmd) => {
     if (isProcessing) return;
     hapticLight();
+    setShowMobileKeyboard(false);
     handleCommand(null, cmd);
   }, [isProcessing, handleCommand]);
 
   const fillPartialCommand = useCallback((partial) => {
     hapticLight();
     setInput(partial);
+    setShowMobileKeyboard(true);
     if (inputRef.current) inputRef.current.focus();
   }, []);
 
@@ -2889,18 +2892,28 @@ if (screen === 'soundmanager') {
       </div>
 
       {isMobile && (
-        <MobileQuickBar
+        <MobileTouchUI
+          world={world}
           isInside={isInside}
           privilege={privilege}
-          isChatting={isChatting}
           targetIP={targetIP}
+          currentDir={currentDir}
+          isChatting={isChatting}
+          chatTarget={chatTarget}
           botnet={botnet}
+          proxies={proxies}
+          inventory={inventory}
+          heat={heat}
+          trace={trace}
+          mapExpanded={mapExpanded}
+          consumables={consumables}
           onCommand={executeQuickCommand}
-          onPartial={fillPartialCommand}
-          inputRef={inputRef}
+          onToggleKeyboard={() => { setShowMobileKeyboard(k => !k); setTimeout(() => inputRef.current?.focus(), 100); }}
+          onToggleMap={() => setMapExpanded(e => !e)}
         />
       )}
 
+      {(!isMobile || showMobileKeyboard) && (
       <div onClick={() => { if (inputRef.current) inputRef.current.focus(); }} style={{ flexShrink: 0, display: 'flex', alignItems: 'center', borderTop: `1px solid ${trace > 75 ? COLORS.danger + '60' : COLORS.border}`, paddingTop: '8px', background: trace > 75 ? `${COLORS.danger}08` : 'transparent', cursor: 'text' }}>
         <span style={{ color: isChatting ? COLORS.chat : (isInside ? COLORS.primary : COLORS.textDim), opacity: isProcessing ? 0.4 : 1, whiteSpace: 'nowrap', fontSize: '12px' }}>
           {isChatting ? `chat@${chatTarget} ` : `${currentDir} `} <span style={{ color: COLORS.secondary }}>$</span>
@@ -2908,9 +2921,10 @@ if (screen === 'soundmanager') {
         <input
           ref={inputRef} disabled={isProcessing}
           style={{ background: 'transparent', border: 'none', color: isChatting ? COLORS.chat : (isInside ? COLORS.primary : COLORS.text), outline: 'none', flex: 1, fontFamily: 'inherit', paddingLeft: '8px', fontSize: '13px', opacity: isProcessing ? 0.4 : 1 }}
-          value={isProcessing ? "PROCESSING..." : input} onChange={e => setInput(e.target.value)} onKeyDown={handleCommand} autoFocus autoComplete="off" spellCheck="false"
+          value={isProcessing ? "PROCESSING..." : input} onChange={e => setInput(e.target.value)} onKeyDown={handleCommand} autoFocus={!isMobile} autoComplete="off" spellCheck="false"
         />
       </div>
+      )}
     </div>
   );
 };

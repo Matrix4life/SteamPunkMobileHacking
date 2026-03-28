@@ -2877,7 +2877,7 @@ if (screen === 'soundmanager') {
       </div>
       )}
 
-      <div style={{ flexGrow: 1, overflowY: 'auto', margin: '4px 0', paddingRight: '8px', fontSize: isMobile ? '11px' : 'inherit', scrollbarWidth: 'thin', scrollbarColor: `${COLORS.border} transparent` }}>
+      <div style={{ flexGrow: 1, overflowY: 'auto', margin: '4px 0', paddingRight: '8px', fontSize: isMobile ? '13px' : 'inherit', scrollbarWidth: 'thin', scrollbarColor: `${COLORS.border} transparent` }}>
         {terminal.map((t, i) => {
           let inColor = isChatting ? COLORS.chat : (t.remote ? COLORS.primary : COLORS.textDim);
           return (

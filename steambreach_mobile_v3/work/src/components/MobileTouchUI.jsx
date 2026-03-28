@@ -58,9 +58,20 @@ export default function MobileTouchUI({
   onCommand,
   onToggleKeyboard,
   onToggleMap,
+  externalSelectedIP,
+  clearExternalSelection,
 }) {
   const [panel, setPanel] = useState('actions');
   const [selectedIP, setSelectedIP] = useState(null);
+
+  // React to map node taps — auto-open target detail
+  React.useEffect(() => {
+    if (externalSelectedIP) {
+      setSelectedIP(externalSelectedIP);
+      setPanel('target_detail');
+      clearExternalSelection?.();
+    }
+  }, [externalSelectedIP]);
 
   // ─── DERIVED STATE ────────────────────────────────────────
   const discoveredNodes = useMemo(() => {
@@ -84,13 +95,8 @@ export default function MobileTouchUI({
     return fs[currentDir] || [];
   }, [isInside, targetIP, world, currentDir]);
 
-  const currentDirs = useMemo(() => {
-    return currentFiles.filter(f => f.endsWith('/'));
-  }, [currentFiles]);
-
-  const currentDataFiles = useMemo(() => {
-    return currentFiles.filter(f => !f.endsWith('/'));
-  }, [currentFiles]);
+  const currentDirs = useMemo(() => currentFiles.filter(f => f.endsWith('/')), [currentFiles]);
+  const currentDataFiles = useMemo(() => currentFiles.filter(f => !f.endsWith('/')), [currentFiles]);
 
   const selectedNode = selectedIP ? discoveredNodes.find(n => n.ip === selectedIP) : null;
 
@@ -106,7 +112,6 @@ export default function MobileTouchUI({
   };
 
   const fileAction = (file) => {
-    // Consumable files need cat, data files need exfil
     if (CONSUMABLES.includes(file)) {
       tap(`cat ${file}`);
     } else if (privilege === 'root') {
@@ -116,17 +121,11 @@ export default function MobileTouchUI({
     }
   };
 
-  const expLabel = (exp) => {
-    const map = { hydra: 'HYDRA', sqlmap: 'SQLMAP', msfconsole: 'MSFCONSOLE', curl: 'CURL' };
-    return map[exp] || exp.toUpperCase();
-  };
-  const expColor = (exp) => {
-    const map = { hydra: COLORS.danger, sqlmap: COLORS.warning, msfconsole: '#ff6633', curl: COLORS.file };
-    return map[exp] || COLORS.primary;
-  };
+  const expLabel = (exp) => ({ hydra: 'HYDRA', sqlmap: 'SQLMAP', msfconsole: 'MSFCONSOLE', curl: 'CURL' }[exp] || exp.toUpperCase());
+  const expColor = (exp) => ({ hydra: COLORS.danger, sqlmap: COLORS.warning, msfconsole: '#ff6633', curl: COLORS.file }[exp] || COLORS.primary);
 
   // ─── TAB BAR ──────────────────────────────────────────────
-  const TabBar = ({ tabs }) => (
+  const TabBar = ({ tabs, right }) => (
     <div style={{ display: 'flex', gap: '5px', marginBottom: '6px' }}>
       {tabs.map(([id, label, color]) => (
         <button key={id} onClick={() => { setPanel(id); if (id === 'targets') setSelectedIP(null); }}
@@ -135,11 +134,14 @@ export default function MobileTouchUI({
         </button>
       ))}
       <div style={{ flex: 1 }} />
+      {right}
       <button onClick={onToggleKeyboard} style={btn(COLORS.textDim, false, false)}>⌨</button>
     </div>
   );
 
-  // ─── RENDER: CHAT MODE ─────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════
+  // CHAT MODE
+  // ═══════════════════════════════════════════════════════════
   if (isChatting) {
     return (
       <div style={S.wrap}>
@@ -157,34 +159,34 @@ export default function MobileTouchUI({
           ))}
         </div>
         <div style={{ display: 'flex', gap: '5px' }}>
-          <button onClick={() => tap('bye')} style={btn(COLORS.danger, true, true)}>EXIT CHAT</button>
+          <button onClick={() => tap('exit')} style={btn(COLORS.danger, true, true)}>✕ EXIT CHAT</button>
           <button onClick={onToggleKeyboard} style={btn(COLORS.textDim, false, true)}>⌨ TYPE CUSTOM</button>
         </div>
       </div>
     );
   }
 
-  // ─── RENDER: INSIDE A NODE ─────────────────────────────────
+  // ═══════════════════════════════════════════════════════════
+  // INSIDE A NODE
+  // ═══════════════════════════════════════════════════════════
   if (isInside) {
     return (
       <div style={S.wrap}>
-        <TabBar tabs={[
-          ['actions', 'ACTIONS', COLORS.primary],
-          ['files', `FILES (${currentFiles.length})`, COLORS.file],
-        ]} />
-
-        {/* EXIT always visible */}
-        <div style={{ position: 'absolute', top: '8px', right: '50px' }}>
-        </div>
+        <TabBar
+          tabs={[
+            ['actions', 'ACTIONS', COLORS.primary],
+            ['files', `FILES (${currentFiles.length})`, COLORS.file],
+          ]}
+          right={<button onClick={() => tap('exit')} style={btn(COLORS.danger, true, false)}>✕ EXIT</button>}
+        />
 
         {panel === 'actions' && (
           <>
-            <div style={{ display: 'flex', gap: '5px', marginBottom: '6px' }}>
-              <button onClick={() => tap('exit')} style={btn(COLORS.danger, true, true)}>EXIT NODE</button>
-              {privilege !== 'root' && (
+            {privilege !== 'root' && (
+              <div style={S.row}>
                 <button onClick={() => tap('pwnkit')} style={btn('#ff4444', true, true)}>⚡ PWNKIT → ROOT</button>
-              )}
-            </div>
+              </div>
+            )}
             {privilege === 'root' && (
               <>
                 <div style={S.label}>PERSIST</div>
@@ -200,9 +202,7 @@ export default function MobileTouchUI({
                   <button onClick={() => tap('openssl')} style={btn(COLORS.danger, true, false)}>RANSOM</button>
                   <button onClick={() => tap('msfvenom')} style={btn(COLORS.warning, true, false)}>MSFVENOM</button>
                   <button onClick={() => tap('eternalblue')} style={btn(COLORS.danger, true, false)}>ETERNALBLUE</button>
-                  {inventory.includes('DPI') && (
-                    <button onClick={() => tap('ettercap')} style={btn(COLORS.chat, true, false)}>ETTERCAP</button>
-                  )}
+                  {inventory.includes('DPI') && <button onClick={() => tap('ettercap')} style={btn(COLORS.chat, true, false)}>ETTERCAP</button>}
                   <button onClick={() => tap('xmrig')} style={btn(COLORS.warning, true, false)}>XMRIG</button>
                 </div>
               </>
@@ -237,9 +237,7 @@ export default function MobileTouchUI({
             )}
             <div style={S.row}>
               {currentDirs.map((dir, i) => (
-                <button key={`d${i}`} onClick={() => tap(`cd ${dir.replace('/', '')}`)} style={btn(COLORS.primary, true, true)}>
-                  📁 {dir}
-                </button>
+                <button key={`d${i}`} onClick={() => tap(`cd ${dir.replace('/', '')}`)} style={btn(COLORS.primary, true, true)}>📁 {dir}</button>
               ))}
             </div>
             {currentDataFiles.length > 0 && (
@@ -248,11 +246,9 @@ export default function MobileTouchUI({
                 <div style={S.row}>
                   {currentDataFiles.map((file, i) => {
                     const isCon = CONSUMABLES.includes(file);
-                    const color = isCon ? COLORS.secondary : COLORS.warning;
-                    const icon = isCon ? '🔧' : '💰';
                     return (
-                      <button key={`f${i}`} onClick={() => fileAction(file)} style={btn(color, true, true)}>
-                        {icon} {file}
+                      <button key={`f${i}`} onClick={() => fileAction(file)} style={btn(isCon ? COLORS.secondary : COLORS.warning, true, true)}>
+                        {isCon ? '🔧' : '💰'} {file}
                       </button>
                     );
                   })}
@@ -265,7 +261,9 @@ export default function MobileTouchUI({
     );
   }
 
-  // ─── RENDER: OUTSIDE — MAIN HUB ───────────────────────────
+  // ═══════════════════════════════════════════════════════════
+  // OUTSIDE — MAIN HUB
+  // ═══════════════════════════════════════════════════════════
   return (
     <div style={S.wrap}>
       <TabBar tabs={[
@@ -290,7 +288,9 @@ export default function MobileTouchUI({
               <div style={S.label}>BOTNET ({botnet.length})</div>
               <div style={S.scrollRow}>
                 {discoveredNodes.filter(n => n.hasSliver).map((n, i) => (
-                  <button key={i} onClick={() => selectIP(n.ip)} style={btn(COLORS.secondary, true, false)}>🤖 {n.ip}</button>
+                  <button key={i} onClick={() => selectIP(n.ip)} style={btn(COLORS.secondary, true, false)}>
+                    🤖 {n.name} ({n.ip})
+                  </button>
                 ))}
               </div>
             </>
@@ -319,13 +319,16 @@ export default function MobileTouchUI({
               {discoveredNodes.map((n, i) => (
                 <button key={i} onClick={() => selectIP(n.ip)} style={ipBtn(n.hacked ? COLORS.secondary : COLORS.ip)}>
                   <div style={{ display: 'flex', gap: '8px', alignItems: 'center', width: '100%' }}>
-                    <span style={{ color: n.hacked ? COLORS.secondary : COLORS.ip, fontWeight: 'bold', fontSize: '13px' }}>{n.ip}</span>
-                    <span style={{ color: COLORS.textDim, fontSize: '10px', border: `1px solid ${COLORS.border}`, padding: '1px 4px', borderRadius: '2px' }}>{n.sec}</span>
+                    <span style={{ color: n.hacked ? COLORS.secondary : COLORS.ip, fontWeight: 'bold', fontSize: '13px' }}>{n.name}</span>
                     {n.hacked && <span style={{ color: COLORS.secondary, fontSize: '10px' }}>OWNED</span>}
                     {n.hasSliver && <span style={{ fontSize: '12px' }}>🤖</span>}
                     {n.isProxy && <span style={{ fontSize: '12px' }}>🛡</span>}
                   </div>
-                  <span style={{ color: COLORS.textDim, fontSize: '11px' }}>{n.name}</span>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <span style={{ color: COLORS.textDim, fontSize: '11px' }}>{n.ip}</span>
+                    <span style={{ color: COLORS.textDim, fontSize: '9px', border: `1px solid ${COLORS.border}`, padding: '1px 4px', borderRadius: '2px' }}>{n.sec}</span>
+                    {n.employees.length > 0 && <span style={{ color: COLORS.chat, fontSize: '9px' }}>{n.employees.length} employees</span>}
+                  </div>
                 </button>
               ))}
             </div>
@@ -335,7 +338,8 @@ export default function MobileTouchUI({
 
       {panel === 'target_detail' && selectedNode && (
         <>
-          <div style={{ ...S.label, fontSize: '12px', color: COLORS.ip }}>{selectedNode.ip} — {selectedNode.name}</div>
+          <div style={{ ...S.label, fontSize: '12px', color: COLORS.ip }}>{selectedNode.name}</div>
+          <div style={{ color: COLORS.textDim, fontSize: '11px', marginBottom: '6px', paddingLeft: '2px' }}>{selectedNode.ip} • {selectedNode.sec} SEC</div>
 
           <div style={S.row}>
             <button onClick={() => tap(`nmap ${selectedNode.ip}`)} style={btn(COLORS.primary, true, true)}>📡 SCAN</button>
@@ -350,8 +354,8 @@ export default function MobileTouchUI({
             <>
               <div style={S.label}>NODE ACTIONS</div>
               <div style={S.row}>
-                {!selectedNode.hasSliver && <button onClick={() => tap(`sliver`)} style={btn(COLORS.secondary, true, true)}>SLIVER</button>}
-                {!selectedNode.isProxy && <button onClick={() => tap(`chisel`)} style={btn(COLORS.primary, true, true)}>CHISEL</button>}
+                {!selectedNode.hasSliver && <button onClick={() => tap('sliver')} style={btn(COLORS.secondary, true, true)}>SLIVER</button>}
+                {!selectedNode.isProxy && <button onClick={() => tap('chisel')} style={btn(COLORS.primary, true, true)}>CHISEL</button>}
                 {selectedNode.hasSliver && <button onClick={() => tap(`mimikatz ${selectedNode.ip}`)} style={btn(COLORS.warning, true, true)}>MIMIKATZ</button>}
                 {selectedNode.hasSliver && <button onClick={() => tap(`stash ${selectedNode.ip}`)} style={btn(COLORS.file, true, true)}>STASH</button>}
                 <button onClick={() => tap(`hping3 ${selectedNode.ip}`)} style={btn(COLORS.danger, true, false)}>HPING3</button>

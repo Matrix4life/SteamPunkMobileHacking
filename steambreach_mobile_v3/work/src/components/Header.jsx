@@ -30,12 +30,12 @@ const Header = ({ operator, privilege, money, heat, reputation, isInside, target
     return (
       <div style={{
         flexShrink: 0, borderBottom: `1px solid ${wantedTier === 'MANHUNT' ? COLORS.danger : (trace > 75 ? COLORS.danger + '60' : COLORS.border)}`,
-        paddingBottom: '6px', fontSize: '11px',
+        paddingBottom: '6px', fontSize: '13px',
         background: wantedTier === 'MANHUNT' ? `${COLORS.danger}08` : 'transparent',
       }}>
         {/* Row 1: Identity + Money + Buttons */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-          <span style={{ fontSize: '10px' }}>
+          <span style={{ fontSize: '12px' }}>
             <span style={{ color: COLORS.textDim }}>
               {isChatting ? 'SPEARPHISH' : (isInside ? privilege.toUpperCase() : 'OP')}
             </span>
@@ -52,7 +52,7 @@ const Header = ({ operator, privilege, money, heat, reputation, isInside, target
         </div>
 
         {/* Row 2: Stats bar */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '10px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px' }}>
           <span style={{ color: walletFrozen ? COLORS.danger : COLORS.warning }}>
             {walletFrozen ? '\u{1F512}' : '$'}{money.toLocaleString()}
           </span>

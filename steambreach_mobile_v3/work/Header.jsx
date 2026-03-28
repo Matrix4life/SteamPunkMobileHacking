@@ -30,12 +30,12 @@ const Header = ({ operator, privilege, money, heat, reputation, isInside, target
     return (
       <div style={{
         flexShrink: 0, borderBottom: `1px solid ${wantedTier === 'MANHUNT' ? COLORS.danger : (trace > 75 ? COLORS.danger + '60' : COLORS.border)}`,
-        paddingBottom: '6px', fontSize: '11px',
+        paddingBottom: '6px', fontSize: '13px',
         background: wantedTier === 'MANHUNT' ? `${COLORS.danger}08` : 'transparent',
       }}>
         {/* Row 1: Identity + Money + Buttons */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-          <span style={{ fontSize: '10px' }}>
+          <span style={{ fontSize: '12px' }}>
             <span style={{ color: COLORS.textDim }}>
               {isChatting ? 'SPEARPHISH' : (isInside ? privilege.toUpperCase() : 'OP')}
             </span>
@@ -46,16 +46,15 @@ const Header = ({ operator, privilege, money, heat, reputation, isInside, target
           <span style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
             <span style={{ color: modeColor, fontSize: '8px', border: `1px solid ${modeColor}40`, padding: '1px 4px', borderRadius: '2px', letterSpacing: '1px' }}>{modeLabel}</span>
             <button onClick={onHelp} style={btnStyle}>?</button>
-            <button onClick={onSounds}>AUDIO</button>
             <button onClick={onSave} style={btnStyle}>SAVE</button>
             <button onClick={onMenu} disabled={isInside} style={{ ...btnStyle, opacity: isInside ? 0.3 : 1, cursor: isInside ? 'default' : 'pointer' }}>MENU</button>
           </span>
         </div>
 
         {/* Row 2: Stats bar */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '10px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px' }}>
           <span style={{ color: walletFrozen ? COLORS.danger : COLORS.warning }}>
-            {walletFrozen ? '\u{1F512}' : '$'}{money.toLocaleString()}
+            {walletFrozen ? '\u{1F512}' : '₿'}{money.toLocaleString()}
           </span>
 
           <span>
@@ -69,10 +68,21 @@ const Header = ({ operator, privilege, money, heat, reputation, isInside, target
 
           <span style={{ color: COLORS.textDim }}>R:{reputation}</span>
 
-          <span style={{ color: traceColor, fontWeight: trace > 75 ? 'bold' : 'normal' }}>
-            T:{trace}%{trace > 75 && ' \u25C9'}
+          <span style={{
+            color: traceColor,
+            fontWeight: trace > 40 ? 'bold' : 'normal',
+            fontSize: trace > 60 ? '16px' : trace > 30 ? '14px' : '12px',
+            padding: trace > 50 ? '2px 8px' : '0',
+            background: trace > 75 ? `${COLORS.danger}25` : trace > 50 ? `${COLORS.warning}15` : 'transparent',
+            borderRadius: '3px',
+            border: trace > 60 ? `1px solid ${traceColor}50` : 'none',
+            transition: 'all 0.3s ease',
+            animation: trace > 75 ? 'tracePulse 0.8s ease-in-out infinite' : 'none',
+          }}>
+            TRACE {trace}%{trace > 75 && ' \u25C9'}
           </span>
         </div>
+        {trace > 20 && <style>{`@keyframes tracePulse { 0%,100%{opacity:1} 50%{opacity:0.5} }`}</style>}
       </div>
     );
   }
@@ -95,7 +105,7 @@ const Header = ({ operator, privilege, money, heat, reputation, isInside, target
       </span>
 
       <span style={{ color: walletFrozen ? COLORS.danger : COLORS.warning }}>
-        {walletFrozen ? '\u{1F512} ' : ''}XMR ${money.toLocaleString()}
+        {walletFrozen ? '\u{1F512} ' : ''}₿{money.toLocaleString()}
       </span>
 
       {activeContract && (

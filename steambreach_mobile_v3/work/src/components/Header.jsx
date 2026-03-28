@@ -68,10 +68,21 @@ const Header = ({ operator, privilege, money, heat, reputation, isInside, target
 
           <span style={{ color: COLORS.textDim }}>R:{reputation}</span>
 
-          <span style={{ color: traceColor, fontWeight: trace > 75 ? 'bold' : 'normal' }}>
-            T:{trace}%{trace > 75 && ' \u25C9'}
+          <span style={{
+            color: traceColor,
+            fontWeight: trace > 40 ? 'bold' : 'normal',
+            fontSize: trace > 60 ? '16px' : trace > 30 ? '14px' : '12px',
+            padding: trace > 50 ? '2px 8px' : '0',
+            background: trace > 75 ? `${COLORS.danger}25` : trace > 50 ? `${COLORS.warning}15` : 'transparent',
+            borderRadius: '3px',
+            border: trace > 60 ? `1px solid ${traceColor}50` : 'none',
+            transition: 'all 0.3s ease',
+            animation: trace > 75 ? 'tracePulse 0.8s ease-in-out infinite' : 'none',
+          }}>
+            TRACE {trace}%{trace > 75 && ' \u25C9'}
           </span>
         </div>
+        {trace > 20 && <style>{`@keyframes tracePulse { 0%,100%{opacity:1} 50%{opacity:0.5} }`}</style>}
       </div>
     );
   }

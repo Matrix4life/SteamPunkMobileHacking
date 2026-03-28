@@ -5,11 +5,12 @@
 // ═══════════════════════════════════════════════════════════════
 
 export function formatBTC(sats) {
-  if (sats === 0) return '0 sats';
+  if (sats === 0) return '₿0';
   const abs = Math.abs(sats), sign = sats < 0 ? '-' : '';
-  if (abs < 100000)  return `${sign}${abs.toLocaleString()} sats`;
-  if (abs < 10000000) return `${sign}${(abs/1000000).toFixed(2)}M sats`;
-  return `${sign}₿${(abs/100000000).toFixed(abs>=100000000?2:4)}`;
+  const btc = abs / 100000000;
+  if (btc >= 1) return `${sign}₿${btc.toFixed(2)}`;
+  if (btc >= 0.01) return `${sign}₿${btc.toFixed(4)}`;
+  return `${sign}₿${btc.toFixed(6)}`;
 }
 
 export function generateBTCPrice(prev) {

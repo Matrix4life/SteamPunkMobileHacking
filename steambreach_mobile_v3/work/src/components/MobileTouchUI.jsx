@@ -3,6 +3,19 @@ import { COLORS } from '../constants/gameConstants';
 
 const CONSUMABLES = ['decoy.bin', 'burner.ovpn', '0day_poc.sh', 'wallet.dat'];
 
+// ─── VIBRATION ───────────────────────────────────────────────
+// Uses Vibration API — works on Android Chrome, Samsung Internet
+// Must be called from user gesture (click/touch handler)
+const buzz = (pattern = 25) => {
+  try {
+    if (navigator.vibrate) {
+      navigator.vibrate(pattern);
+    }
+  } catch (e) {
+    // Silently fail on unsupported browsers
+  }
+};
+
 // ─── STYLES ──────────────────────────────────────────────────
 const S = {
   wrap: {
@@ -25,9 +38,6 @@ const S = {
     marginBottom: '4px', paddingLeft: '2px', fontWeight: 'bold',
   },
 };
-
-// Quick vibrate — works on Android Chrome, no-ops elsewhere
-const buzz = (ms = 15) => { try { navigator.vibrate?.(ms); } catch {} };
 
 const btn = (color, active, big) => ({
   flexShrink: 0,
@@ -67,7 +77,7 @@ export default function MobileTouchUI({
   const [panel, setPanel] = useState('actions');
   const [selectedIP, setSelectedIP] = useState(null);
 
-  // React to map node taps — auto-open target detail
+  // React to map node taps
   React.useEffect(() => {
     if (externalSelectedIP) {
       setSelectedIP(externalSelectedIP);
@@ -103,21 +113,21 @@ export default function MobileTouchUI({
 
   const selectedNode = selectedIP ? discoveredNodes.find(n => n.ip === selectedIP) : null;
 
-  // ─── HELPERS ──────────────────────────────────────────────
+  // ─── TAP HANDLERS ─────────────────────────────────────────
   const tap = (cmd) => {
-    buzz();
+    buzz(30);
     onCommand(cmd);
     if (panel === 'target_detail') setPanel('targets');
   };
 
   const selectIP = (ip) => {
-    buzz(20);
+    buzz(40);
     setSelectedIP(ip);
     setPanel('target_detail');
   };
 
   const fileAction = (file) => {
-    buzz();
+    buzz(30);
     if (CONSUMABLES.includes(file)) {
       onCommand(`cat ${file}`);
     } else if (privilege === 'root') {
@@ -128,7 +138,7 @@ export default function MobileTouchUI({
   };
 
   const switchPanel = (id) => {
-    buzz(10);
+    buzz(15);
     setPanel(id);
     if (id === 'targets') setSelectedIP(null);
   };
@@ -147,7 +157,7 @@ export default function MobileTouchUI({
       ))}
       <div style={{ flex: 1 }} />
       {right}
-      <button onClick={() => { buzz(10); onToggleKeyboard(); }} style={btn(COLORS.textDim, false, false)}>⌨</button>
+      <button onClick={() => { buzz(15); onToggleKeyboard(); }} style={btn(COLORS.textDim, false, false)}>⌨</button>
     </div>
   );
 
@@ -172,7 +182,7 @@ export default function MobileTouchUI({
         </div>
         <div style={{ display: 'flex', gap: '5px' }}>
           <button onClick={() => tap('exit')} style={btn(COLORS.danger, true, true)}>✕ EXIT CHAT</button>
-          <button onClick={() => { buzz(10); onToggleKeyboard(); }} style={btn(COLORS.textDim, false, true)}>⌨ TYPE CUSTOM</button>
+          <button onClick={() => { buzz(15); onToggleKeyboard(); }} style={btn(COLORS.textDim, false, true)}>⌨ TYPE CUSTOM</button>
         </div>
       </div>
     );
@@ -287,7 +297,7 @@ export default function MobileTouchUI({
         <>
           <div style={S.row}>
             <button onClick={() => tap('nmap')} style={btn(COLORS.primary, true, true)}>📡 NMAP SCAN</button>
-            <button onClick={() => { buzz(20); onToggleMap(); }} style={btn(COLORS.secondary, mapExpanded, true)}>🗺 MAP</button>
+            <button onClick={() => { buzz(25); onToggleMap(); }} style={btn(COLORS.secondary, mapExpanded, true)}>🗺 MAP</button>
             <button onClick={() => tap('status')} style={btn(COLORS.textDim, true, true)}>STATUS</button>
           </div>
           <div style={S.row}>
@@ -389,7 +399,7 @@ export default function MobileTouchUI({
             </>
           )}
 
-          <button onClick={() => { buzz(10); setSelectedIP(null); setPanel('targets'); }}
+          <button onClick={() => { buzz(15); setSelectedIP(null); setPanel('targets'); }}
             style={{ ...btn(COLORS.textDim, false, false), marginTop: '4px' }}>
             ← BACK
           </button>

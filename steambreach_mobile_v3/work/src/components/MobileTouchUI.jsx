@@ -26,6 +26,9 @@ const S = {
   },
 };
 
+// Quick vibrate — works on Android Chrome, no-ops elsewhere
+const buzz = (ms = 15) => { try { navigator.vibrate?.(ms); } catch {} };
+
 const btn = (color, active, big) => ({
   flexShrink: 0,
   padding: big ? '12px 16px' : '10px 12px',
@@ -102,23 +105,32 @@ export default function MobileTouchUI({
 
   // ─── HELPERS ──────────────────────────────────────────────
   const tap = (cmd) => {
+    buzz();
     onCommand(cmd);
     if (panel === 'target_detail') setPanel('targets');
   };
 
   const selectIP = (ip) => {
+    buzz(20);
     setSelectedIP(ip);
     setPanel('target_detail');
   };
 
   const fileAction = (file) => {
+    buzz();
     if (CONSUMABLES.includes(file)) {
-      tap(`cat ${file}`);
+      onCommand(`cat ${file}`);
     } else if (privilege === 'root') {
-      tap(`exfil ${file}`);
+      onCommand(`exfil ${file}`);
     } else {
-      tap(`cat ${file}`);
+      onCommand(`cat ${file}`);
     }
+  };
+
+  const switchPanel = (id) => {
+    buzz(10);
+    setPanel(id);
+    if (id === 'targets') setSelectedIP(null);
   };
 
   const expLabel = (exp) => ({ hydra: 'HYDRA', sqlmap: 'SQLMAP', msfconsole: 'MSFCONSOLE', curl: 'CURL' }[exp] || exp.toUpperCase());
@@ -128,14 +140,14 @@ export default function MobileTouchUI({
   const TabBar = ({ tabs, right }) => (
     <div style={{ display: 'flex', gap: '5px', marginBottom: '6px' }}>
       {tabs.map(([id, label, color]) => (
-        <button key={id} onClick={() => { setPanel(id); if (id === 'targets') setSelectedIP(null); }}
+        <button key={id} onClick={() => switchPanel(id)}
           style={btn(color || COLORS.primary, panel === id || (id === 'targets' && panel === 'target_detail'), false)}>
           {label}
         </button>
       ))}
       <div style={{ flex: 1 }} />
       {right}
-      <button onClick={onToggleKeyboard} style={btn(COLORS.textDim, false, false)}>⌨</button>
+      <button onClick={() => { buzz(10); onToggleKeyboard(); }} style={btn(COLORS.textDim, false, false)}>⌨</button>
     </div>
   );
 
@@ -160,7 +172,7 @@ export default function MobileTouchUI({
         </div>
         <div style={{ display: 'flex', gap: '5px' }}>
           <button onClick={() => tap('exit')} style={btn(COLORS.danger, true, true)}>✕ EXIT CHAT</button>
-          <button onClick={onToggleKeyboard} style={btn(COLORS.textDim, false, true)}>⌨ TYPE CUSTOM</button>
+          <button onClick={() => { buzz(10); onToggleKeyboard(); }} style={btn(COLORS.textDim, false, true)}>⌨ TYPE CUSTOM</button>
         </div>
       </div>
     );
@@ -211,7 +223,7 @@ export default function MobileTouchUI({
             <div style={S.row}>
               <button onClick={() => tap('ls')} style={btn(COLORS.textDim, true, false)}>LS</button>
               <button onClick={() => tap('cd ..')} style={btn(COLORS.textDim, true, false)}>CD ..</button>
-              <button onClick={() => setPanel('files')} style={btn(COLORS.file, true, false)}>BROWSE FILES →</button>
+              <button onClick={() => switchPanel('files')} style={btn(COLORS.file, true, false)}>BROWSE FILES →</button>
             </div>
             {(consumables?.decoy > 0 || consumables?.burner > 0 || consumables?.zeroday > 0) && (
               <>
@@ -275,7 +287,7 @@ export default function MobileTouchUI({
         <>
           <div style={S.row}>
             <button onClick={() => tap('nmap')} style={btn(COLORS.primary, true, true)}>📡 NMAP SCAN</button>
-            <button onClick={onToggleMap} style={btn(COLORS.secondary, mapExpanded, true)}>🗺 MAP</button>
+            <button onClick={() => { buzz(20); onToggleMap(); }} style={btn(COLORS.secondary, mapExpanded, true)}>🗺 MAP</button>
             <button onClick={() => tap('status')} style={btn(COLORS.textDim, true, true)}>STATUS</button>
           </div>
           <div style={S.row}>
@@ -377,7 +389,7 @@ export default function MobileTouchUI({
             </>
           )}
 
-          <button onClick={() => { setSelectedIP(null); setPanel('targets'); }}
+          <button onClick={() => { buzz(10); setSelectedIP(null); setPanel('targets'); }}
             style={{ ...btn(COLORS.textDim, false, false), marginTop: '4px' }}>
             ← BACK
           </button>

@@ -2926,9 +2926,11 @@ if (screen === 'soundmanager') {
           trace={trace}
           mapExpanded={mapExpanded}
           consumables={consumables}
+          gameMode={gameMode}
           onCommand={executeQuickCommand}
           onToggleKeyboard={() => { setShowMobileKeyboard(k => !k); setTimeout(() => inputRef.current?.focus(), 100); }}
           onToggleMap={() => setMapExpanded(e => !e)}
+          onFillInput={(text) => { setInput(text); setShowMobileKeyboard(true); setTimeout(() => inputRef.current?.focus(), 100); }}
           externalSelectedIP={mobileSelectedTarget}
           clearExternalSelection={() => setMobileSelectedTarget(null)}
         />

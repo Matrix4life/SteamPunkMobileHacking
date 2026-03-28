@@ -40,6 +40,7 @@ import {
   getRewardMult,
   getMaxProxySlots,
   generateDirectorNarrative,
+  generateStoryEvent,
 } from './ai/director';
 import { generateNewTarget, DEFAULT_WORLD } from './world/generation';
 import { SyntaxText, Typewriter, HelpPanel } from './components/TerminalBits';
@@ -110,6 +111,7 @@ const STEAMBREACH = () => {
 
   const [contracts, setContracts] = useState([]);
   const [activeContract, setActiveContract] = useState(null);
+  const [activeStory, setActiveStory] = useState(null);
 
   const [menuMode, setMenuMode] = useState('main');
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -1264,7 +1266,15 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
           if (Object.keys(world || {}).filter(k => k !== 'local' && !world[k].isHidden).length + i >= 25) break;
           
           const newNode = generateNewTarget(null, null, director.modifiers);
+          if (Math.random() < 0.20) {
+            if (!newNode.data.files['/']) newNode.data.files['/'] = [];
+            newNode.data.files['/'].push('intercept.log');
+            newNode.data.contents['/intercept.log'] = '[STORY_PENDING]';
+          }
+          // -------------------------------------
+
           setWorld(prev => ({ ...prev, [newNode.ip]: newNode.data }));
+          out += `\nDiscovered ${newNode.data.port}/tcp on ${newNode.ip}`;
           out += `\nDiscovered ${newNode.data.port}/tcp on ${newNode.ip}`;
           out += `\n[*] ORG: ${newNode.data.org.orgName} (${newNode.data.org.type})`;
           out += `\n[*] EMPLOYEES: ${newNode.data.org.employees.length} found via OSINT\n`;
@@ -2354,7 +2364,35 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
           if (privilege !== 'root') return `cat: ${arg1}: Permission denied. Root required.`;
           rawData = rawData.replace('[LOCKED] ', '');
         }
+// --- ADDED STORY DECRYPTION LOGIC ---
+        if (rawData === '[STORY_PENDING]') {
+          setIsProcessing(true);
+          setTerminal(prev => [...prev, { type: 'out', text: `[*] Decrypting high-security log file...`, isNew: false }]);
+          
+          // Generate the story based on the player's current skill/alignment
+          const storyData = await generateStoryEvent(director.skillScore || 0);
+          
+          if (!storyData) {
+            setIsProcessing(false);
+            return `[-] Decryption failed. File corrupted.`;
+          }
 
+          // Save it to state so the player can decide
+          setActiveStory({ ...storyData, ip: targetIP });
+
+          // Update the file so it doesn't generate twice
+          setWorld(prev => {
+            const nw = { ...prev };
+            if (nw[targetIP]) nw[targetIP].contents[targetFile] = storyData.story;
+            return nw;
+          });
+
+          setIsProcessing(false);
+          return `\n[DECRYPTED MESSAGE]\n"${storyData.story}"\n\n[SYSTEM] MORAL CROSSROADS DETECTED.\n[1] PARAGON : ${storyData.good_action} (Reward: $${storyData.good_payout})\n[2] SYNDICATE : ${storyData.evil_action} (Reward: $${storyData.evil_payout})\n\nType 'resolve 1' or 'resolve 2' to make your choice.`;
+        }
+        // ------------------------------------
+
+        if (rawData.includes('[PENDING_GENERATION]') || rawData.includes('[LORE_PENDING]')) {
         if (rawData.includes('[PENDING_GENERATION]') || rawData.includes('[LORE_PENDING]')) {
           setIsProcessing(true);
           setTerminal(prev => [...prev, { type: 'out', text: `[*] Decoding data stream...`, isNew: false }]);
@@ -2389,7 +2427,30 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
         setTerminal(prev => [...prev, { type: 'out', text: rawData, isNew: true }]);
         return null;
       },
+// --- ADDED RESOLVE COMMAND ---
+      resolve: async () => {
+        if (!activeStory) return `[-] No active scenario to resolve.`;
+        if (!isInside || targetIP !== activeStory.ip) return `[-] Must be connected to ${activeStory.ip} to resolve this scenario.`;
+        if (arg1 !== '1' && arg1 !== '2') return `[-] Usage: resolve 1 (Good) or resolve 2 (Evil)`;
 
+        const isGood = arg1 === '1';
+        const payout = isGood ? activeStory.good_payout : activeStory.evil_payout;
+        const alignShift = isGood ? 20 : -20;
+        
+        setMoney(m => m + payout);
+        
+        // Let's modify the Director's skillScore to act as alignment for now
+        setDirector(prev => ({ ...prev, skillScore: Math.max(-100, Math.min(100, prev.skillScore + alignShift)) })); 
+        
+        setActiveStory(null);
+        playSuccess();
+        
+        let out = `[*] Executing ${isGood ? 'PARAGON' : 'SYNDICATE'} protocol...\n`;
+        out += `[+] Scenario Resolved: ${isGood ? activeStory.good_action : activeStory.evil_action}.\n`;
+        out += `[+] Payment routed: $${payout.toLocaleString()} XMR.\n`;
+        return out;
+      },
+      // -----------------------------
       exit: async () => {
         setIsInside(false); setTargetIP(null); setCurrentDir('~'); setPrivilege('local');
         return '[*] Session closed.';

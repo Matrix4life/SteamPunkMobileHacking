@@ -101,7 +101,17 @@ export default function NetworkMap({
   const handleNodeClick = (e, ip) => {
     e.stopPropagation();
     if (hasDragged || !expanded) return;
-    selectNodeFromMap(ip);
+    if (isMobile) {
+      // First tap: show info. Second tap on same node: nmap it
+      if (hoveredNode === ip) {
+        selectNodeFromMap(ip);
+        setHoveredNode(null);
+      } else {
+        setHoveredNode(ip);
+      }
+    } else {
+      selectNodeFromMap(ip);
+    }
   };
 
   const dustParticles = useMemo(() => {
@@ -387,24 +397,34 @@ export default function NetworkMap({
 
       {expanded && hoveredNode && world[hoveredNode] && (
         <div style={{
-          position: 'absolute', top: '16px', left: '16px',
+          position: 'absolute', top: isMobile ? '50px' : '16px', left: isMobile ? '10px' : '16px', right: isMobile ? '10px' : 'auto',
           background: 'rgba(8,12,18,0.95)', border: `1px solid ${COLORS.primary}60`,
-          padding: '12px 14px', fontSize: '10px', pointerEvents: 'none',
+          padding: isMobile ? '14px 16px' : '12px 14px', fontSize: isMobile ? '13px' : '10px', pointerEvents: isMobile ? 'auto' : 'none',
           color: COLORS.text, minWidth: '180px', borderRadius: '4px',
           zIndex: 14, backdropFilter: 'blur(6px)',
           boxShadow: `0 8px 32px rgba(0,0,0,0.8), 0 0 15px ${COLORS.primary}20`,
           opacity: isHacking ? 0.3 : 1, 
           transition: 'opacity 0.3s ease'
         }}>
-          <div style={{ color: COLORS.primary, fontWeight: 'bold', marginBottom: '6px', fontSize: '12px', letterSpacing: '1px', borderBottom: `1px solid ${COLORS.borderActive}`, paddingBottom: '4px' }}>
+          <div style={{ color: COLORS.primary, fontWeight: 'bold', marginBottom: '6px', fontSize: isMobile ? '15px' : '12px', letterSpacing: '1px', borderBottom: `1px solid ${COLORS.borderActive}`, paddingBottom: '4px' }}>
             {world[hoveredNode].name || world[hoveredNode].org?.orgName || 'Unknown'}
           </div>
-          <div style={{ margin: '3px 0' }}><span style={{ color: COLORS.textDim }}>IP:</span> <span style={{ color: COLORS.ip }}>{hoveredNode}</span></div>
-          <div style={{ margin: '3px 0' }}><span style={{ color: COLORS.textDim }}>SEC:</span> {inventory.includes('Scanner') ? world[hoveredNode].sec?.toUpperCase() : '[ENCRYPTED]'}</div>
-          {world[hoveredNode].org && <div style={{ margin: '3px 0' }}><span style={{ color: COLORS.textDim }}>TYPE:</span> {world[hoveredNode].org.type?.toUpperCase()}</div>}
+          <div style={{ margin: '4px 0' }}><span style={{ color: COLORS.textDim }}>IP:</span> <span style={{ color: COLORS.ip }}>{hoveredNode}</span></div>
+          <div style={{ margin: '4px 0' }}><span style={{ color: COLORS.textDim }}>SEC:</span> {inventory.includes('Scanner') ? world[hoveredNode].sec?.toUpperCase() : '[ENCRYPTED]'}</div>
+          {world[hoveredNode].org && <div style={{ margin: '4px 0' }}><span style={{ color: COLORS.textDim }}>TYPE:</span> {world[hoveredNode].org.type?.toUpperCase()}</div>}
           
           {botnet.includes(hoveredNode) && <div style={{ color: COLORS.bgDark, background: COLORS.infected, padding: '2px 4px', borderRadius: '2px', display: 'inline-block', marginTop: '6px', fontWeight: 'bold' }}>SLIVER C2 ACTIVE</div>}
           {proxies.includes(hoveredNode) && <div style={{ color: COLORS.bgDark, background: COLORS.proxy, padding: '2px 4px', borderRadius: '2px', display: 'inline-block', marginTop: '6px', fontWeight: 'bold' }}>PROXY TUNNEL ACTIVE</div>}
+          
+          {isMobile && (
+            <button onClick={(e) => { e.stopPropagation(); selectNodeFromMap(hoveredNode); setHoveredNode(null); }} style={{
+              display: 'block', width: '100%', marginTop: '10px', padding: '12px',
+              background: `${COLORS.primary}20`, border: `1px solid ${COLORS.primary}`,
+              color: COLORS.primary, fontFamily: 'inherit', fontSize: '14px', fontWeight: 'bold',
+              borderRadius: '4px', cursor: 'pointer', letterSpacing: '1px',
+              WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation',
+            }}>📡 NMAP SCAN</button>
+          )}
         </div>
       )}
       

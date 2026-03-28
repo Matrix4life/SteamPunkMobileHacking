@@ -159,6 +159,19 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
   const activeState = useRef({ heat, botnet, proxies, walletFrozen });
   useEffect(() => { activeState.current = { heat, botnet, proxies, walletFrozen }; }, [heat, botnet, proxies, walletFrozen]);
 
+  // TRACE PULSE — vibrates faster as trace climbs (mobile only)
+  useEffect(() => {
+    if (!isMobile || screen !== 'game' || trace <= 20) return;
+    // Interval: 2000ms at 25% → 400ms at 90% → 200ms at 100%
+    const interval = trace >= 100 ? 200 : Math.max(300, 2500 - (trace * 25));
+    // Vibration intensity: gentle at low, aggressive at high
+    const vibMs = trace >= 80 ? [30, 40, 30] : trace >= 60 ? [20, 30] : [15];
+    const id = setInterval(() => {
+      try { navigator.vibrate?.(vibMs); } catch {}
+    }, interval);
+    return () => clearInterval(id);
+  }, [isMobile, screen, trace]);
+
   const getAllSaveSlots = () => {
     try { return JSON.parse(localStorage.getItem('breach_save_index') || '[]'); } catch { return []; }
   };
@@ -452,16 +465,4 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
               const burned = curProxies[Math.floor(Math.random() * curProxies.length)];
               setProxies(p => p.filter(ip => ip !== burned)); setBotnet(b => b.filter(ip => ip !== burned));
               setWorld(w => { const nw = { ...w }; delete nw[burned]; return nw; });
-              setTerminal(prev => [...prev.map(t => ({ ...t, isNew: false })), { type: 'out', text: `\n[!!!] TRACE COMPLETE: PROXY BURNED [!!!]\n[-] Traffic terminated at tunnel: ${burned}. You are SAFE.\n`, isNew: true }]);
-            } else {
-              setHeat(h => Math.min(h + 20, 100));
-              playHeatSpike();
-              setTerminal(prev => [...prev.map(t => ({ ...t, isNew: false })), { type: 'out', text: `\n[!!!] TRACE COMPLETE. CONNECTION SEVERED. HEAT +20% [!!!]\n`, isNew: true }]);
-            }
-            return 0;
-          }
-          return prev + 1;
-        });
-      }, traceSpeed);
-    } else setTrace(0);
-    return () => clearInterval(ti
+              setTerminal(prev => [...prev.map(t => ({ ...t, isNew: false 

@@ -2318,7 +2318,7 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
         if (fs[dest] || dest === '/') { setCurrentDir(dest); return ''; }
         return `bash: cd: ${arg1}: No such file or directory`;
       },
-      cat: async () => {
+     cat: async () => {
         const targetFile = resolvePath(arg1, currentDir);
         
         const isConsumable = ['decoy.bin', 'burner.ovpn', '0day_poc.sh', 'wallet.dat'].includes(arg1);
@@ -2364,12 +2364,12 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
           if (privilege !== 'root') return `cat: ${arg1}: Permission denied. Root required.`;
           rawData = rawData.replace('[LOCKED] ', '');
         }
-// --- ADDED STORY DECRYPTION LOGIC ---
+
+        // --- NEW STORY DECRYPTION LOGIC ---
         if (rawData === '[STORY_PENDING]') {
           setIsProcessing(true);
           setTerminal(prev => [...prev, { type: 'out', text: `[*] Decrypting high-security log file...`, isNew: false }]);
           
-          // Generate the story based on the player's current skill/alignment
           const storyData = await generateStoryEvent(director.skillScore || 0);
           
           if (!storyData) {
@@ -2377,10 +2377,8 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
             return `[-] Decryption failed. File corrupted.`;
           }
 
-          // Save it to state so the player can decide
           setActiveStory({ ...storyData, ip: targetIP });
 
-          // Update the file so it doesn't generate twice
           setWorld(prev => {
             const nw = { ...prev };
             if (nw[targetIP]) nw[targetIP].contents[targetFile] = storyData.story;
@@ -2392,7 +2390,6 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
         }
         // ------------------------------------
 
-        if (rawData.includes('[PENDING_GENERATION]') || rawData.includes('[LORE_PENDING]')) {
         if (rawData.includes('[PENDING_GENERATION]') || rawData.includes('[LORE_PENDING]')) {
           setIsProcessing(true);
           setTerminal(prev => [...prev, { type: 'out', text: `[*] Decoding data stream...`, isNew: false }]);
@@ -2427,7 +2424,7 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
         setTerminal(prev => [...prev, { type: 'out', text: rawData, isNew: true }]);
         return null;
       },
-// --- ADDED RESOLVE COMMAND ---
+
       resolve: async () => {
         if (!activeStory) return `[-] No active scenario to resolve.`;
         if (!isInside || targetIP !== activeStory.ip) return `[-] Must be connected to ${activeStory.ip} to resolve this scenario.`;
@@ -2439,7 +2436,6 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
         
         setMoney(m => m + payout);
         
-        // Let's modify the Director's skillScore to act as alignment for now
         setDirector(prev => ({ ...prev, skillScore: Math.max(-100, Math.min(100, prev.skillScore + alignShift)) })); 
         
         setActiveStory(null);
@@ -2450,7 +2446,7 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
         out += `[+] Payment routed: $${payout.toLocaleString()} XMR.\n`;
         return out;
       },
-      // -----------------------------
+
       exit: async () => {
         setIsInside(false); setTargetIP(null); setCurrentDir('~'); setPrivilege('local');
         return '[*] Session closed.';

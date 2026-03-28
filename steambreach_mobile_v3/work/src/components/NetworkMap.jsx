@@ -98,6 +98,57 @@ export default function NetworkMap({
 
   const handleMouseUp = () => setIsDragging(false);
 
+  // ─── TOUCH HANDLERS (mobile pan + pinch zoom) ─────────────
+  const touchRef = useRef({ startX: 0, startY: 0, camStartX: 0, camStartY: 0, pinchDist: 0, pinchZoom: 1 });
+
+  const getTouchDist = (touches) => {
+    const dx = touches[0].clientX - touches[1].clientX;
+    const dy = touches[0].clientY - touches[1].clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  };
+
+  const handleTouchStart = (e) => {
+    if (!expanded) return;
+    if (e.touches.length === 1) {
+      setIsDragging(true);
+      setHasDragged(false);
+      touchRef.current.startX = e.touches[0].clientX;
+      touchRef.current.startY = e.touches[0].clientY;
+      touchRef.current.camStartX = cam.x;
+      touchRef.current.camStartY = cam.y;
+    } else if (e.touches.length === 2) {
+      e.preventDefault();
+      touchRef.current.pinchDist = getTouchDist(e.touches);
+      touchRef.current.pinchZoom = cam.z;
+    }
+  };
+
+  const handleTouchMove = (e) => {
+    if (!expanded) return;
+    if (e.touches.length === 1 && isDragging) {
+      const dx = e.touches[0].clientX - touchRef.current.startX;
+      const dy = e.touches[0].clientY - touchRef.current.startY;
+      if (Math.abs(dx) > 5 || Math.abs(dy) > 5) setHasDragged(true);
+      setCam(prev => ({
+        ...prev,
+        x: touchRef.current.camStartX + dx,
+        y: touchRef.current.camStartY + dy,
+      }));
+    } else if (e.touches.length === 2) {
+      e.preventDefault();
+      const newDist = getTouchDist(e.touches);
+      const scale = newDist / touchRef.current.pinchDist;
+      const newZ = clamp(touchRef.current.pinchZoom * scale, 0.3, 5);
+      setCam(prev => ({ ...prev, z: newZ }));
+    }
+  };
+
+  const handleTouchEnd = (e) => {
+    if (e.touches.length === 0) {
+      setIsDragging(false);
+    }
+  };
+
   const handleNodeClick = (e, ip) => {
     e.stopPropagation();
     if (hasDragged || !expanded) return;
@@ -154,6 +205,7 @@ export default function NetworkMap({
         cursor: expanded ? (isDragging ? 'grabbing' : 'crosshair') : 'pointer',
         boxShadow: trace > 75 ? `0 0 12px ${COLORS.danger}20, inset 0 0 20px ${COLORS.danger}08` : `inset 0 0 30px rgba(0,0,0,0.5)`,
         userSelect: 'none',
+        touchAction: 'none',
         ...mobileOverlayStyle,
       }}
       onClick={!expanded ? toggleExpand : undefined}
@@ -161,6 +213,9 @@ export default function NetworkMap({
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
     >
       <style>{`
         @keyframes stream { to { stroke-dashoffset: -40; } }
@@ -337,7 +392,7 @@ export default function NetworkMap({
             const isActive = targetIP === ip;
             const isHovered = hoveredNode === ip;
             
-            let r = expanded ? (isProxy ? 6 : 5) : (isProxy ? 4 : 3);
+            let r = expanded ? (isMobile ? (isProxy ? 10 : 8) : (isProxy ? 6 : 5)) : (isProxy ? 4 : 3);
             const dimInactive = isHacking && !isActive && !isProxy && !botnet.includes(ip);
             
             return (
@@ -364,8 +419,13 @@ export default function NetworkMap({
                     
                     {expanded && r >= 5 && <circle cx="0" cy="0" r={r/2} fill="#111" opacity="0.8" />}
                     {expanded && isProxy && (
-                      <text x="0" y="-12" fill="#fff" fontSize="6px" textAnchor="middle" fontFamily="inherit" style={{ fontWeight: 'bold', filter: 'drop-shadow(0 2px 2px rgba(0,0,0,0.8))' }}>
+                      <text x="0" y={isMobile ? -16 : -12} fill="#fff" fontSize={isMobile ? '9px' : '6px'} textAnchor="middle" fontFamily="inherit" style={{ fontWeight: 'bold', filter: 'drop-shadow(0 2px 2px rgba(0,0,0,0.8))' }}>
                          HOP {proxyChain.indexOf(ip) + 1}
+                      </text>
+                    )}
+                    {expanded && isMobile && !isProxy && (
+                      <text x="0" y={r + 14} fill={nodeColor} fontSize="8px" textAnchor="middle" fontFamily="inherit" opacity="0.9" style={{ fontWeight: 'bold', filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.9))', letterSpacing: '0.5px' }}>
+                        {(node.org?.orgName || node.name || ip).slice(0, 16)}
                       </text>
                     )}
                   </g>
@@ -430,7 +490,7 @@ export default function NetworkMap({
       
       {expanded && !isHacking && (
          <div style={{ position: 'absolute', bottom: '12px', right: '12px', color: COLORS.textDim, fontSize: '9px', background: 'rgba(0,0,0,0.6)', padding: '6px 10px', borderRadius: '4px', letterSpacing: '1px', zIndex: 12 }}>
-            SCROLL TO ZOOM • DRAG TO PAN
+            {isMobile ? 'DRAG TO PAN • PINCH TO ZOOM • TAP NODE FOR INFO' : 'SCROLL TO ZOOM • DRAG TO PAN'}
          </div>
       )}
     </div>

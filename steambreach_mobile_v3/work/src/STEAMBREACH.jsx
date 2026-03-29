@@ -40,7 +40,6 @@ import {
   getRewardMult,
   getMaxProxySlots,
   generateDirectorNarrative,
-  generateStoryEvent,
 } from './ai/director';
 import { generateNewTarget, DEFAULT_WORLD } from './world/generation';
 import { SyntaxText, Typewriter, HelpPanel } from './components/TerminalBits';
@@ -111,7 +110,6 @@ const STEAMBREACH = () => {
 
   const [contracts, setContracts] = useState([]);
   const [activeContract, setActiveContract] = useState(null);
-  const [activeStory, setActiveStory] = useState(null);
 
   const [menuMode, setMenuMode] = useState('main');
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -312,7 +310,7 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
         const earned = Math.floor(hours * data.botnet.length * HOURLY_RATE);
         if (earned > 0) {
           setMoney(m => m + earned);
-          setTerminal([{ type: 'out', text: `[SYSTEM] Offline C2 revenue: +$${earned.toLocaleString()}`, isNew: false }]);
+          setTerminal([{ type: 'out', text: `[SYSTEM] Offline C2 revenue: +₿${earned.toLocaleString()}`, isNew: false }]);
         }
       }
       return true;
@@ -783,7 +781,7 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
     setContracts(prev => prev.map(c => c.id === id ? activated : c));
     setActiveContract(activated);
     setScreen('game');
-    setTerminal(prev => [...prev, { type: 'out', text: `[FIXER] Contract ${id} accepted.\n[*] Target: ${activated.targetName} (${activated.targetIP})\n[*] Time limit: ${activated.timeLimit}s | Max heat: ${activated.heatCap}%\n[*] Reward: $${activated.reward.toLocaleString()} + ${activated.repReward} REP`, isNew: true }]);
+    setTerminal(prev => [...prev, { type: 'out', text: `[FIXER] Contract ${id} accepted.\n[*] Target: ${activated.targetName} (${activated.targetIP})\n[*] Time limit: ${activated.timeLimit}s | Max heat: ${activated.heatCap}%\n[*] Reward: ₿${activated.reward.toLocaleString()} + ${activated.repReward} REP`, isNew: true }]);
   };
 
   const selectNodeFromMap = (ip) => {
@@ -1006,9 +1004,9 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
         
         setIsProcessing(false);
         let out = `[$$$] TRANSACTION SECURED.\n[+] Sold ${intelCount}x Corporate Intel packages.`;
-        if (gameMode === 'operator') out += `\n[-] Genesis Market Escrow withheld $${darknetFee.toLocaleString()} (15% laundering fee).`;
+        if (gameMode === 'operator') out += `\n[-] Genesis Market Escrow withheld ₿${darknetFee.toLocaleString()} (15% laundering fee).`;
         if (gameMode === 'arcade') out += `\n[+] Arcade Mode 20% Profit Bonus applied!`;
-        out += `\n[+] $${payout.toLocaleString()} XMR tumbled and routed to your local wallet.`;
+        out += `\n[+] ₿${payout.toLocaleString()} tumbled and routed to your local wallet.`;
         
         return out;
       },
@@ -1019,7 +1017,7 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
       'dev.money': async () => {
         if (!devMode) return `bash: dev.money: command not found`;
         const amount = parseInt(arg1) || 50000; setMoney(m => m + amount);
-        return `[DEV] Injected $${amount.toLocaleString()} XMR.`;
+        return `[DEV] Injected ₿${amount.toLocaleString()}.`;
       },
       'dev.item': async () => {
         if (!devMode) return `bash: dev.item: command not found`;
@@ -1209,11 +1207,11 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
         const inflatedPrice = Math.ceil(marketPrices[itemKey] * priceMult);
         const totalCost = inflatedPrice * qty;
         
-        if (money < totalCost) return `[-] Insufficient funds. Need $${totalCost.toLocaleString()}. You have $${money.toLocaleString()}.`;
+        if (money < totalCost) return `[-] Insufficient funds. Need ₿${totalCost.toLocaleString()}. You have ₿${money.toLocaleString()}.`;
         
         setMoney(m => m - totalCost);
         setStash(prev => ({ ...prev, [itemKey]: (prev[itemKey] || 0) + qty }));
-        let out = `[+] Purchased ${qty}x ${COMMODITIES[itemKey].name} for $${totalCost.toLocaleString()}.`;
+        let out = `[+] Purchased ${qty}x ${COMMODITIES[itemKey].name} for ₿${totalCost.toLocaleString()}.`;
         if (priceMult > 1) out += `\n[!] Heat surcharge: prices inflated ${Math.round((priceMult - 1) * 100)}% due to law enforcement attention.`;
         return out;
       },
@@ -1237,7 +1235,7 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
         
         setMoney(m => m + totalProfit);
         setStash(prev => ({ ...prev, [itemKey]: prev[itemKey] - qty }));
-        return `[+] Sold ${qty}x ${COMMODITIES[itemKey].name} for $${totalProfit.toLocaleString()}.`;
+        return `[+] Sold ${qty}x ${COMMODITIES[itemKey].name} for ₿${totalProfit.toLocaleString()}.`;
       },
 
       nmap: async () => {
@@ -1266,15 +1264,7 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
           if (Object.keys(world || {}).filter(k => k !== 'local' && !world[k].isHidden).length + i >= 25) break;
           
           const newNode = generateNewTarget(null, null, director.modifiers);
-          if (Math.random() < 0.20) {
-            if (!newNode.data.files['/']) newNode.data.files['/'] = [];
-            newNode.data.files['/'].push('intercept.log');
-            newNode.data.contents['/intercept.log'] = '[STORY_PENDING]';
-          }
-          // -------------------------------------
-
           setWorld(prev => ({ ...prev, [newNode.ip]: newNode.data }));
-          out += `\nDiscovered ${newNode.data.port}/tcp on ${newNode.ip}`;
           out += `\nDiscovered ${newNode.data.port}/tcp on ${newNode.ip}`;
           out += `\n[*] ORG: ${newNode.data.org.orgName} (${newNode.data.org.type})`;
           out += `\n[*] EMPLOYEES: ${newNode.data.org.employees.length} found via OSINT\n`;
@@ -1426,7 +1416,7 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
         playSuccess();
         setIsProcessing(false);
 
-        return `${mzData}\n\nmimikatz # exit\n[+] ${org?.employees?.length || 2} credential sets extracted from LSASS.\n[+] Plaintext passwords + NTLM hashes sold for $${intelValue.toLocaleString()}.`;
+        return `${mzData}\n\nmimikatz # exit\n[+] ${org?.employees?.length || 2} credential sets extracted from LSASS.\n[+] Plaintext passwords + NTLM hashes sold for ₿${intelValue.toLocaleString()}.`;
       },
 
       exfil: async () => {
@@ -1457,11 +1447,11 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
             setReputation(r => r + activeContract.repReward);
             setContracts(prev => prev.map(c => c.id === activeContract.id ? { ...c, completed: true, active: false } : c));
             setActiveContract(null); trackContract(true); setIsProcessing(false);
-            return `[+] EXFIL COMPLETE. $${val.toLocaleString()} secured.\n\n[FIXER] CONTRACT ${activeContract.id} FULFILLED.\n[+] BONUS: $${activeContract.reward.toLocaleString()} + ${activeContract.repReward} REP`;
+            return `[+] EXFIL COMPLETE. ₿${val.toLocaleString()} secured.\n\n[FIXER] CONTRACT ${activeContract.id} FULFILLED.\n[+] BONUS: ₿${activeContract.reward.toLocaleString()} + ${activeContract.repReward} REP`;
           }
         }
         setIsProcessing(false);
-        return `[+] EXFIL COMPLETE. $${val.toLocaleString()} secured.\n[!] Trace +25%, Heat +10%.`;
+        return `[+] EXFIL COMPLETE. ₿${val.toLocaleString()} secured.\n[!] Trace +25%, Heat +10%.`;
       },
 
       download: async () => {
@@ -1484,7 +1474,7 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
             const amt = Math.floor(Math.random() * 8000 + 2000);
             setMoney(m => m + amt);
             playSuccess();
-            return `[+] SUCCESS: Decrypted slush fund wallet.\n[+] $${amt.toLocaleString()} XMR added to your account.`;
+            return `[+] SUCCESS: Decrypted slush fund wallet.\n[+] ₿${amt.toLocaleString()} added to your account.`;
           } else if (arg1 === 'decoy.bin') {
             setConsumables(c => ({ ...c, decoy: c.decoy + 1 }));
             playSuccess();
@@ -1558,10 +1548,10 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
           orgData.employees.forEach(emp => {
             out += `\n    ${emp.email}@${sourceIP} : ${emp.password}`;
           });
-          out += `\n\n[+] Additional off-book hashes fenced for $${baseReward.toLocaleString()}.`;
+          out += `\n\n[+] Additional off-book hashes fenced for ₿${baseReward.toLocaleString()}.`;
           out += `\n[*] TIP: Use these credentials with the 'ssh' command to bypass intrusion detection.`;
         } else {
-           out += `\n[+] Credentials fenced on the black market for $${baseReward.toLocaleString()}.`;
+           out += `\n[+] Credentials fenced on the black market for ₿${baseReward.toLocaleString()}.`;
         }
         return out;
       },
@@ -1612,9 +1602,9 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
         let out = `[+] CRACKING COMPLETE. ${credCount.toLocaleString()} credentials recovered.`;
         if (distributed) {
           out += `\n[+] Distributed bonus: ${nodeCount} nodes contributed ${(nodeCount * 2.4).toFixed(1)} GH/s extra.`;
-          out += `\n[+] Premium credentials sold for $${totalReward.toLocaleString()} ($${baseReward.toLocaleString()} base + $${bonusReward.toLocaleString()} distributed bonus).`;
+          out += `\n[+] Premium credentials sold for ₿${totalReward.toLocaleString()} (₿${baseReward.toLocaleString()} base + ₿${bonusReward.toLocaleString()} distributed bonus).`;
         } else {
-          out += `\n[+] Credentials sold for $${totalReward.toLocaleString()}.`;
+          out += `\n[+] Credentials sold for ₿${totalReward.toLocaleString()}.`;
           if (botnet.length > 0) out += `\n[*] TIP: Use 'hashcat -d ${filename}' to distribute across your ${botnet.length} botnet nodes for faster cracking and bonus payout.`;
         }
         return out;
@@ -1658,12 +1648,12 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
             setReputation(r => r + activeContract.repReward);
             setContracts(prev => prev.map(c => c.id === activeContract.id ? { ...c, completed: true, active: false } : c));
             setActiveContract(null); trackContract(true); setIsProcessing(false);
-            return `[+] STASH EXFIL COMPLETE via ${stagingName}. $${val.toLocaleString()} secured.\n[+] Trace +8%, Heat +3% (staged routing).\n\n[FIXER] CONTRACT ${activeContract.id} FULFILLED.\n[+] BONUS: $${activeContract.reward.toLocaleString()} + ${activeContract.repReward} REP`;
+            return `[+] STASH EXFIL COMPLETE via ${stagingName}. ₿${val.toLocaleString()} secured.\n[+] Trace +8%, Heat +3% (staged routing).\n\n[FIXER] CONTRACT ${activeContract.id} FULFILLED.\n[+] BONUS: ₿${activeContract.reward.toLocaleString()} + ${activeContract.repReward} REP`;
           }
         }
 
         setIsProcessing(false);
-        return `[+] STASH EXFIL COMPLETE via ${stagingName}.\n[+] $${val.toLocaleString()} secured.\n[+] Trace +8%, Heat +3% (staged routing vs +25/+10 direct).`;
+        return `[+] STASH EXFIL COMPLETE via ${stagingName}.\n[+] ₿${val.toLocaleString()} secured.\n[+] Trace +8%, Heat +3% (staged routing vs +25/+10 direct).`;
       },
 
       wipe: async () => {
@@ -1713,7 +1703,7 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
           setWorld(prev => { const nw = { ...prev }; delete nw[targetIP]; return nw; });
           playDestroy();
           setIsProcessing(false);
-          return `[+] shred: /dev/sda — ${passes + 1} passes complete. Disk destroyed.\n[+] Destruction bounty: $${bounty.toLocaleString()}\n[!] Node permanently removed. Heat +25%.`;
+          return `[+] shred: /dev/sda — ${passes + 1} passes complete. Disk destroyed.\n[+] Destruction bounty: ₿${bounty.toLocaleString()}\n[!] Node permanently removed. Heat +25%.`;
         }
         
         if (gameMode === 'field') {
@@ -1738,7 +1728,7 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
           setWorld(prev => { const nw = { ...prev }; delete nw[targetIP]; return nw; });
           playDestroy();
           setIsProcessing(false);
-          return `[+] ${depth.label}. Destruction bounty: $${bounty.toLocaleString()}\n[!] Node permanently removed. Heat +${depth.heatAdd}%.`;
+          return `[+] ${depth.label}. Destruction bounty: ₿${bounty.toLocaleString()}\n[!] Node permanently removed. Heat +${depth.heatAdd}%.`;
         }
         
         if (!isInside) return "[-] shred: Must be executed on a remote host.";
@@ -1758,7 +1748,7 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
         setWorld(prev => { const nw = { ...prev }; delete nw[targetIP]; return nw; });
         playDestroy();
         setIsProcessing(false);
-        return `[+] DISK DESTROYED: ${destroyedName}\n[+] Destruction bounty: $${bounty.toLocaleString()}\n[!] Node permanently wiped from the grid. Heat +20%.`;
+        return `[+] DISK DESTROYED: ${destroyedName}\n[+] Destruction bounty: ₿${bounty.toLocaleString()}\n[!] Node permanently wiped from the grid. Heat +20%.`;
       },
 
       openssl: async () => {
@@ -1791,11 +1781,11 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
             setMoney(m => m + ransomAsk);
             playSuccess();
             setIsProcessing(false);
-            return `[+] ${strength} encryption complete. ${world[targetIP]?.org?.orgName || 'Target'} systems locked.\n[+] Ransom demand: $${ransomAsk.toLocaleString()}\n[+] VICTIM PAID. $${ransomAsk.toLocaleString()} received in XMR wallet.\n[!] Heat +30%. Law enforcement notified.`;
+            return `[+] ${strength} encryption complete. ${world[targetIP]?.org?.orgName || 'Target'} systems locked.\n[+] Ransom demand: ₿${ransomAsk.toLocaleString()}\n[+] VICTIM PAID. ₿${ransomAsk.toLocaleString()} received in wallet.\n[!] Heat +30%. Law enforcement notified.`;
           } else {
             playFailure();
             setIsProcessing(false);
-            return `[+] ${strength} encryption complete. Systems locked.\n[+] Ransom demand: $${ransomAsk.toLocaleString()}\n[-] VICTIM REFUSED TO PAY. ${!isStrong ? 'AES-128 — they may attempt decryption.' : 'Data remains locked.'}\n[!] Heat +30%. No payout.`;
+            return `[+] ${strength} encryption complete. Systems locked.\n[+] Ransom demand: ₿${ransomAsk.toLocaleString()}\n[-] VICTIM REFUSED TO PAY. ${!isStrong ? 'AES-128 — they may attempt decryption.' : 'Data remains locked.'}\n[!] Heat +30%. No payout.`;
           }
         }
         
@@ -1829,7 +1819,7 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
           }
           setIsProcessing(false);
           return paid
-            ? `[+] ${strength} ransomware deployed. ${world[targetIP]?.org?.orgName || 'Target'} locked.\n[+] VICTIM PAID: $${ransomAsk.toLocaleString()}. Heat +25%.`
+            ? `[+] ${strength} ransomware deployed. ${world[targetIP]?.org?.orgName || 'Target'} locked.\n[+] VICTIM PAID: ₿${ransomAsk.toLocaleString()}. Heat +25%.`
             : `[+] ${strength} ransomware deployed. Victim refused to pay.\n[!] Heat +25%. No payout.${!isStrong ? ' AES-128 may be cracked.' : ''}`;
         }
         
@@ -1854,7 +1844,7 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
         setIsProcessing(false);
         const orgName = world[targetIP]?.org?.orgName || 'Target';
         return paid
-          ? `[+] RANSOMWARE DEPLOYED on ${orgName}.\n[+] VICTIM PAID: $${ransomAsk.toLocaleString()}\n[!] Heat +20%. Expect law enforcement attention.`
+          ? `[+] RANSOMWARE DEPLOYED on ${orgName}.\n[+] VICTIM PAID: ₿${ransomAsk.toLocaleString()}\n[!] Heat +20%. Expect law enforcement attention.`
           : `[+] RANSOMWARE DEPLOYED on ${orgName}.\n[-] VICTIM REFUSED TO PAY. No payout.\n[!] Heat +20%.`;
       },
 
@@ -1886,13 +1876,13 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
               setProxies(prev => prev.filter(ip => ip !== bombIP));
               setWorld(prev => { const nw = { ...prev }; delete nw[bombIP]; return nw; });
               playDestroy();
-              setTerminal(prev => [...prev, { type: 'out', text: `\n[DETONATION] Logic bomb triggered on ${bombOrg} (${bombIP}).\n[+] shred executed. System destroyed. Bounty: $${bounty.toLocaleString()}. Heat +15%.`, isNew: true }]);
+              setTerminal(prev => [...prev, { type: 'out', text: `\n[DETONATION] Logic bomb triggered on ${bombOrg} (${bombIP}).\n[+] shred executed. System destroyed. Bounty: ₿${bounty.toLocaleString()}. Heat +15%.`, isNew: true }]);
             } else {
               const ransomAsk = Math.floor(120000 * mult);
               const paid = Math.random() < 0.6;
               setHeat(h => Math.min(h + 15, 100));
               if (paid) { setMoney(m => m + ransomAsk); playSuccess(); } else { playFailure(); }
-              setTerminal(prev => [...prev, { type: 'out', text: `\n[DETONATION] Logic bomb triggered on ${bombOrg} (${bombIP}).\n[+] openssl ransomware deployed. ${paid ? `VICTIM PAID: $${ransomAsk.toLocaleString()}` : 'VICTIM REFUSED TO PAY.'}. Heat +15%.`, isNew: true }]);
+              setTerminal(prev => [...prev, { type: 'out', text: `\n[DETONATION] Logic bomb triggered on ${bombOrg} (${bombIP}).\n[+] openssl ransomware deployed. ${paid ? `VICTIM PAID: ₿${ransomAsk.toLocaleString()}` : 'VICTIM REFUSED TO PAY.'}. Heat +15%.`, isNew: true }]);
             }
           }, delay * 60000);
           
@@ -1919,13 +1909,13 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
               setProxies(prev => prev.filter(ip => ip !== bombIP));
               setWorld(prev => { const nw = { ...prev }; delete nw[bombIP]; return nw; });
               playDestroy();
-              setTerminal(prev => [...prev, { type: 'out', text: `\n[DETONATION] Cron job fired on ${bombOrg}. shred complete. Bounty: $${bounty.toLocaleString()}. Heat +12%.`, isNew: true }]);
+              setTerminal(prev => [...prev, { type: 'out', text: `\n[DETONATION] Cron job fired on ${bombOrg}. shred complete. Bounty: ₿${bounty.toLocaleString()}. Heat +12%.`, isNew: true }]);
             } else {
               const ransomAsk = Math.floor(120000 * mult);
               const paid = Math.random() < 0.6;
               setHeat(h => Math.min(h + 12, 100));
               if (paid) { setMoney(m => m + ransomAsk); playSuccess(); } else { playFailure(); }
-              setTerminal(prev => [...prev, { type: 'out', text: `\n[DETONATION] Cron job fired on ${bombOrg}. Ransomware deployed. ${paid ? `PAID: $${ransomAsk.toLocaleString()}` : 'REFUSED TO PAY.'}. Heat +12%.`, isNew: true }]);
+              setTerminal(prev => [...prev, { type: 'out', text: `\n[DETONATION] Cron job fired on ${bombOrg}. Ransomware deployed. ${paid ? `PAID: ₿${ransomAsk.toLocaleString()}` : 'REFUSED TO PAY.'}. Heat +12%.`, isNew: true }]);
             }
           }, delay * 60000);
           
@@ -1945,13 +1935,13 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
             setProxies(prev => prev.filter(ip => ip !== bombIP));
             setWorld(prev => { const nw = { ...prev }; delete nw[bombIP]; return nw; });
             playDestroy();
-            setTerminal(prev => [...prev, { type: 'out', text: `\n[DETONATION] Logic bomb on ${bombOrg} — DESTROYED. Bounty: $${bounty.toLocaleString()}.`, isNew: true }]);
+            setTerminal(prev => [...prev, { type: 'out', text: `\n[DETONATION] Logic bomb on ${bombOrg} — DESTROYED. Bounty: ₿${bounty.toLocaleString()}.`, isNew: true }]);
           } else {
             const ransomAsk = 120000;
             const paid = Math.random() < 0.6;
             setHeat(h => Math.min(h + 10, 100));
             if (paid) { setMoney(m => m + ransomAsk); playSuccess(); } else { playFailure(); }
-            setTerminal(prev => [...prev, { type: 'out', text: `\n[DETONATION] Logic bomb on ${bombOrg} — Ransomware. ${paid ? `PAID: $${ransomAsk.toLocaleString()}` : 'REFUSED.'}`, isNew: true }]);
+            setTerminal(prev => [...prev, { type: 'out', text: `\n[DETONATION] Logic bomb on ${bombOrg} — Ransomware. ${paid ? `PAID: ₿${ransomAsk.toLocaleString()}` : 'REFUSED.'}`, isNew: true }]);
           }
         }, delay * 60000);
         
@@ -2028,7 +2018,7 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
           setIsProcessing(false);
 
           let result = `[+] ${payloadType.toUpperCase()} payload propagated to ${infectCount} host${infectCount > 1 ? 's' : ''}:\n${newNodes.map(n => `    ${n.ip} — ${n.data.org?.orgName || 'Unknown'}`).join('\n')}`;
-          if (payloadType === 'miner') result += `\n[+] XMRig deployed on all infected nodes. Passive income active.`;
+          if (payloadType === 'miner') result += `\n[+]ig deployed on all infected nodes. Passive income active.`;
           if (payloadType === 'wiper') result += `\n[!] Wiper armed. Use 'crontab' to set detonation timer on each node.`;
           result += `\n[!] Heat +${heatAdd}%.`;
           return result;
@@ -2230,7 +2220,7 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
           const incomeBonus = Math.floor(threads * maxCpu * 2 * mult);
 
           setIsProcessing(true);
-          setTerminal(prev => [...prev, { type: 'out', text: ` * ABOUT        XMRig/6.19.0 gcc/11.3.0\n * LIBS         libuv/1.44.1 OpenSSL/3.0.2\n * POOL         pool.minexmr.com:443\n * CPU          ${threads} threads, ${maxCpu}% max usage\n * DONATE       1%\n[*] Starting mining daemon in background...\n[*] pid: ${Math.floor(Math.random() * 30000 + 10000)}`, isNew: false }]);
+          setTerminal(prev => [...prev, { type: 'out', text: ` * ABOUT       ig/6.19.0 gcc/11.3.0\n * LIBS         libuv/1.44.1 OpenSSL/3.0.2\n * POOL         pool.minexmr.com:443\n * CPU          ${threads} threads, ${maxCpu}% max usage\n * DONATE       1%\n[*] Starting mining daemon in background...\n[*] pid: ${Math.floor(Math.random() * 30000 + 10000)}`, isNew: false }]);
           await new Promise(r => setTimeout(r, 1500));
 
           setLooted(prev => [...prev, xmrigKey]);
@@ -2239,11 +2229,11 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
           setHeat(h => Math.min(h + heatAdd, 100));
           playSuccess();
           setIsProcessing(false);
-          return `[+] xmrig running. Hashrate: ${(threads * 0.6).toFixed(1)} kH/s\n[+] Estimated income: +$${incomeBonus.toLocaleString()}/hr on this node.\n[!] Heat +${heatAdd}% (CPU ${maxCpu}% — ${maxCpu > 80 ? 'SOC will notice the spike' : maxCpu > 50 ? 'moderate detection risk' : 'low profile'}).`;
+          return `[+] xmrig running. Hashrate: ${(threads * 0.6).toFixed(1)} kH/s\n[+] Estimated income: +₿${incomeBonus.toLocaleString()}/hr on this node.\n[!] Heat +${heatAdd}% (CPU ${maxCpu}% — ${maxCpu > 80 ? 'SOC will notice the spike' : maxCpu > 50 ? 'moderate detection risk' : 'low profile'}).`;
         }
 
         if (gameMode === 'field') {
-          if (!arg1) return `[-] xmrig: Select CPU intensity:\n    xmrig low     — 25% CPU, $${(300 * mult).toLocaleString()}/hr, very low detection\n    xmrig medium  — 50% CPU, $${(600 * mult).toLocaleString()}/hr, moderate detection\n    xmrig high    — 100% CPU, $${(1200 * mult).toLocaleString()}/hr, SOC notices within minutes`;
+          if (!arg1) return `[-] xmrig: Select CPU intensity:\n    xmrig low     — 25% CPU, ₿${(300 * mult).toLocaleString()}/hr, very low detection\n    xmrig medium  — 50% CPU, ₿${(600 * mult).toLocaleString()}/hr, moderate detection\n    xmrig high    — 100% CPU, ₿${(1200 * mult).toLocaleString()}/hr, SOC notices within minutes`;
 
           const intensities = {
             low:    { cpu: 25, income: 300, heatAdd: 1, risk: 'very low detection risk' },
@@ -2254,7 +2244,7 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
           if (!intensity) return "[-] xmrig: Invalid intensity. Use: low, medium, or high";
 
           setIsProcessing(true);
-          setTerminal(prev => [...prev, { type: 'out', text: `[*] Deploying XMRig at ${intensity.cpu}% CPU...\n[*] Connecting to mining pool...`, isNew: false }]);
+          setTerminal(prev => [...prev, { type: 'out', text: `[*] Deployingig at ${intensity.cpu}% CPU...\n[*] Connecting to mining pool...`, isNew: false }]);
           await new Promise(r => setTimeout(r, 1200));
 
           const hourlyIncome = Math.floor(intensity.income * mult);
@@ -2263,11 +2253,11 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
           setHeat(h => Math.min(h + heatAdd, 100));
           playSuccess();
           setIsProcessing(false);
-          return `[+] XMRig active — ${intensity.cpu}% CPU, +$${hourlyIncome.toLocaleString()}/hr.\n[!] ${intensity.risk}. Heat +${heatAdd}%.`;
+          return `[+]ig active — ${intensity.cpu}% CPU, +₿${hourlyIncome.toLocaleString()}/hr.\n[!] ${intensity.risk}. Heat +${heatAdd}%.`;
         }
 
         setIsProcessing(true);
-        setTerminal(prev => [...prev, { type: 'out', text: `[*] Installing XMRig cryptominer...\n[*] Connecting to Monero pool...`, isNew: false }]);
+        setTerminal(prev => [...prev, { type: 'out', text: `[*] Installingig cryptominer...\n[*] Connecting to Monero pool...`, isNew: false }]);
         await new Promise(r => setTimeout(r, 1200));
 
         const hourlyIncome = Math.floor(500 * mult);
@@ -2276,7 +2266,7 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
         setHeat(h => Math.min(h + heatAdd, 100));
         playSuccess();
         setIsProcessing(false);
-        return `[+] XMRIG DEPLOYED. Mining Monero at +$${hourlyIncome.toLocaleString()}/hr.\n[!] Heat +${heatAdd}%.`;
+        return `[+]IG DEPLOYED. Mining Monero at +₿${hourlyIncome.toLocaleString()}/hr.\n[!] Heat +${heatAdd}%.`;
       },
 
       use: async () => {
@@ -2318,7 +2308,7 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
         if (fs[dest] || dest === '/') { setCurrentDir(dest); return ''; }
         return `bash: cd: ${arg1}: No such file or directory`;
       },
-     cat: async () => {
+      cat: async () => {
         const targetFile = resolvePath(arg1, currentDir);
         
         const isConsumable = ['decoy.bin', 'burner.ovpn', '0day_poc.sh', 'wallet.dat'].includes(arg1);
@@ -2337,7 +2327,7 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
             const amt = Math.floor(Math.random() * 8000 + 2000);
             setMoney(m => m + amt);
             playSuccess();
-            return `[+] SUCCESS: Decrypted slush fund wallet.\n[+] $${amt.toLocaleString()} XMR added to your account.`;
+            return `[+] SUCCESS: Decrypted slush fund wallet.\n[+] ₿${amt.toLocaleString()} added to your account.`;
           } else if (arg1 === 'decoy.bin') {
             setConsumables(c => ({ ...c, decoy: c.decoy + 1 }));
             playSuccess();
@@ -2365,31 +2355,6 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
           rawData = rawData.replace('[LOCKED] ', '');
         }
 
-        // --- NEW STORY DECRYPTION LOGIC ---
-        if (rawData === '[STORY_PENDING]') {
-          setIsProcessing(true);
-          setTerminal(prev => [...prev, { type: 'out', text: `[*] Decrypting high-security log file...`, isNew: false }]);
-          
-          const storyData = await generateStoryEvent(director.skillScore || 0);
-          
-          if (!storyData) {
-            setIsProcessing(false);
-            return `[-] Decryption failed. File corrupted.`;
-          }
-
-          setActiveStory({ ...storyData, ip: targetIP });
-
-          setWorld(prev => {
-            const nw = { ...prev };
-            if (nw[targetIP]) nw[targetIP].contents[targetFile] = storyData.story;
-            return nw;
-          });
-
-          setIsProcessing(false);
-          return `\n[DECRYPTED MESSAGE]\n"${storyData.story}"\n\n[SYSTEM] MORAL CROSSROADS DETECTED.\n[1] PARAGON : ${storyData.good_action} (Reward: $${storyData.good_payout})\n[2] SYNDICATE : ${storyData.evil_action} (Reward: $${storyData.evil_payout})\n\nType 'resolve 1' or 'resolve 2' to make your choice.`;
-        }
-        // ------------------------------------
-
         if (rawData.includes('[PENDING_GENERATION]') || rawData.includes('[LORE_PENDING]')) {
           setIsProcessing(true);
           setTerminal(prev => [...prev, { type: 'out', text: `[*] Decoding data stream...`, isNew: false }]);
@@ -2406,7 +2371,7 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
             aiText = `[ERROR] Stream corrupted. Partial recovery logged.`; 
           }
 
-          if (isInside && world[targetIP]?.val) { aiText += `\n\n[SYSTEM] EXTRACTABLE ASSETS: $${world[targetIP].val.toLocaleString()}`; }
+          if (isInside && world[targetIP]?.val) { aiText += `\n\n[SYSTEM] EXTRACTABLE ASSETS: ₿${world[targetIP].val.toLocaleString()}`; }
 
           setWorld(prev => {
             const nw = { ...prev };
@@ -2423,28 +2388,6 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
 
         setTerminal(prev => [...prev, { type: 'out', text: rawData, isNew: true }]);
         return null;
-      },
-
-      resolve: async () => {
-        if (!activeStory) return `[-] No active scenario to resolve.`;
-        if (!isInside || targetIP !== activeStory.ip) return `[-] Must be connected to ${activeStory.ip} to resolve this scenario.`;
-        if (arg1 !== '1' && arg1 !== '2') return `[-] Usage: resolve 1 (Good) or resolve 2 (Evil)`;
-
-        const isGood = arg1 === '1';
-        const payout = isGood ? activeStory.good_payout : activeStory.evil_payout;
-        const alignShift = isGood ? 20 : -20;
-        
-        setMoney(m => m + payout);
-        
-        setDirector(prev => ({ ...prev, skillScore: Math.max(-100, Math.min(100, prev.skillScore + alignShift)) })); 
-        
-        setActiveStory(null);
-        playSuccess();
-        
-        let out = `[*] Executing ${isGood ? 'PARAGON' : 'SYNDICATE'} protocol...\n`;
-        out += `[+] Scenario Resolved: ${isGood ? activeStory.good_action : activeStory.evil_action}.\n`;
-        out += `[+] Payment routed: $${payout.toLocaleString()} XMR.\n`;
-        return out;
       },
 
       exit: async () => {
@@ -2497,7 +2440,7 @@ MARKET PRICES: ${priceStr}${walletFrozen ? ' | WALLET: FROZEN' : ' | WALLET: ACT
 THREAT ASSESSMENT: ${threatLevel}
 GLOBAL SOC POSTURE: ${score >= 15 ? 'AGGRESSIVE' : score <= -15 ? 'DISTRACTED' : 'NOMINAL'}
 PROXY CHAIN CAPACITY: ${proxies.length}/${maxHops} HOPS
-BOTNET NODES: ${botnet.length} (PASSIVE INCOME: $${(botnet.length * HOURLY_RATE).toLocaleString()}/hr)
+BOTNET NODES: ${botnet.length} (PASSIVE INCOME: ₿${(botnet.length * HOURLY_RATE).toLocaleString()}/hr)
 CONTRACTS COMPLETED: ${d.metrics.contractsCompleted}
 NODES LOOTED: ${d.metrics.nodesLooted}
 
@@ -2780,7 +2723,7 @@ ${wantedTier === 'MANHUNT' ? '[!!!] REDUCE HEAT IMMEDIATELY. Your entire network
                       </div>
                       {info && (
                         <div style={{ fontSize: '10px', color: COLORS.textDim }}>
-                          XMR: <span style={{ color: COLORS.warning }}>${info.money.toLocaleString()}</span> │ REP: {info.reputation} │ C2: <span style={{ color: COLORS.infected }}>{info.botnet}</span> │ LOOTED: {info.nodesLooted}
+                         : <span style={{ color: COLORS.warning }}>${info.money.toLocaleString()}</span> │ REP: {info.reputation} │ C2: <span style={{ color: COLORS.infected }}>{info.botnet}</span> │ LOOTED: {info.nodesLooted}
                         </div>
                       )}
                     </div>
@@ -2814,7 +2757,7 @@ ${wantedTier === 'MANHUNT' ? '[!!!] REDUCE HEAT IMMEDIATELY. Your entire network
                       </div>
                       {info && (
                         <div style={{ fontSize: '10px', color: COLORS.textDim, marginTop: '4px' }}>
-                          XMR: ${info.money.toLocaleString()} │ REP: {info.reputation} │ {formatTime(info.timestamp)}
+                         : ${info.money.toLocaleString()} │ REP: {info.reputation} │ {formatTime(info.timestamp)}
                         </div>
                       )}
                     </div>

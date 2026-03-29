@@ -140,6 +140,37 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
     initNative();
   }, []);
 
+  // ANDROID BACK BUTTON — intercept and route to in-game navigation
+  useEffect(() => {
+    const handleBack = (e) => {
+      // Determine what "back" means based on current state
+      if (screen === 'game') {
+        if (showHelpMenu) { setShowHelpMenu(false); }
+        else if (mapExpanded) { setMapExpanded(false); }
+        else if (showMobileKeyboard) { setShowMobileKeyboard(false); }
+        else if (isChatting) { /* let the game handle exit */ }
+        else if (isInside) { /* don't auto-exit node — too dangerous */ }
+        else { saveGame(`auto_${operator}`); setScreen('intro'); setMenuMode('main'); setDeleteTarget(null); setMenuIndex(0); }
+      } else if (screen === 'hardware' || screen === 'shop' || screen === 'market' || screen === 'contracts' || screen === 'sounds') {
+        setScreen('game');
+      } else if (screen === 'soundmanager' || screen === 'aisettings') {
+        setScreen('intro');
+      } else if (screen === 'intro') {
+        if (menuMode !== 'main') { setMenuMode('main'); setMenuIndex(0); setDeleteTarget(null); }
+        else { return; /* let browser handle — actually exit */ }
+      } else {
+        return; /* unknown screen, let browser handle */
+      }
+      // Push a dummy state so the next back press has something to pop
+      window.history.pushState({ steambreach: true }, '');
+    };
+
+    // Seed initial history entry
+    window.history.pushState({ steambreach: true }, '');
+    window.addEventListener('popstate', handleBack);
+    return () => window.removeEventListener('popstate', handleBack);
+  }, [screen, menuMode, showHelpMenu, mapExpanded, showMobileKeyboard, isChatting, isInside, operator]);
+
   // PERSISTENT FOCUS KEEPER — grabs focus back after any steal (desktop only)
   useEffect(() => {
     if (screen !== 'game' || isMobile) return;
@@ -2692,6 +2723,10 @@ ${wantedTier === 'MANHUNT' ? '[!!!] REDUCE HEAT IMMEDIATELY. Your entire network
                   START GAME
                 </button>
                 <div style={{color: COLORS.textDim, fontSize: '10px', marginTop: '4px'}}>[UP/DOWN] CHANGE MODE | [ENTER] START | [ESC] CANCEL</div>
+                <button onClick={() => { setMenuMode('main'); setMenuIndex(0); }} style={{
+                  marginTop: '12px', background: 'transparent', border: `1px solid ${COLORS.border}`, color: COLORS.textDim,
+                  padding: '10px 20px', cursor: 'pointer', fontFamily: 'inherit', fontSize: '12px', borderRadius: '3px', letterSpacing: '1px', width: '100%',
+                }}>← BACK</button>
               </div>
             </div>
           )}
@@ -2723,7 +2758,7 @@ ${wantedTier === 'MANHUNT' ? '[!!!] REDUCE HEAT IMMEDIATELY. Your entire network
                       </div>
                       {info && (
                         <div style={{ fontSize: '10px', color: COLORS.textDim }}>
-                         : <span style={{ color: COLORS.warning }}>${info.money.toLocaleString()}</span> │ REP: {info.reputation} │ C2: <span style={{ color: COLORS.infected }}>{info.botnet}</span> │ LOOTED: {info.nodesLooted}
+                         : <span style={{ color: COLORS.warning }}>₿{info.money.toLocaleString()}</span> │ REP: {info.reputation} │ C2: <span style={{ color: COLORS.infected }}>{info.botnet}</span> │ LOOTED: {info.nodesLooted}
                         </div>
                       )}
                     </div>
@@ -2731,6 +2766,10 @@ ${wantedTier === 'MANHUNT' ? '[!!!] REDUCE HEAT IMMEDIATELY. Your entire network
                 })}
               </div>
               <div style={{color: COLORS.textDim, fontSize: '10px', marginTop: '10px'}}>[UP/DOWN] NAVIGATE | [ENTER] LOAD | [ESC] CANCEL</div>
+              <button onClick={() => { setMenuMode('main'); setMenuIndex(0); }} style={{
+                marginTop: '12px', background: 'transparent', border: `1px solid ${COLORS.border}`, color: COLORS.textDim,
+                padding: '10px 20px', cursor: 'pointer', fontFamily: 'inherit', fontSize: '12px', borderRadius: '3px', letterSpacing: '1px', width: '100%',
+              }}>← BACK</button>
             </div>
           )}
 
@@ -2757,7 +2796,7 @@ ${wantedTier === 'MANHUNT' ? '[!!!] REDUCE HEAT IMMEDIATELY. Your entire network
                       </div>
                       {info && (
                         <div style={{ fontSize: '10px', color: COLORS.textDim, marginTop: '4px' }}>
-                         : ${info.money.toLocaleString()} │ REP: {info.reputation} │ {formatTime(info.timestamp)}
+                         : ₿{info.money.toLocaleString()} │ REP: {info.reputation} │ {formatTime(info.timestamp)}
                         </div>
                       )}
                     </div>
@@ -2765,6 +2804,10 @@ ${wantedTier === 'MANHUNT' ? '[!!!] REDUCE HEAT IMMEDIATELY. Your entire network
                 })}
               </div>
               <div style={{color: COLORS.textDim, fontSize: '10px', marginTop: '10px'}}>[UP/DOWN] NAVIGATE | [ENTER] SELECT | [ESC] CANCEL</div>
+              <button onClick={() => { setMenuMode('main'); setMenuIndex(0); }} style={{
+                marginTop: '12px', background: 'transparent', border: `1px solid ${COLORS.border}`, color: COLORS.textDim,
+                padding: '10px 20px', cursor: 'pointer', fontFamily: 'inherit', fontSize: '12px', borderRadius: '3px', letterSpacing: '1px', width: '100%',
+              }}>← BACK</button>
             </div>
           )}
 

@@ -222,8 +222,15 @@ export default function MobileTouchUI({
       <div style={S.wrap}>
         <div style={S.label}>SPEARPHISH — {chatTarget}</div>
         <div style={S.row}>
-          {["Hi, IT department here","We need to verify your account","Security breach detected",
-            "Can you confirm your password?","Urgent, from management","Account will be locked",
+          {[
+            "Hey, quick question about your system access",
+            "IT here — we're seeing unusual activity on your account",
+            "Hi, I'm new on the security team. Need to verify something",
+            "Your manager asked me to reach out about a login issue",
+            "We're rolling out a mandatory password reset today",
+            "I noticed your credentials flagged in our last audit",
+            "Sorry to bother you — compliance needs your help real quick",
+            "This is from the help desk, can you verify something for me?",
           ].map((msg, i) => (
             <button key={i} onClick={() => tap(msg)} style={btn(COLORS.chat, true, false)}>{msg}</button>
           ))}

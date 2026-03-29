@@ -4,13 +4,12 @@
 // 100,000,000 sats = 1 BTC
 // ═══════════════════════════════════════════════════════════════
 
-export function formatBTC(sats) {
-  if (sats === 0) return '₿0';
-  const abs = Math.abs(sats), sign = sats < 0 ? '-' : '';
-  const btc = abs / 100000000;
-  if (btc >= 1) return `${sign}₿${btc.toFixed(2)}`;
-  if (btc >= 0.01) return `${sign}₿${btc.toFixed(4)}`;
-  return `${sign}₿${btc.toFixed(6)}`;
+export function formatBTC(amount) {
+  if (amount === 0) return '₿0';
+  const abs = Math.abs(amount), sign = amount < 0 ? '-' : '';
+  if (abs >= 1000000) return `${sign}₿${(abs / 1000000).toFixed(1)}M`;
+  if (abs >= 1000) return `${sign}₿${Math.floor(abs).toLocaleString()}`;
+  return `${sign}₿${abs.toLocaleString()}`;
 }
 
 export function generateBTCPrice(prev) {
@@ -19,13 +18,13 @@ export function generateBTCPrice(prev) {
 }
 
 export function btcTrend(idx) {
-  if (idx >= 1.8) return { text: 'BTC PARABOLIC — ATH territory',  color: '#ffd866', icon: '▲▲' };
-  if (idx >= 1.4) return { text: 'BTC PUMPING — bulls in control',  color: '#a9dc76', icon: '▲▲' };
-  if (idx >= 1.1) return { text: 'BTC trending up',                 color: '#a9dc76', icon: '▲' };
-  if (idx >= 0.9) return { text: 'BTC stable',                      color: '#727072', icon: '─' };
-  if (idx >= 0.7) return { text: 'BTC dipping — bear pressure',     color: '#fc9867', icon: '▼' };
-  if (idx >= 0.5) return { text: 'BTC CRASHING — capitulation',     color: '#ff6188', icon: '▼▼' };
-  return              { text: 'BTC COLLAPSED — extreme fear',       color: '#ff6188', icon: '☠' };
+  if (idx >= 1.8) return { text: 'PRICES SURGING — seller market',   color: '#ffd866', icon: '▲▲' };
+  if (idx >= 1.4) return { text: 'PRICES UP — high demand',          color: '#a9dc76', icon: '▲▲' };
+  if (idx >= 1.1) return { text: 'Market trending up',               color: '#a9dc76', icon: '▲' };
+  if (idx >= 0.9) return { text: 'Market stable',                    color: '#727072', icon: '─' };
+  if (idx >= 0.7) return { text: 'PRICES DROPPING — buyer market',   color: '#fc9867', icon: '▼' };
+  if (idx >= 0.5) return { text: 'FIRE SALE — prices crashing',      color: '#ff6188', icon: '▼▼' };
+  return              { text: 'MARKET COLLAPSED — everything cheap',  color: '#ff6188', icon: '☠' };
 }
 
 // ─── GENERATIONS ──────────────────────────────────────────────
@@ -73,110 +72,110 @@ const p = (id,name,slot,gen,maker,stats,basePrice,vol,rarity,power,desc) =>
 
 export const PARTS_DB = [
   // ─── CPU ──────────────────────────────────────────────────
-  p('cpu_i3_10100',  'Intel Core i3-10100',       'cpu','GEN2','INTEL', {clock:1.0,threads:4},   300000,  0.3, 'common',   65,'4C/8T Comet Lake. Starter chip.'),
-  p('cpu_r3_3100',   'AMD Ryzen 3 3100',          'cpu','GEN2','AMD',   {clock:1.2,threads:4},   350000,  0.3, 'common',   65,'4C/8T Zen 2. Budget warrior.'),
-  p('cpu_i5_10400',  'Intel Core i5-10400',       'cpu','GEN2','INTEL', {clock:1.4,threads:6},   600000,  0.25,'common',   65,'6C/12T. Solid entry-level.'),
-  p('cpu_r5_5600x',  'AMD Ryzen 5 5600X',         'cpu','GEN3','AMD',   {clock:1.8,threads:6},  1800000, 0.25,'common',   65,'6C/12T Zen 3. The sweet spot.'),
-  p('cpu_i5_12600k', 'Intel Core i5-12600K',      'cpu','GEN3','INTEL', {clock:1.9,threads:10}, 2200000, 0.25,'common',  125,'10C/16T Alder Lake hybrid.'),
-  p('cpu_r7_5800x3d','AMD Ryzen 7 5800X3D',       'cpu','GEN3','AMD',   {clock:2.0,threads:8},  3200000, 0.3, 'uncommon',105,'8C/16T V-Cache. Gaming king.'),
-  p('cpu_i7_13700k', 'Intel Core i7-13700K',      'cpu','GEN4','INTEL', {clock:2.4,threads:16}, 5500000, 0.3, 'uncommon',125,'16C/24T Raptor Lake.'),
-  p('cpu_r7_7800x3d','AMD Ryzen 7 7800X3D',       'cpu','GEN4','AMD',   {clock:2.5,threads:8},  6800000, 0.3, 'uncommon',120,'8C/16T Zen 4 V-Cache.'),
-  p('cpu_r9_7950x',  'AMD Ryzen 9 7950X',         'cpu','GEN4','AMD',   {clock:2.8,threads:16}, 9500000, 0.35,'rare',    170,'16C/32T Zen 4 flagship.'),
-  p('cpu_i9_14900k', 'Intel Core i9-14900K',      'cpu','GEN4','INTEL', {clock:2.9,threads:24}, 9000000, 0.35,'rare',    253,'24C/32T Raptor Lake refresh.'),
-  p('cpu_r9_9950x',  'AMD Ryzen 9 9950X',         'cpu','GEN5','AMD',   {clock:3.4,threads:16},22000000, 0.4, 'rare',    170,'16C/32T Zen 5. Next-gen IPC.'),
-  p('cpu_i9_arrow',  'Intel Core Ultra 9 285K',   'cpu','GEN5','INTEL', {clock:3.2,threads:24},24000000, 0.4, 'rare',    125,'24C Arrow Lake. Efficiency.'),
-  p('cpu_tr_7980x',  'AMD Threadripper 7980X',    'cpu','GEN5','AMD',   {clock:3.8,threads:64},38000000, 0.45,'legendary',350,'64C/128T. Server-class.'),
-  p('cpu_epyc_9654', 'AMD EPYC 9654',             'cpu','XGEN','AMD',   {clock:4.0,threads:96},75000000, 0.6, 'legendary',360,'96C/192T Genoa. Datacenter.'),
+  p('cpu_i3_10100',  'Intel Core i3-10100',       'cpu','GEN2','INTEL', {clock:1.0,threads:4},  3000,  0.3, 'common',   65,'4C/8T Comet Lake. Starter chip.'),
+  p('cpu_r3_3100',   'AMD Ryzen 3 3100',          'cpu','GEN2','AMD',   {clock:1.2,threads:4},  3500,  0.3, 'common',   65,'4C/8T Zen 2. Budget warrior.'),
+  p('cpu_i5_10400',  'Intel Core i5-10400',       'cpu','GEN2','INTEL', {clock:1.4,threads:6},  6000,  0.25,'common',   65,'6C/12T. Solid entry-level.'),
+  p('cpu_r5_5600x',  'AMD Ryzen 5 5600X',         'cpu','GEN3','AMD',   {clock:1.8,threads:6},  18000,  0.25,'common',   65,'6C/12T Zen 3. The sweet spot.'),
+  p('cpu_i5_12600k', 'Intel Core i5-12600K',      'cpu','GEN3','INTEL', {clock:1.9,threads:10},  22000,  0.25,'common',  125,'10C/16T Alder Lake hybrid.'),
+  p('cpu_r7_5800x3d','AMD Ryzen 7 5800X3D',       'cpu','GEN3','AMD',   {clock:2.0,threads:8},  32000,  0.3, 'uncommon',105,'8C/16T V-Cache. Gaming king.'),
+  p('cpu_i7_13700k', 'Intel Core i7-13700K',      'cpu','GEN4','INTEL', {clock:2.4,threads:16},  55000,  0.3, 'uncommon',125,'16C/24T Raptor Lake.'),
+  p('cpu_r7_7800x3d','AMD Ryzen 7 7800X3D',       'cpu','GEN4','AMD',   {clock:2.5,threads:8},  68000,  0.3, 'uncommon',120,'8C/16T Zen 4 V-Cache.'),
+  p('cpu_r9_7950x',  'AMD Ryzen 9 7950X',         'cpu','GEN4','AMD',   {clock:2.8,threads:16},  95000,  0.35,'rare',    170,'16C/32T Zen 4 flagship.'),
+  p('cpu_i9_14900k', 'Intel Core i9-14900K',      'cpu','GEN4','INTEL', {clock:2.9,threads:24},  90000,  0.35,'rare',    253,'24C/32T Raptor Lake refresh.'),
+  p('cpu_r9_9950x',  'AMD Ryzen 9 9950X',         'cpu','GEN5','AMD',   {clock:3.4,threads:16},  220000,  0.4, 'rare',    170,'16C/32T Zen 5. Next-gen IPC.'),
+  p('cpu_i9_arrow',  'Intel Core Ultra 9 285K',   'cpu','GEN5','INTEL', {clock:3.2,threads:24},  240000,  0.4, 'rare',    125,'24C Arrow Lake. Efficiency.'),
+  p('cpu_tr_7980x',  'AMD Threadripper 7980X',    'cpu','GEN5','AMD',   {clock:3.8,threads:64},  380000,  0.45,'legendary',350,'64C/128T. Server-class.'),
+  p('cpu_epyc_9654', 'AMD EPYC 9654',             'cpu','XGEN','AMD',   {clock:4.0,threads:96},  750000,  0.6, 'legendary',360,'96C/192T Genoa. Datacenter.'),
 
   // ─── GPU ──────────────────────────────────────────────────
-  p('gpu_1650',     'NVIDIA GeForce GTX 1650',      'gpu','GEN2','NVIDIA',{cores:1.0,vram:4},    400000,  0.35,'common',  75,'4GB. Entry-level mining.'),
-  p('gpu_1660s',    'NVIDIA GeForce GTX 1660 Super', 'gpu','GEN2','NVIDIA',{cores:1.4,vram:6},   800000,  0.3, 'common', 125,'6GB. Reliable budget miner.'),
-  p('gpu_rx580',    'AMD Radeon RX 580',             'gpu','GEN2','AMD',   {cores:1.2,vram:8},    600000,  0.3, 'common', 185,'8GB. Classic mining card.'),
-  p('gpu_3060',     'NVIDIA GeForce RTX 3060',       'gpu','GEN3','NVIDIA',{cores:1.8,vram:12},  2200000, 0.3, 'common', 170,'12GB. Great hash per watt.'),
-  p('gpu_3070',     'NVIDIA GeForce RTX 3070',       'gpu','GEN3','NVIDIA',{cores:2.2,vram:8},   3500000, 0.3, 'common', 220,'8GB. Sweet spot for cracking.'),
-  p('gpu_6800xt',   'AMD Radeon RX 6800 XT',        'gpu','GEN3','AMD',   {cores:2.0,vram:16},  3800000, 0.35,'uncommon',300,'16GB. Massive VRAM buffer.'),
-  p('gpu_3080',     'NVIDIA GeForce RTX 3080',       'gpu','GEN3','NVIDIA',{cores:2.5,vram:12},  5800000, 0.35,'uncommon',320,'12GB. Mining + cracking.'),
-  p('gpu_4070ti',   'NVIDIA GeForce RTX 4070 Ti',   'gpu','GEN4','NVIDIA',{cores:2.8,vram:12},  7800000, 0.35,'uncommon',285,'12GB Ada Lovelace.'),
-  p('gpu_7900xtx',  'AMD Radeon RX 7900 XTX',       'gpu','GEN4','AMD',   {cores:3.0,vram:24},  8500000, 0.4, 'rare',   355,'24GB RDNA 3. AMD flagship.'),
-  p('gpu_4080s',    'NVIDIA GeForce RTX 4080 Super', 'gpu','GEN4','NVIDIA',{cores:3.2,vram:16}, 10000000, 0.4, 'rare',   320,'16GB. High-end cracking.'),
-  p('gpu_4090',     'NVIDIA GeForce RTX 4090',       'gpu','GEN4','NVIDIA',{cores:3.8,vram:24}, 16000000, 0.4, 'rare',   450,'24GB. The absolute unit.'),
-  p('gpu_5090',     'NVIDIA GeForce RTX 5090',       'gpu','GEN5','NVIDIA',{cores:4.2,vram:32}, 25000000, 0.45,'rare',   400,'32GB Blackwell. Next-gen.'),
-  p('gpu_5090d',    'NVIDIA RTX 5090 NVLink Duo',   'gpu','GEN5','NVIDIA',{cores:4.8,vram:64}, 42000000, 0.5, 'legendary',600,'64GB dual-GPU. Insane.'),
-  p('gpu_h100',     'NVIDIA H100 SXM5',             'gpu','XGEN','NVIDIA',{cores:5.0,vram:80}, 90000000, 0.6, 'legendary',700,'80GB HBM3. Datacenter AI.'),
+  p('gpu_1650',     'NVIDIA GeForce GTX 1650',      'gpu','GEN2','NVIDIA',{cores:1.0,vram:4},  4000,  0.35,'common',  75,'4GB. Entry-level mining.'),
+  p('gpu_1660s',    'NVIDIA GeForce GTX 1660 Super', 'gpu','GEN2','NVIDIA',{cores:1.4,vram:6},  8000,  0.3, 'common', 125,'6GB. Reliable budget miner.'),
+  p('gpu_rx580',    'AMD Radeon RX 580',             'gpu','GEN2','AMD',   {cores:1.2,vram:8},  6000,  0.3, 'common', 185,'8GB. Classic mining card.'),
+  p('gpu_3060',     'NVIDIA GeForce RTX 3060',       'gpu','GEN3','NVIDIA',{cores:1.8,vram:12},  22000,  0.3, 'common', 170,'12GB. Great hash per watt.'),
+  p('gpu_3070',     'NVIDIA GeForce RTX 3070',       'gpu','GEN3','NVIDIA',{cores:2.2,vram:8},  35000,  0.3, 'common', 220,'8GB. Sweet spot for cracking.'),
+  p('gpu_6800xt',   'AMD Radeon RX 6800 XT',        'gpu','GEN3','AMD',   {cores:2.0,vram:16},  38000,  0.35,'uncommon',300,'16GB. Massive VRAM buffer.'),
+  p('gpu_3080',     'NVIDIA GeForce RTX 3080',       'gpu','GEN3','NVIDIA',{cores:2.5,vram:12},  58000,  0.35,'uncommon',320,'12GB. Mining + cracking.'),
+  p('gpu_4070ti',   'NVIDIA GeForce RTX 4070 Ti',   'gpu','GEN4','NVIDIA',{cores:2.8,vram:12},  78000,  0.35,'uncommon',285,'12GB Ada Lovelace.'),
+  p('gpu_7900xtx',  'AMD Radeon RX 7900 XTX',       'gpu','GEN4','AMD',   {cores:3.0,vram:24},  85000,  0.4, 'rare',   355,'24GB RDNA 3. AMD flagship.'),
+  p('gpu_4080s',    'NVIDIA GeForce RTX 4080 Super', 'gpu','GEN4','NVIDIA',{cores:3.2,vram:16},  100000,  0.4, 'rare',   320,'16GB. High-end cracking.'),
+  p('gpu_4090',     'NVIDIA GeForce RTX 4090',       'gpu','GEN4','NVIDIA',{cores:3.8,vram:24},  160000,  0.4, 'rare',   450,'24GB. The absolute unit.'),
+  p('gpu_5090',     'NVIDIA GeForce RTX 5090',       'gpu','GEN5','NVIDIA',{cores:4.2,vram:32},  250000,  0.45,'rare',   400,'32GB Blackwell. Next-gen.'),
+  p('gpu_5090d',    'NVIDIA RTX 5090 NVLink Duo',   'gpu','GEN5','NVIDIA',{cores:4.8,vram:64},  420000,  0.5, 'legendary',600,'64GB dual-GPU. Insane.'),
+  p('gpu_h100',     'NVIDIA H100 SXM5',             'gpu','XGEN','NVIDIA',{cores:5.0,vram:80},  900000,  0.6, 'legendary',700,'80GB HBM3. Datacenter AI.'),
 
   // ─── RAM ──────────────────────────────────────────────────
-  p('ram_val_4g',   'Kingston ValueRAM 4GB DDR4',    'ram','GEN2','CORSAIR',{size:4,speed:1.0},   200000,  0.2, 'common',  5,'2133MHz. Bare minimum.'),
-  p('ram_ven_8g',   'Corsair Vengeance 8GB DDR4',    'ram','GEN2','CORSAIR',{size:8,speed:1.2},   450000,  0.2, 'common',  8,'2400MHz. Gets it done.'),
-  p('ram_rip_16g',  'G.Skill Ripjaws V 16GB DDR4',  'ram','GEN3','GSKILL', {size:16,speed:1.6}, 1400000, 0.25,'common', 12,'3200MHz. Standard issue.'),
-  p('ram_ven_16e',  'Corsair ECC 16GB DDR4',         'ram','GEN3','CORSAIR',{size:16,speed:1.5}, 1800000, 0.2, 'common', 14,'Error-correcting. Stable.'),
-  p('ram_ven_32g',  'Corsair Vengeance 32GB DDR4',   'ram','GEN3','CORSAIR',{size:32,speed:1.9}, 2800000, 0.25,'uncommon',15,'3600MHz. Comfortable.'),
-  p('ram_tri_32g',  'G.Skill Trident Z5 32GB DDR5',  'ram','GEN4','GSKILL',{size:32,speed:2.4}, 4500000, 0.3, 'uncommon',18,'5600MHz DDR5.'),
-  p('ram_dom_32g',  'Corsair Dominator 32GB DDR5',   'ram','GEN4','CORSAIR',{size:32,speed:2.5}, 5200000, 0.3, 'uncommon',18,'6000MHz. Premium.'),
-  p('ram_tri_64g',  'G.Skill Trident Z5 RGB 64GB',  'ram','GEN4','GSKILL', {size:64,speed:2.8}, 8200000, 0.35,'rare',    22,'6400MHz. 3 proxy slots.'),
-  p('ram_dom_64g',  'Corsair Dominator Titanium 64GB','ram','GEN5','CORSAIR',{size:64,speed:3.2},14500000,0.4, 'rare',    25,'7200MHz. Overclocked.'),
-  p('ram_dom_128g', 'Corsair Dominator 128GB DDR5',  'ram','GEN5','CORSAIR',{size:128,speed:3.6},26000000,0.45,'legendary',30,'8000MHz. 5 proxy slots.'),
-  p('ram_hbm_256g', 'Samsung HBM3E 256GB',           'ram','XGEN','SAMSUNG',{size:256,speed:4.0},60000000,0.55,'legendary',20,'High Bandwidth Memory.'),
+  p('ram_val_4g',   'Kingston ValueRAM 4GB DDR4',    'ram','GEN2','CORSAIR',{size:4,speed:1.0},  2000,  0.2, 'common',  5,'2133MHz. Bare minimum.'),
+  p('ram_ven_8g',   'Corsair Vengeance 8GB DDR4',    'ram','GEN2','CORSAIR',{size:8,speed:1.2},  4500,  0.2, 'common',  8,'2400MHz. Gets it done.'),
+  p('ram_rip_16g',  'G.Skill Ripjaws V 16GB DDR4',  'ram','GEN3','GSKILL', {size:16,speed:1.6},  14000,  0.25,'common', 12,'3200MHz. Standard issue.'),
+  p('ram_ven_16e',  'Corsair ECC 16GB DDR4',         'ram','GEN3','CORSAIR',{size:16,speed:1.5},  18000,  0.2, 'common', 14,'Error-correcting. Stable.'),
+  p('ram_ven_32g',  'Corsair Vengeance 32GB DDR4',   'ram','GEN3','CORSAIR',{size:32,speed:1.9},  28000,  0.25,'uncommon',15,'3600MHz. Comfortable.'),
+  p('ram_tri_32g',  'G.Skill Trident Z5 32GB DDR5',  'ram','GEN4','GSKILL',{size:32,speed:2.4},  45000,  0.3, 'uncommon',18,'5600MHz DDR5.'),
+  p('ram_dom_32g',  'Corsair Dominator 32GB DDR5',   'ram','GEN4','CORSAIR',{size:32,speed:2.5},  52000,  0.3, 'uncommon',18,'6000MHz. Premium.'),
+  p('ram_tri_64g',  'G.Skill Trident Z5 RGB 64GB',  'ram','GEN4','GSKILL', {size:64,speed:2.8},  82000,  0.35,'rare',    22,'6400MHz. 3 proxy slots.'),
+  p('ram_dom_64g',  'Corsair Dominator Titanium 64GB','ram','GEN5','CORSAIR',{size:64,speed:3.2},  145000,  0.4, 'rare',    25,'7200MHz. Overclocked.'),
+  p('ram_dom_128g', 'Corsair Dominator 128GB DDR5',  'ram','GEN5','CORSAIR',{size:128,speed:3.6},  260000,  0.45,'legendary',30,'8000MHz. 5 proxy slots.'),
+  p('ram_hbm_256g', 'Samsung HBM3E 256GB',           'ram','XGEN','SAMSUNG',{size:256,speed:4.0},  600000,  0.55,'legendary',20,'High Bandwidth Memory.'),
 
   // ─── SSD ──────────────────────────────────────────────────
-  p('ssd_wd_250',   'WD Blue 250GB SATA',           'ssd','GEN2','WD',     {capacity:256,iops:1.0},  150000,0.2, 'common', 3,'SATA III. Spins faster than HDD.'),
-  p('ssd_sam_500',  'Samsung 870 EVO 500GB',        'ssd','GEN2','SAMSUNG',{capacity:512,iops:1.2},  300000,0.2, 'common', 5,'Reliable SATA workhorse.'),
-  p('ssd_sam_1tb',  'Samsung 970 EVO Plus 1TB',     'ssd','GEN3','SAMSUNG',{capacity:1000,iops:1.8},1200000,0.25,'common', 8,'NVMe Gen3. Big speed jump.'),
-  p('ssd_wd_1tb',   'WD Black SN770 1TB',           'ssd','GEN3','WD',     {capacity:1000,iops:1.6},1000000,0.2, 'common', 7,'Budget NVMe daily driver.'),
-  p('ssd_sam_2tb',  'Samsung 980 PRO 2TB',          'ssd','GEN3','SAMSUNG',{capacity:2000,iops:2.0},2200000,0.25,'uncommon',10,'Gen3 flagship.'),
-  p('ssd_sam_2tb4', 'Samsung 990 PRO 2TB',          'ssd','GEN4','SAMSUNG',{capacity:2000,iops:2.8},4200000,0.3, 'uncommon',12,'Gen4. 7450 MB/s reads.'),
-  p('ssd_wd_4tb',   'WD Black SN850X 4TB',          'ssd','GEN4','WD',     {capacity:4000,iops:3.0},6000000,0.35,'rare',   14,'Gen4 flagship. Massive.'),
-  p('ssd_sam_4tb5', 'Samsung 990 EVO Plus 4TB',     'ssd','GEN5','SAMSUNG',{capacity:4000,iops:4.0},13000000,0.4,'rare',   18,'Gen5. 14,500 MB/s reads.'),
-  p('ssd_sam_8tb',  'Samsung PM1743 8TB',           'ssd','GEN5','SAMSUNG',{capacity:8000,iops:4.5},24000000,0.45,'legendary',22,'Enterprise Gen5.'),
-  p('ssd_sam_16tb', 'Samsung PM9D3a 16TB',          'ssd','XGEN','SAMSUNG',{capacity:16000,iops:5.0},55000000,0.55,'legendary',12,'Enterprise max capacity.'),
+  p('ssd_wd_250',   'WD Blue 250GB SATA',           'ssd','GEN2','WD',     {capacity:256,iops:1.0},  1500,  0.2, 'common', 3,'SATA III. Spins faster than HDD.'),
+  p('ssd_sam_500',  'Samsung 870 EVO 500GB',        'ssd','GEN2','SAMSUNG',{capacity:512,iops:1.2},  3000,  0.2, 'common', 5,'Reliable SATA workhorse.'),
+  p('ssd_sam_1tb',  'Samsung 970 EVO Plus 1TB',     'ssd','GEN3','SAMSUNG',{capacity:1000,iops:1.8},  12000,  0.25,'common', 8,'NVMe Gen3. Big speed jump.'),
+  p('ssd_wd_1tb',   'WD Black SN770 1TB',           'ssd','GEN3','WD',     {capacity:1000,iops:1.6},  10000,  0.2, 'common', 7,'Budget NVMe daily driver.'),
+  p('ssd_sam_2tb',  'Samsung 980 PRO 2TB',          'ssd','GEN3','SAMSUNG',{capacity:2000,iops:2.0},  22000,  0.25,'uncommon',10,'Gen3 flagship.'),
+  p('ssd_sam_2tb4', 'Samsung 990 PRO 2TB',          'ssd','GEN4','SAMSUNG',{capacity:2000,iops:2.8},  42000,  0.3, 'uncommon',12,'Gen4. 7450 MB/s reads.'),
+  p('ssd_wd_4tb',   'WD Black SN850X 4TB',          'ssd','GEN4','WD',     {capacity:4000,iops:3.0},  60000,  0.35,'rare',   14,'Gen4 flagship. Massive.'),
+  p('ssd_sam_4tb5', 'Samsung 990 EVO Plus 4TB',     'ssd','GEN5','SAMSUNG',{capacity:4000,iops:4.0},  130000,  0.4,'rare',   18,'Gen5. 14,500 MB/s reads.'),
+  p('ssd_sam_8tb',  'Samsung PM1743 8TB',           'ssd','GEN5','SAMSUNG',{capacity:8000,iops:4.5},  240000,  0.45,'legendary',22,'Enterprise Gen5.'),
+  p('ssd_sam_16tb', 'Samsung PM9D3a 16TB',          'ssd','XGEN','SAMSUNG',{capacity:16000,iops:5.0},  550000,  0.55,'legendary',12,'Enterprise max capacity.'),
 
   // ─── PSU ──────────────────────────────────────────────────
-  p('psu_evga_400', 'EVGA 400 N1',                  'psu','GEN2','CORSAIR', {wattage:400,eff:0.72}, 250000,0.2, 'common',  0,'400W. No 80+ rating.'),
-  p('psu_cor_550',  'Corsair CV550 Bronze',          'psu','GEN2','CORSAIR', {wattage:550,eff:0.76}, 500000,0.2, 'common',  0,'550W Bronze. Entry gaming.'),
-  p('psu_cor_650',  'Corsair RM650 Gold',            'psu','GEN3','CORSAIR', {wattage:650,eff:0.82},1500000,0.2, 'common',  0,'650W Gold. Fully modular.'),
-  p('psu_ss_650',   'Seasonic Focus GX-650',         'psu','GEN3','SEASONIC',{wattage:650,eff:0.84},1900000,0.2, 'common',  0,'650W Gold. Dead silent.'),
-  p('psu_cor_750',  'Corsair RM750x Gold',           'psu','GEN3','CORSAIR', {wattage:750,eff:0.85},2200000,0.25,'uncommon',0,'750W Gold. Zero RPM mode.'),
-  p('psu_ss_850',   'Seasonic Prime TX-850',         'psu','GEN4','SEASONIC',{wattage:850,eff:0.89},4000000,0.3, 'uncommon',0,'850W Titanium. 12yr warranty.'),
-  p('psu_cor_1000', 'Corsair HX1000i Platinum',      'psu','GEN4','CORSAIR', {wattage:1000,eff:0.91},6200000,0.3,'rare',    0,'1000W Platinum. iCUE.'),
-  p('psu_ss_1300',  'Seasonic Prime TX-1300',        'psu','GEN5','SEASONIC',{wattage:1300,eff:0.94},12000000,0.35,'rare',   0,'1300W Titanium. 4090 ready.'),
-  p('psu_cor_1600', 'Corsair AX1600i Titanium',      'psu','GEN5','CORSAIR', {wattage:1600,eff:0.96},20000000,0.4,'legendary',0,'1600W Digital PSU.'),
-  p('psu_ss_2200',  'Seasonic PRIME 2200W',          'psu','XGEN','SEASONIC',{wattage:2200,eff:0.98},48000000,0.5,'legendary',0,'Mining rig PSU. Absolute unit.'),
+  p('psu_evga_400', 'EVGA 400 N1',                  'psu','GEN2','CORSAIR', {wattage:400,eff:0.72},  2500,  0.2, 'common',  0,'400W. No 80+ rating.'),
+  p('psu_cor_550',  'Corsair CV550 Bronze',          'psu','GEN2','CORSAIR', {wattage:550,eff:0.76},  5000,  0.2, 'common',  0,'550W Bronze. Entry gaming.'),
+  p('psu_cor_650',  'Corsair RM650 Gold',            'psu','GEN3','CORSAIR', {wattage:650,eff:0.82},  15000,  0.2, 'common',  0,'650W Gold. Fully modular.'),
+  p('psu_ss_650',   'Seasonic Focus GX-650',         'psu','GEN3','SEASONIC',{wattage:650,eff:0.84},  19000,  0.2, 'common',  0,'650W Gold. Dead silent.'),
+  p('psu_cor_750',  'Corsair RM750x Gold',           'psu','GEN3','CORSAIR', {wattage:750,eff:0.85},  22000,  0.25,'uncommon',0,'750W Gold. Zero RPM mode.'),
+  p('psu_ss_850',   'Seasonic Prime TX-850',         'psu','GEN4','SEASONIC',{wattage:850,eff:0.89},  40000,  0.3, 'uncommon',0,'850W Titanium. 12yr warranty.'),
+  p('psu_cor_1000', 'Corsair HX1000i Platinum',      'psu','GEN4','CORSAIR', {wattage:1000,eff:0.91},  62000,  0.3,'rare',    0,'1000W Platinum. iCUE.'),
+  p('psu_ss_1300',  'Seasonic Prime TX-1300',        'psu','GEN5','SEASONIC',{wattage:1300,eff:0.94},  120000,  0.35,'rare',   0,'1300W Titanium. 4090 ready.'),
+  p('psu_cor_1600', 'Corsair AX1600i Titanium',      'psu','GEN5','CORSAIR', {wattage:1600,eff:0.96},  200000,  0.4,'legendary',0,'1600W Digital PSU.'),
+  p('psu_ss_2200',  'Seasonic PRIME 2200W',          'psu','XGEN','SEASONIC',{wattage:2200,eff:0.98},  480000,  0.5,'legendary',0,'Mining rig PSU. Absolute unit.'),
 
   // ─── COOLING ──────────────────────────────────────────────
-  p('cool_intl_stk','Intel Stock Cooler',            'cool','GEN2','INTEL',  {tdp:65,type:'air'},   150000,0.15,'common', 5,'Box cooler. It tries.'),
-  p('cool_cm_212',  'Cooler Master Hyper 212',       'cool','GEN2','NOCTUA', {tdp:95,type:'air'},   400000,0.2, 'common', 8,'Budget tower legend.'),
-  p('cool_cor_h60', 'Corsair H60 120mm AIO',         'cool','GEN3','CORSAIR',{tdp:150,type:'liquid'},1500000,0.25,'common',12,'Entry AIO. Quiet.'),
-  p('cool_noc_l12', 'Noctua NH-L12S',               'cool','GEN3','NOCTUA', {tdp:130,type:'air'},  1200000,0.2, 'common', 8,'Low-profile. ITX builds.'),
-  p('cool_cor_h100','Corsair H100i Elite 240mm',     'cool','GEN3','CORSAIR',{tdp:200,type:'liquid'},2500000,0.25,'uncommon',15,'240mm AIO. Great value.'),
-  p('cool_noc_d15', 'Noctua NH-D15 chromax',        'cool','GEN4','NOCTUA', {tdp:250,type:'air'},  3500000,0.25,'uncommon',14,'Dual-tower king.'),
-  p('cool_nzxt_x73','NZXT Kraken X73 360mm',        'cool','GEN4','NZXT',   {tdp:300,type:'liquid'},4800000,0.3,'uncommon',20,'360mm LCD pump head.'),
-  p('cool_cor_h170','Corsair H170i Elite 420mm',     'cool','GEN4','CORSAIR',{tdp:400,type:'liquid'},8000000,0.35,'rare',   25,'420mm. Massive radiator.'),
-  p('cool_ek_loop', 'EK Quantum Custom Loop',       'cool','GEN5','EKWB',   {tdp:500,type:'liquid'},18000000,0.4,'legendary',35,'Full custom hardline.'),
-  p('cool_ek_imm',  'EK Immersion Cooling Tank',    'cool','XGEN','EKWB',   {tdp:600,type:'cryo'}, 40000000,0.5,'legendary',20,'Full submersion cooling.'),
+  p('cool_intl_stk','Intel Stock Cooler',            'cool','GEN2','INTEL',  {tdp:65,type:'air'},  1500,  0.15,'common', 5,'Box cooler. It tries.'),
+  p('cool_cm_212',  'Cooler Master Hyper 212',       'cool','GEN2','NOCTUA', {tdp:95,type:'air'},  4000,  0.2, 'common', 8,'Budget tower legend.'),
+  p('cool_cor_h60', 'Corsair H60 120mm AIO',         'cool','GEN3','CORSAIR',{tdp:150,type:'liquid'},  15000,  0.25,'common',12,'Entry AIO. Quiet.'),
+  p('cool_noc_l12', 'Noctua NH-L12S',               'cool','GEN3','NOCTUA', {tdp:130,type:'air'},  12000,  0.2, 'common', 8,'Low-profile. ITX builds.'),
+  p('cool_cor_h100','Corsair H100i Elite 240mm',     'cool','GEN3','CORSAIR',{tdp:200,type:'liquid'},  25000,  0.25,'uncommon',15,'240mm AIO. Great value.'),
+  p('cool_noc_d15', 'Noctua NH-D15 chromax',        'cool','GEN4','NOCTUA', {tdp:250,type:'air'},  35000,  0.25,'uncommon',14,'Dual-tower king.'),
+  p('cool_nzxt_x73','NZXT Kraken X73 360mm',        'cool','GEN4','NZXT',   {tdp:300,type:'liquid'},  48000,  0.3,'uncommon',20,'360mm LCD pump head.'),
+  p('cool_cor_h170','Corsair H170i Elite 420mm',     'cool','GEN4','CORSAIR',{tdp:400,type:'liquid'},  80000,  0.35,'rare',   25,'420mm. Massive radiator.'),
+  p('cool_ek_loop', 'EK Quantum Custom Loop',       'cool','GEN5','EKWB',   {tdp:500,type:'liquid'},  180000,  0.4,'legendary',35,'Full custom hardline.'),
+  p('cool_ek_imm',  'EK Immersion Cooling Tank',    'cool','XGEN','EKWB',   {tdp:600,type:'cryo'},  400000,  0.5,'legendary',20,'Full submersion cooling.'),
 
   // ─── NETWORK ──────────────────────────────────────────────
-  p('net_rtl_1g',   'Realtek RTL8111 1GbE',          'net','GEN2','INTEL',  {bandwidth:1,latency:0.8},200000,0.15,'common', 3,'Onboard 1G. Standard.'),
-  p('net_int_i225', 'Intel I225-V 2.5GbE',           'net','GEN2','INTEL',  {bandwidth:2,latency:0.7},500000,0.2, 'common', 5,'2.5G onboard.'),
-  p('net_int_ax210','Intel AX210 WiFi 6E',           'net','GEN3','INTEL',  {bandwidth:2,latency:0.6},1000000,0.2,'common', 6,'WiFi 6E tri-band.'),
-  p('net_mel_cx3',  'Mellanox ConnectX-3 10GbE',     'net','GEN3','MELLANOX',{bandwidth:3,latency:0.5},1800000,0.25,'common',8,'10G SFP+. Server NIC.'),
-  p('net_int_x550', 'Intel X550-T2 10GbE',           'net','GEN3','INTEL',  {bandwidth:4,latency:0.4},3500000,0.3,'uncommon',12,'Dual-port 10G copper.'),
-  p('net_int_e810', 'Intel E810 25GbE',              'net','GEN4','INTEL',  {bandwidth:5,latency:0.3},5500000,0.3,'uncommon',15,'25G Ice Lake NIC.'),
-  p('net_mel_cx5',  'Mellanox ConnectX-5 25GbE',     'net','GEN4','MELLANOX',{bandwidth:7,latency:0.2},9500000,0.35,'rare',  18,'25G RDMA. Ultra-low lat.'),
-  p('net_int_800',  'Intel E830 100GbE',             'net','GEN5','INTEL',  {bandwidth:8,latency:0.15},18000000,0.4,'rare',  22,'100G Ethernet.'),
-  p('net_mel_cx6',  'Mellanox ConnectX-6 100GbE',    'net','GEN5','MELLANOX',{bandwidth:10,latency:0.1},35000000,0.45,'legendary',30,'100G InfiniBand.'),
-  p('net_mel_cx7',  'Mellanox ConnectX-7 400GbE',    'net','XGEN','MELLANOX',{bandwidth:10,latency:0.05},70000000,0.55,'legendary',15,'400G datacenter.'),
+  p('net_rtl_1g',   'Realtek RTL8111 1GbE',          'net','GEN2','INTEL',  {bandwidth:1,latency:0.8},  2000,  0.15,'common', 3,'Onboard 1G. Standard.'),
+  p('net_int_i225', 'Intel I225-V 2.5GbE',           'net','GEN2','INTEL',  {bandwidth:2,latency:0.7},  5000,  0.2, 'common', 5,'2.5G onboard.'),
+  p('net_int_ax210','Intel AX210 WiFi 6E',           'net','GEN3','INTEL',  {bandwidth:2,latency:0.6},  10000,  0.2,'common', 6,'WiFi 6E tri-band.'),
+  p('net_mel_cx3',  'Mellanox ConnectX-3 10GbE',     'net','GEN3','MELLANOX',{bandwidth:3,latency:0.5},  18000,  0.25,'common',8,'10G SFP+. Server NIC.'),
+  p('net_int_x550', 'Intel X550-T2 10GbE',           'net','GEN3','INTEL',  {bandwidth:4,latency:0.4},  35000,  0.3,'uncommon',12,'Dual-port 10G copper.'),
+  p('net_int_e810', 'Intel E810 25GbE',              'net','GEN4','INTEL',  {bandwidth:5,latency:0.3},  55000,  0.3,'uncommon',15,'25G Ice Lake NIC.'),
+  p('net_mel_cx5',  'Mellanox ConnectX-5 25GbE',     'net','GEN4','MELLANOX',{bandwidth:7,latency:0.2},  95000,  0.35,'rare',  18,'25G RDMA. Ultra-low lat.'),
+  p('net_int_800',  'Intel E830 100GbE',             'net','GEN5','INTEL',  {bandwidth:8,latency:0.15},  180000,  0.4,'rare',  22,'100G Ethernet.'),
+  p('net_mel_cx6',  'Mellanox ConnectX-6 100GbE',    'net','GEN5','MELLANOX',{bandwidth:10,latency:0.1},  350000,  0.45,'legendary',30,'100G InfiniBand.'),
+  p('net_mel_cx7',  'Mellanox ConnectX-7 400GbE',    'net','XGEN','MELLANOX',{bandwidth:10,latency:0.05},  700000,  0.55,'legendary',15,'400G datacenter.'),
 
   // ─── CASE ─────────────────────────────────────────────────
-  p('case_cm_q300', 'Cooler Master Q300L',           'case','GEN2','NZXT',  {airflow:1.0,style:0}, 100000,0.1, 'common', 0,'Micro-ATX budget box.'),
-  p('case_nzxt_510','NZXT H510',                     'case','GEN2','NZXT',  {airflow:1.3,style:2}, 300000,0.15,'common', 0,'Clean design. Tight airflow.'),
-  p('case_frac_mesh','Fractal Meshify C',            'case','GEN3','LIANLI',{airflow:2.0,style:3},1200000,0.2, 'common', 0,'Mesh front. Great thermals.'),
-  p('case_cor_4000','Corsair 4000D Airflow',          'case','GEN3','CORSAIR',{airflow:2.2,style:3},1400000,0.2,'common', 0,'Airflow king. Clean cables.'),
-  p('case_nzxt_h7', 'NZXT H7 Flow',                  'case','GEN3','NZXT',  {airflow:2.0,style:4},1800000,0.2, 'uncommon',0,'Perforated top panel.'),
-  p('case_ll_o11',  'Lian Li O11 Dynamic EVO',       'case','GEN4','LIANLI',{airflow:1.8,style:7},2800000,0.25,'uncommon',0,'Dual-chamber showcase.'),
-  p('case_cor_5000','Corsair 5000T RGB',              'case','GEN4','CORSAIR',{airflow:2.0,style:6},3500000,0.25,'uncommon',0,'RGB fans included.'),
-  p('case_ll_v3',   'Lian Li Lancool III',            'case','GEN4','LIANLI',{airflow:2.5,style:5},2500000,0.25,'uncommon',0,'Mesh everything.'),
-  p('case_nzxt_h9', 'NZXT H9 Elite',                 'case','GEN5','NZXT',  {airflow:2.2,style:8},6000000,0.3, 'rare',    0,'Dual-glass showpiece.'),
-  p('case_ll_desk', 'Lian Li DK-05 Desk Case',       'case','GEN5','LIANLI',{airflow:2.5,style:9},12000000,0.35,'legendary',0,'Your desk IS the case.'),
-  p('case_inwin_z', 'InWin Z-Tower',                 'case','XGEN','LIANLI',{airflow:3.0,style:10},30000000,0.5,'legendary',0,'Zinc alloy sculpture.'),
+  p('case_cm_q300', 'Cooler Master Q300L',           'case','GEN2','NZXT',  {airflow:1.0,style:0},  1000,  0.1, 'common', 0,'Micro-ATX budget box.'),
+  p('case_nzxt_510','NZXT H510',                     'case','GEN2','NZXT',  {airflow:1.3,style:2},  3000,  0.15,'common', 0,'Clean design. Tight airflow.'),
+  p('case_frac_mesh','Fractal Meshify C',            'case','GEN3','LIANLI',{airflow:2.0,style:3},  12000,  0.2, 'common', 0,'Mesh front. Great thermals.'),
+  p('case_cor_4000','Corsair 4000D Airflow',          'case','GEN3','CORSAIR',{airflow:2.2,style:3},  14000,  0.2,'common', 0,'Airflow king. Clean cables.'),
+  p('case_nzxt_h7', 'NZXT H7 Flow',                  'case','GEN3','NZXT',  {airflow:2.0,style:4},  18000,  0.2, 'uncommon',0,'Perforated top panel.'),
+  p('case_ll_o11',  'Lian Li O11 Dynamic EVO',       'case','GEN4','LIANLI',{airflow:1.8,style:7},  28000,  0.25,'uncommon',0,'Dual-chamber showcase.'),
+  p('case_cor_5000','Corsair 5000T RGB',              'case','GEN4','CORSAIR',{airflow:2.0,style:6},  35000,  0.25,'uncommon',0,'RGB fans included.'),
+  p('case_ll_v3',   'Lian Li Lancool III',            'case','GEN4','LIANLI',{airflow:2.5,style:5},  25000,  0.25,'uncommon',0,'Mesh everything.'),
+  p('case_nzxt_h9', 'NZXT H9 Elite',                 'case','GEN5','NZXT',  {airflow:2.2,style:8},  60000,  0.3, 'rare',    0,'Dual-glass showpiece.'),
+  p('case_ll_desk', 'Lian Li DK-05 Desk Case',       'case','GEN5','LIANLI',{airflow:2.5,style:9},  120000,  0.35,'legendary',0,'Your desk IS the case.'),
+  p('case_inwin_z', 'InWin Z-Tower',                 'case','XGEN','LIANLI',{airflow:3.0,style:10},  300000,  0.5,'legendary',0,'Zinc alloy sculpture.'),
 ];
 
 // ═══════════════════════════════════════════════════════════════
@@ -186,29 +185,29 @@ const sw = (id,name,stats,basePrice,rarity,repReq,desc,repeatable) =>
   ({id,name,slot:'software',gen:null,maker:null,stats,basePrice,volatility:0.15,rarity,power:0,desc,type:'software',repReq:repReq||0,repeatable:repeatable||false});
 
 export const SOFTWARE_DB = [
-  sw('sw_crypter','FUD Crypter',{effect:'av_bypass'},1000000,'common',0,'Evades low-sec AV.',false),
-  sw('sw_nse','NSE Scripts',{effect:'sec_levels'},2500000,'common',0,'SEC levels on map hover.',false),
-  sw('sw_dpi','Deep Packet Inspector',{effect:'ettercap'},3500000,'uncommon',25,'Unlocks ettercap.',false),
-  sw('sw_proxy','Proxychains',{effect:'proxy_cap_3'},5000000,'uncommon',50,'Proxy chain 2→3.',false),
-  sw('sw_tor','TOR Relay Network',{effect:'proxy_cap_4'},12000000,'rare',150,'Proxy chain 3→4.',false),
-  sw('sw_bribe','Bribe SOC Insider',{effect:'heat_minus_50'},500000,'common',0,'Instant -50% HEAT.',true),
-  sw('sw_decoy','Decoy Packet Flooder',{effect:'trace_slow'},2000000,'common',10,'Slow trace +20% for 60s.',true),
-  sw('sw_zeroday','0-Day Exploit Pack',{effect:'bypass_sec'},8000000,'rare',75,'Bypass any SEC once.',true),
-  sw('sw_vpn','Stealth VPN Chain',{effect:'heat_resist'},4000000,'uncommon',30,'Heat gains -25%.',false),
-  sw('sw_rootkit','Polymorphic Rootkit',{effect:'persist_bonus'},6000000,'rare',60,'Beacons 50% stealthier.',false),
-  sw('sw_ai','AI Cracking Assistant',{effect:'hash_speed'},15000000,'legendary',100,'ML-accelerated hashcat.',false),
+  sw('sw_crypter','FUD Crypter',{effect:'av_bypass'},  10000, 'common',0,'Evades low-sec AV.',false),
+  sw('sw_nse','NSE Scripts',{effect:'sec_levels'},  25000, 'common',0,'SEC levels on map hover.',false),
+  sw('sw_dpi','Deep Packet Inspector',{effect:'ettercap'},  35000, 'uncommon',25,'Unlocks ettercap.',false),
+  sw('sw_proxy','Proxychains',{effect:'proxy_cap_3'},  50000, 'uncommon',50,'Proxy chain 2→3.',false),
+  sw('sw_tor','TOR Relay Network',{effect:'proxy_cap_4'},  120000, 'rare',150,'Proxy chain 3→4.',false),
+  sw('sw_bribe','Bribe SOC Insider',{effect:'heat_minus_50'},  5000, 'common',0,'Instant -50% HEAT.',true),
+  sw('sw_decoy','Decoy Packet Flooder',{effect:'trace_slow'},  20000, 'common',10,'Slow trace +20% for 60s.',true),
+  sw('sw_zeroday','0-Day Exploit Pack',{effect:'bypass_sec'},  80000, 'rare',75,'Bypass any SEC once.',true),
+  sw('sw_vpn','Stealth VPN Chain',{effect:'heat_resist'},  40000, 'uncommon',30,'Heat gains -25%.',false),
+  sw('sw_rootkit','Polymorphic Rootkit',{effect:'persist_bonus'},  60000, 'rare',60,'Beacons 50% stealthier.',false),
+  sw('sw_ai','AI Cracking Assistant',{effect:'hash_speed'},  150000, 'legendary',100,'ML-accelerated hashcat.',false),
 ];
 
 // ═══════════════════════════════════════════════════════════════
 // COMMODITIES
 // ═══════════════════════════════════════════════════════════════
 export const COMMODITIES = {
-  cc_dumps:  {name:'CC Dumps',         base:2000,   vol:1500,  desc:'Stolen credit card data'},
-  botnets:   {name:'Botnet Access',    base:30000,  vol:20000, desc:'Zombie net rentals'},
-  exploits:  {name:'Exploit Kits',     base:150000, vol:80000, desc:'Pre-packaged vuln tools'},
-  zerodays:  {name:'Weaponized 0-Days',base:2500000,vol:1500000,desc:'Unpatched vuln exploits'},
-  ransomkeys:{name:'Ransom Decryptors',base:500000, vol:400000,desc:'Keys from paid ransoms'},
-  identities:{name:'Synthetic IDs',    base:75000,  vol:50000, desc:'Deepfake identity packages'},
+  cc_dumps:  {name:'CC Dumps',         base:100,   vol:50,  desc:'Stolen credit card data'},
+  botnets:   {name:'Botnet Access',    base:300,  vol:200, desc:'Zombie net rentals'},
+  exploits:  {name:'Exploit Kits',     base:1500, vol:800, desc:'Pre-packaged vuln tools'},
+  zerodays:  {name:'Weaponized 0-Days',base:25000,vol:15000,desc:'Unpatched vuln exploits'},
+  ransomkeys:{name:'Ransom Decryptors',base:5000, vol:4000,desc:'Keys from paid ransoms'},
+  identities:{name:'Synthetic IDs',    base:750,  vol:500, desc:'Deepfake identity packages'},
 };
 
 // ═══════════════════════════════════════════════════════════════

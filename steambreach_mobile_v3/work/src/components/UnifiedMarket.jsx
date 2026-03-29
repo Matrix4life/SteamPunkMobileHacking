@@ -251,11 +251,11 @@ export default function UnifiedMarket({
       <div style={{padding:'8px 14px',borderBottom:`1px solid ${C.bdr}`,
         display:'flex',justifyContent:'space-between',alignItems:'center',background:'rgba(0,0,0,.3)'}}>
         <div style={{display:'flex',alignItems:'center',gap:'12px'}}>
-          <span style={{color:C.warn,letterSpacing:'2px',fontSize:'13px'}}>₿ MARKET</span>
+          <span style={{color:C.warn,letterSpacing:'2px',fontSize:'13px'}}>BLACK MARKET</span>
           <span style={{color:C.dim,fontSize:'12px'}}>{currentRegion?.toUpperCase().replace('-',' ')}</span>
         </div>
         <div style={{display:'flex',alignItems:'center',gap:'14px'}}>
-          {/* BTC ticker */}
+          {/* Market volatility */}
           <div style={{display:'flex',alignItems:'center',gap:'6px'}}>
             <span style={{color:trend.color,fontSize:'12px'}}>{trend.icon}</span>
             <span style={{color:trend.color,fontSize:'12px'}}>{trend.text}</span>

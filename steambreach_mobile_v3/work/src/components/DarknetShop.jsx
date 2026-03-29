@@ -3,18 +3,18 @@ import { COLORS } from '../constants/gameConstants';
 
 const DarknetShop = ({ money, reputation, inventory, handleBuy, returnToGame }) => {
   const shopItems = [
-    { id: 'Crypter', name: 'FUD Crypter', cost: 10000, desc: 'SOFTWARE: Evades low-sec AV detection', repReq: 0 },
-    { id: 'Scanner', name: 'NSE Scripts', cost: 25000, desc: 'SOFTWARE: View SEC levels on map hover', repReq: 0 },
-    { id: 'Overclock', name: 'Proxychains', cost: 50000, desc: 'SOFTWARE: Proxy chain: 2 → 3 hops', repReq: 50 },
-    { id: 'Wireshark', name: 'Deep Packet Inspector', cost: 35000, desc: 'SOFTWARE: Enables ettercap ARP poisoning', repReq: 25 },
-    { id: 'TorRelay', name: 'TOR Relay Network', cost: 120000, desc: 'SOFTWARE: Proxy chain: 3 → 4 hops', repReq: 150 },
-    { id: 'ClearLogs', name: 'Bribe SOC Insider', cost: 5000, desc: 'SERVICE: Reduces HEAT by 50%', repReq: 0 },
-    { id: 'ATXCase', name: 'Tempered Glass Chassis', cost: 25000, desc: 'HARDWARE: Sleek black case with glass panel', repReq: 0 },
-    { id: 'NetCard', name: 'Fiber-Optic Backbone', cost: 40000, desc: 'HARDWARE: nmap discovers 2 nodes at a time', repReq: 20 },
-    { id: 'Cooling', name: 'Liquid Immersion Cooling', cost: 65000, desc: 'HARDWARE: xmrig generates 50% less Heat', repReq: 30 },
-    { id: 'CPU', name: 'Quantum Thread Ripper', cost: 85000, desc: 'HARDWARE: hashcat cracks passwords 50% faster', repReq: 50 },
-    { id: 'GPU', name: 'Neural Net Accelerator', cost: 150000, desc: 'HARDWARE: hashcat cracks passwords instantly', repReq: 100 },
-    { id: 'RGB', name: 'ARGB Controller', cost: 15000, desc: 'AESTHETICS: 16.8 million colors for max FPS', repReq: 10 },
+    { id: 'Crypter', name: 'FUD Crypter', cost: 1000, desc: 'SOFTWARE: Evades low-sec AV detection', repReq: 0 },
+    { id: 'Scanner', name: 'NSE Scripts', cost: 2500, desc: 'SOFTWARE: View SEC levels on map hover', repReq: 0 },
+    { id: 'Overclock', name: 'Proxychains', cost: 5000, desc: 'SOFTWARE: Proxy chain: 2 → 3 hops', repReq: 50 },
+    { id: 'Wireshark', name: 'Deep Packet Inspector', cost: 3500, desc: 'SOFTWARE: Enables ettercap ARP poisoning', repReq: 25 },
+    { id: 'TorRelay', name: 'TOR Relay Network', cost: 12000, desc: 'SOFTWARE: Proxy chain: 3 → 4 hops', repReq: 150 },
+    { id: 'ClearLogs', name: 'Bribe SOC Insider', cost: 500, desc: 'SERVICE: Reduces HEAT by 50%', repReq: 0 },
+    { id: 'ATXCase', name: 'Tempered Glass Chassis', cost: 2500, desc: 'HARDWARE: Sleek black case with glass panel', repReq: 0 },
+    { id: 'NetCard', name: 'Fiber-Optic Backbone', cost: 4000, desc: 'HARDWARE: nmap discovers 2 nodes at a time', repReq: 20 },
+    { id: 'Cooling', name: 'Liquid Immersion Cooling', cost: 6500, desc: 'HARDWARE: xmrig generates 50% less Heat', repReq: 30 },
+    { id: 'CPU', name: 'Quantum Thread Ripper', cost: 8500, desc: 'HARDWARE: hashcat cracks passwords 50% faster', repReq: 50 },
+    { id: 'GPU', name: 'Neural Net Accelerator', cost: 15000, desc: 'HARDWARE: hashcat cracks passwords instantly', repReq: 100 },
+    { id: 'RGB', name: 'ARGB Controller', cost: 1500, desc: 'AESTHETICS: 16.8 million colors for max FPS', repReq: 10 },
   ];
 
   useEffect(() => {

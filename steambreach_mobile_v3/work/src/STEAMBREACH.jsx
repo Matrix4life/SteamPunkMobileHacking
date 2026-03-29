@@ -986,7 +986,7 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
         await new Promise(r => setTimeout(r, waitTime));
         
         const mult = getRewardMult(gameMode);
-        const baseValue = Math.floor(Math.random() * 200000 + 150000); 
+        const baseValue = Math.floor(Math.random() * 20000 + 15000); 
         
         let payout = Math.floor(baseValue * mult * intelCount);
         let darknetFee = 0;
@@ -1016,7 +1016,7 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
       },
       'dev.money': async () => {
         if (!devMode) return `bash: dev.money: command not found`;
-        const amount = parseInt(arg1) || 50000; setMoney(m => m + amount);
+        const amount = parseInt(arg1) || 5000; setMoney(m => m + amount);
         return `[DEV] Injected ₿${amount.toLocaleString()}.`;
       },
       'dev.item': async () => {
@@ -1410,7 +1410,7 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
           mzData = `Authentication Id : 0 ; 995312 (00000000:000F3070)\nSession           : Interactive from 1\nUser Name         : ${emp?.email || 'admin'}\nDomain            : ${domain}\nLogon Server      : DC01\n  * Username : ${emp?.email || 'admin'}\n  * Domain   : ${domain}\n  * NTLM     : 8846f7eaee8fb117ad06bdd830b7586c\n  * Password : ${emp?.password || 'P@ssw0rd1'}`;
         }
 
-        const intelValue = Math.floor(Math.random() * 8000 + 3000);
+        const intelValue = Math.floor(Math.random() * 800 + 300);
         setMoney(m => m + intelValue);
         setLooted(prev => [...prev, mzKey]);
         playSuccess();
@@ -1471,7 +1471,7 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
           });
 
           if (arg1 === 'wallet.dat') {
-            const amt = Math.floor(Math.random() * 8000 + 2000);
+            const amt = Math.floor(Math.random() * 800 + 200);
             setMoney(m => m + amt);
             playSuccess();
             return `[+] SUCCESS: Decrypted slush fund wallet.\n[+] ₿${amt.toLocaleString()} added to your account.`;
@@ -1526,7 +1526,7 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
         const hasCPU = inventory.includes('CPU');
         const crackTime = hasCPU ? 1200 : 3500;
         
-        const baseReward = Math.floor(Math.random() * 10000 + 15000);
+        const baseReward = Math.floor(Math.random() * 1000 + 1500);
 
         setIsProcessing(true);
         setTerminal(prev => [...prev, { 
@@ -1580,8 +1580,8 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
         let crackTime = inventory.includes('CPU') ? Math.floor(baseCrackTime * 0.5) : baseCrackTime;
         if (inventory.includes('GPU')) crackTime = 10;
         
-        const baseReward = 35000;
-        const bonusReward = distributed ? nodeCount * 5000 : 0;
+        const baseReward = 3500;
+        const bonusReward = distributed ? nodeCount * 500 : 0;
         const totalReward = baseReward + bonusReward;
 
         setIsProcessing(true);
@@ -1694,7 +1694,7 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
           setTerminal(prev => [...prev, { type: 'out', text: `shred: /dev/sda: pass ${passes + 1}/${passes + 1} (000000)...`, isNew: false }]);
           await new Promise(r => setTimeout(r, 1000));
           
-          const bounty = Math.floor((world[targetIP]?.val || 20000) * 1.5 * mult);
+          const bounty = Math.floor((world[targetIP]?.val || 2000) * 1.5 * mult);
           setMoney(m => m + bounty);
           setHeat(h => Math.min(h + 25, 100));
           setBotnet(prev => prev.filter(ip => ip !== targetIP));
@@ -1719,7 +1719,7 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
           setTerminal(prev => [...prev, { type: 'out', text: `shred: /dev/sda — ${arg1.toUpperCase()} destruction in progress...`, isNew: false }]);
           await new Promise(r => setTimeout(r, depth.time));
           
-          const bounty = Math.floor((world[targetIP]?.val || 20000) * depth.mult * mult);
+          const bounty = Math.floor((world[targetIP]?.val || 2000) * depth.mult * mult);
           setMoney(m => m + bounty);
           setHeat(h => Math.min(h + depth.heatAdd, 100));
           setBotnet(prev => prev.filter(ip => ip !== targetIP));
@@ -1738,7 +1738,7 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
         setTerminal(prev => [...prev, { type: 'out', text: `shred: /dev/sda — overwriting disk with 3-pass random data...`, isNew: false }]);
         await new Promise(r => setTimeout(r, 2000));
         
-        const bounty = Math.floor((world[targetIP]?.val || 20000) * 1.5 * mult);
+        const bounty = Math.floor((world[targetIP]?.val || 2000) * 1.5 * mult);
         setMoney(m => m + bounty);
         setHeat(h => Math.min(h + 20, 100));
         setBotnet(prev => prev.filter(ip => ip !== targetIP));
@@ -1862,7 +1862,7 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
           const bombKey = `bomb_${targetIP}`;
           const bombIP = targetIP;
           const bombOrg = world[targetIP]?.org?.orgName || targetIP;
-          const bombVal = world[targetIP]?.val || 20000;
+          const bombVal = world[targetIP]?.val || 2000;
           
           setTerminal(prev => [...prev, { type: 'out', text: `crontab: installing new crontab\n# m h dom mon dow command\n${delay} * * * * /tmp/.${payload}.sh\n[+] Logic bomb planted. ${payload} detonates in ${delay} minute${delay > 1 ? 's' : ''}.`, isNew: true }]);
           
@@ -1897,7 +1897,7 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
         if (gameMode === 'field') {
           const bombIP = targetIP;
           const bombOrg = world[targetIP]?.org?.orgName || targetIP;
-          const bombVal = world[targetIP]?.val || 20000;
+          const bombVal = world[targetIP]?.val || 2000;
           
           setTimeout(() => {
             const mult = getRewardMult(gameMode);
@@ -1924,7 +1924,7 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
         
         const bombIP = targetIP;
         const bombOrg = world[targetIP]?.org?.orgName || targetIP;
-        const bombVal = world[targetIP]?.val || 20000;
+        const bombVal = world[targetIP]?.val || 2000;
         
         setTimeout(() => {
           if (payload === 'shred') {
@@ -2324,7 +2324,7 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
           });
 
           if (arg1 === 'wallet.dat') {
-            const amt = Math.floor(Math.random() * 8000 + 2000);
+            const amt = Math.floor(Math.random() * 800 + 200);
             setMoney(m => m + amt);
             playSuccess();
             return `[+] SUCCESS: Decrypted slush fund wallet.\n[+] ₿${amt.toLocaleString()} added to your account.`;

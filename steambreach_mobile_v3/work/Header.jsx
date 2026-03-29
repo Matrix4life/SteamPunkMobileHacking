@@ -14,6 +14,14 @@ const Header = ({ operator, privilege, money, heat, reputation, isInside, target
   const heatColor = heat > 70 ? COLORS.danger : heat > 40 ? COLORS.warning : COLORS.textDim;
   const orgName = isInside && targetIP && world[targetIP]?.org?.orgName;
   const modeColor = gameMode === 'operator' ? COLORS.danger : gameMode === 'field' ? COLORS.warning : COLORS.secondary;
+
+  // API status light
+  let aiConnected = false;
+  try {
+    const cfg = JSON.parse(localStorage.getItem('steambreach_ai_config') || '{}');
+    aiConnected = !!(cfg.apiKey && cfg.apiKey.length > 5);
+  } catch {}
+  const aiDot = { width: 8, height: 8, borderRadius: '50%', display: 'inline-block', background: aiConnected ? '#00ff88' : '#ff3366', boxShadow: aiConnected ? '0 0 6px #00ff8880' : '0 0 6px #ff336680', marginRight: '4px', flexShrink: 0 };
   const modeLabel = (gameMode || 'arcade').toUpperCase();
   const wantedColor = WANTED_COLORS[wantedTier] || COLORS.textDim;
   const showWanted = wantedTier && wantedTier !== 'COLD';
@@ -44,6 +52,7 @@ const Header = ({ operator, privilege, money, heat, reputation, isInside, target
           </span>
 
           <span style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+            <span style={aiDot} title={aiConnected ? 'AI Connected' : 'AI Offline — set API key in menu'} />
             <span style={{ color: modeColor, fontSize: '8px', border: `1px solid ${modeColor}40`, padding: '1px 4px', borderRadius: '2px', letterSpacing: '1px' }}>{modeLabel}</span>
             <button onClick={onHelp} style={btnStyle}>?</button>
             <button onClick={onSave} style={btnStyle}>SAVE</button>
@@ -135,6 +144,7 @@ const Header = ({ operator, privilege, money, heat, reputation, isInside, target
       </span>
 
       <span style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+        <span style={aiDot} title={aiConnected ? 'AI Connected' : 'AI Offline — set API key in menu'} />
         <span style={{ color: modeColor, fontSize: '9px', border: `1px solid ${modeColor}40`, padding: '1px 6px', borderRadius: '2px', letterSpacing: '1px' }}>{modeLabel}</span>
         <button onClick={onHelp} style={btnStyle}>[TAB] HELP</button>
         <button onClick={onSave} style={btnStyle}>SAVE</button>

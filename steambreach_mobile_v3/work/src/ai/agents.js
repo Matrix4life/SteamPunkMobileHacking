@@ -23,6 +23,8 @@ const ORG_TEMPLATES = {
   low: [
     { type: 'startup', names: ['NovaTech Solutions', 'BrightPath Digital', 'Apex Micro', 'CloudNine Labs', 'DataPulse Inc'] },
     { type: 'smallbiz', names: ['Greenfield Consulting', 'Metro Legal Group', 'Sunrise Healthcare', 'Pinnacle Realty', 'Harbor Financial'] },
+    // --- ADDED CIVILIAN TARGETS ---
+    { type: 'personal', names: ['Desktop PC', 'Home Network', 'MacBook Pro', 'Public WiFi Client', 'Smart Home Hub'] } 
   ],
   mid: [
     { type: 'corporation', names: ['Meridian Systems Corp', 'Atlas Defense Group', 'Vanguard Biotech', 'Sentinel Networks', 'Ironclad Industries'] },

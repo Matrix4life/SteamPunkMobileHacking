@@ -817,6 +817,13 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
     setTerminal(prev => [...prev, { type: 'out', text: `[FIXER] Contract ${id} accepted.\n[*] Target: ${activated.targetName} (${activated.targetIP})\n[*] Objective: Extract '${activated.targetFile}'\n[*] Time limit: ${activated.timeLimit}s | Max heat: ${activated.heatCap}%\n[*] Reward: ₿${activated.reward.toLocaleString()} + ${activated.repReward} REP`, isNew: true }]);
   };
 
+  const declineContract = (id) => {
+    setContracts(prev => prev.filter(c => c.id !== id));
+    if (activeContract?.id === id) setActiveContract(null);
+    setScreen('game');
+    setTerminal(prev => [...prev, { type: 'out', text: `[FIXER] Contract ${id} removed from your ledger.`, isNew: true }]);
+  };
+
   const selectNodeFromMap = (ip) => {
     const node = world[ip]; if (!node) return;
     const port = node.port || 22; const svc = node.svc || 'ssh'; const exp = node.exp || 'hydra';
@@ -2882,8 +2889,8 @@ ${wantedTier === 'MANHUNT' ? '[!!!] REDUCE HEAT IMMEDIATELY. Your entire network
     <MarketBoard money={money} stash={stash} marketPrices={marketPrices} currentRegion={currentRegion} handleTrade={handleMarketTrade} returnToGame={() => setScreen('game')} />
   );
 
-  if (screen === 'contracts') return (
-    <ContractBoard contracts={contracts} activeContract={activeContract} acceptContract={acceptContract} returnToGame={() => setScreen('game')} />
+ if (screen === 'contracts') return (
+    <ContractBoard contracts={contracts} activeContract={activeContract} acceptContract={acceptContract} declineContract={declineContract} returnToGame={() => setScreen('game')} />
   );
   
   if (screen === 'sounds') return (

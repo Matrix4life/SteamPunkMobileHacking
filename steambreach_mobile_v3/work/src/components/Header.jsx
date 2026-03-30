@@ -9,12 +9,14 @@ const WANTED_COLORS = {
   MANHUNT: '#ff0040',
 };
 
-const Header = ({ operator, privilege, money, heat, reputation, isInside, targetIP, trace, isChatting, activeContract, world, gameMode, wantedTier, walletFrozen, onSave, onMenu, onHelp, isMobile }) => {
+const Header = ({ operator, privilege, money, heat, reputation, isInside, targetIP, trace, isChatting, activeContract, world, gameMode, wantedTier, walletFrozen, onSave, onMenu, onHelp, isMobile, alignment = 0, activeStory }) => {
   const traceColor = trace > 75 ? COLORS.danger : trace > 40 ? COLORS.warning : COLORS.primary;
   const heatColor = heat > 70 ? COLORS.danger : heat > 40 ? COLORS.warning : COLORS.textDim;
   const orgName = isInside && targetIP && world[targetIP]?.org?.orgName;
   const modeColor = gameMode === 'operator' ? COLORS.danger : gameMode === 'field' ? COLORS.warning : COLORS.secondary;
   const modeLabel = (gameMode || 'arcade').toUpperCase();
+  const alignLabel = alignment >= 60 ? 'PARAGON' : alignment >= 20 ? 'VIGILANTE' : alignment <= -60 ? 'SYNDICATE' : alignment <= -20 ? 'MERCENARY' : 'NEUTRAL';
+  const alignColor = alignment >= 40 ? '#00ff88' : alignment <= -40 ? '#ff3366' : COLORS.textDim;
   const wantedColor = WANTED_COLORS[wantedTier] || COLORS.textDim;
   const showWanted = wantedTier && wantedTier !== 'COLD';
 
@@ -67,6 +69,10 @@ const Header = ({ operator, privilege, money, heat, reputation, isInside, target
           </span>
 
           <span style={{ color: COLORS.textDim }}>R:{reputation}</span>
+
+          <span style={{ color: alignColor, fontSize: '9px', fontWeight: alignment !== 0 ? 'bold' : 'normal' }}>
+            {alignLabel}
+          </span>
 
           <span style={{
             color: traceColor,

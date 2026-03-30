@@ -85,37 +85,113 @@ const generateEmployee = (tier, index) => {
 const generateOrgNarrative = (tier) => {
   const templates = ORG_TEMPLATES[tier] || ORG_TEMPLATES.mid;
   const template = templates[Math.floor(Math.random() * templates.length)];
-  const orgName = template.names[Math.floor(Math.random() * template.names.length)];
+  let orgName = template.names[Math.floor(Math.random() * template.names.length)];
   
-  const employeeCount = tier === 'low' ? 3 : tier === 'mid' ? 5 : tier === 'high' ? 4 : 3;
-  const employees = Array.from({ length: employeeCount }, (_, i) => generateEmployee(tier, i));
+  // Personal PCs usually only have 1 or 2 users (Owner and maybe a Guest/Family member)
+  let employeeCount = tier === 'low' ? 3 : tier === 'mid' ? 5 : tier === 'high' ? 4 : 3;
+  if (template.type === 'personal') employeeCount = Math.floor(Math.random() * 2) + 1; 
+  
+  const employees = Array.from({ length: employeeCount }, (_, i) => {
+    const emp = generateEmployee(tier, i);
+    // Assign personal roles instead of corporate titles
+    if (template.type === 'personal') emp.role = i === 0 ? 'Admin / Owner' : 'Guest User';
+    return emp;
+  });
+  
+  // Dynamically name the PC after the owner! (e.g., "David's MacBook Pro")
+  if (template.type === 'personal') {
+    orgName = `${employees[0].name.split(' ')[0]}'s ${orgName}`;
+  }
   
   const secrets = [];
-  if (employees.length >= 2) {
-    const e1 = employees[0], e2 = employees[1];
-    secrets.push(`${e1.name} recently complained to HR about ${e2.name}'s access privileges.`);
-    secrets.push(`${e2.name} has been storing credentials in a plaintext file on the shared drive.`);
-  }
-  if (employees.length >= 3) {
-    secrets.push(`${employees[2].name} is interviewing at a competitor and has been exfiltrating client lists.`);
+  if (template.type === 'personal') {
+    secrets.push(`[OSINT] Target appears to be an unencrypted civilian device.`);
+  } else {
+    if (employees.length >= 2) {
+      const e1 = employees[0], e2 = employees[1];
+      secrets.push(`${e1.name} recently complained to HR about ${e2.name}'s access privileges.`);
+      secrets.push(`${e2.name} has been storing credentials in a plaintext file on the shared drive.`);
+    }
+    if (employees.length >= 3) {
+      secrets.push(`${employees[2].name} is interviewing at a competitor and has been exfiltrating client lists.`);
+    }
   }
   
   return { orgName, type: template.type, employees, secrets };
 };
+const FILE_SYSTEM_THEMES = {
+  personal: {
+    dirs: ['documents', 'pictures', 'downloads', 'desktop', 'private'],
+    files: ['passwords.txt', 'tax_return_2025.pdf', 'browser_history.sqlite', 'seed_phrase.txt', 'bank_statements.pdf', 'blackmail_material.zip']
+  },
+  startup: {
+    dirs: ['src', 'devops', 'investors', 'aws'],
+    files: ['api_keys.env', 'db_seed.sql', 'series_a_pitch.pdf', 'user_metrics.csv', 'docker-compose.yml', 'aws_billing.xlsx']
+  },
+  smallbiz: {
+    dirs: ['accounting', 'hr', 'clients', 'legal'],
+    files: ['payroll_2026.xlsx', 'tax_returns.pdf', 'client_list.csv', 'lawsuit_settlement.docx', 'vendor_contracts.zip']
+  },
+  corporation: {
+    dirs: ['rd', 'board', 'finance', 'patents'],
+    files: ['q4_earnings_unreleased.pdf', 'layoff_list.xlsx', 'patent_draft_994.docx', 'offshore_routing.csv', 'merger_ndas.zip', 'source_code_master.zip']
+  },
+  government: {
+    dirs: ['public_works', 'internal_affairs', 'tax_records', 'surveillance'],
+    files: ['voter_registry.sql', 'subpoena_targets.docx', 'city_camera_feeds.mp4', 'budget_deficit.xlsx', 'informant_list.csv']
+  },
+  military: {
+    dirs: ['intel', 'drone_ops', 'sigint', 'personnel'],
+    files: ['target_package_bravo.enc', 'sat_recon_raw.ts', 'troop_manifest.csv', 'roe_directives.pdf', 'black_budget.xlsx']
+  },
+  financial: {
+    dirs: ['vault', 'swift_routing', 'audits', 'aml'],
+    files: ['swift_keys.pgp', 'vip_offshore_accounts.sql', 'wire_transfers_pending.csv', 'aml_flagged.xlsx', 'crypto_cold_wallet.dat']
+  },
+  classified: {
+    dirs: ['umb_alpha', 'stellar', 'prism_nodes', 'zero_days'],
+    files: ['nsa_rootkit_src.zip', 'foreign_asset_list.enc', 'project_chimera.pdf', 'weaponized_payload_v2.bin', 'blackmail_cache.tar.gz']
+  }
+};
 
 const generateOrgFileSystem = (org, tier, layout) => {
-  let filesObj = { '/': [`${layout.dirs[0]}/`, 'mail/', 'tmp/'] };
+  // 1. Pick the theme based on the organization type generated earlier
+  const theme = FILE_SYSTEM_THEMES[org.type] || FILE_SYSTEM_THEMES.corporation;
+  
+  // 2. Randomly select 2-3 directories from the theme
+  const shuffledDirs = theme.dirs.sort(() => 0.5 - Math.random()).slice(0, Math.floor(Math.random() * 2) + 2);
+  
+  let filesObj = { '/': ['mail/', 'tmp/'] };
   let contents = {};
-  let buildPath = '';
+  
+  // Add the chosen directories to root
+  shuffledDirs.forEach(d => filesObj['/'].push(`${d}/`));
 
-  for (let i = 0; i < layout.dirs.length; i++) {
-    const isLast = i === layout.dirs.length - 1;
-    const dirName = layout.dirs[i];
-    const nextContent = isLast ? [layout.file] : [`${layout.dirs[i + 1]}/`];
-    buildPath += `/${dirName}`;
-    filesObj[buildPath] = nextContent;
-  }
+  // 3. Populate directories with themed files
+  shuffledDirs.forEach(dir => {
+    const dirPath = `/${dir}`;
+    filesObj[dirPath] = [];
+    
+    // Put 1-3 random themed files in this directory
+    const shuffledFiles = theme.files.sort(() => 0.5 - Math.random()).slice(0, Math.floor(Math.random() * 3) + 1);
+    
+    shuffledFiles.forEach(file => {
+      filesObj[dirPath].push(file);
+      const fullPath = `${dirPath}/${file}`;
+      
+      // Determine if the file is locked based on security tier
+      const isLocked = (tier === 'high' || tier === 'elite') ? '[LOCKED] ' : '';
+      
+      // Give hashes their specific content tag so John the Ripper works
+      if (file.endsWith('.sql') || file.endsWith('.env') || file.endsWith('.pgp') || file.endsWith('.sqlite')) {
+        contents[fullPath] = `${isLocked}[HASH] SHA-512 System Hashes: df98a2b1c...`;
+      } else {
+        contents[fullPath] = `${isLocked}[PENDING_GENERATION]`;
+      }
+    });
+  });
 
+  // 4. Always generate employee mail files
   const mailFiles = [];
   org.employees.forEach((emp, idx) => {
     const filename = `msg_${String(idx + 1).padStart(3, '0')}.eml`;
@@ -124,19 +200,14 @@ const generateOrgFileSystem = (org, tier, layout) => {
   });
   filesObj['/mail'] = mailFiles;
 
-  filesObj['/tmp'] = ['.bash_history', 'notes.tmp'];
+  // 5. Always generate standard tmp files
+  filesObj['/tmp'] = ['.bash_history', 'syslog.tmp'];
   contents['/tmp/.bash_history'] = '[LORE_PENDING]';
-  contents['/tmp/notes.tmp'] = '[LORE_PENDING]';
+  contents['/tmp/syslog.tmp'] = '[LORE_PENDING]';
 
-  const fullFilePath = `${buildPath}/${layout.file}`;
-  let fileContent = (tier === 'high' || tier === 'elite') ? '[LOCKED] [PENDING_GENERATION]' : '[PENDING_GENERATION]';
-  if (layout.file.endsWith('.bak') || layout.file.endsWith('.hashes')) {
-    fileContent = (tier === 'high' || tier === 'elite') ? '[LOCKED] [HASH] SHA-512 System Hashes: df98a2b1c...' : '[HASH] NTLM User Hashes: 8f2b3c...';
-  }
-  contents[fullFilePath] = fileContent;
-
-  const dirs = Object.keys(filesObj);
-  const randomDir = () => dirs[Math.floor(Math.random() * dirs.length)];
+  // 6. Randomly sprinkle game consumables across all available directories
+  const allDirs = Object.keys(filesObj);
+  const randomDir = () => allDirs[Math.floor(Math.random() * allDirs.length)];
   
   if (Math.random() < 0.20) filesObj[randomDir()].push('decoy.bin');
   if (Math.random() < 0.15) filesObj[randomDir()].push('burner.ovpn');

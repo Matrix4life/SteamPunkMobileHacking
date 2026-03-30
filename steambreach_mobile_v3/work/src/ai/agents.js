@@ -245,63 +245,107 @@ const generateInterceptedComms = async (targetIP, nodeData, apiKey) => {
   }
 };
 
-const generateAIContract = async (targetIP, nodeData, currentRep, apiKey) => {
-  const orgName = nodeData?.org?.orgName || "Unknown Target";
-  const secLevel = nodeData?.sec || "mid";
-  const isHigh = secLevel === 'high' || secLevel === 'elite';
+const generateAIContract = async (targetIP, nodeData, currentRep, arg4, arg5) => {
+  // Safely handle arguments (in case the world map isn't passed correctly yet)
+  const world = typeof arg4 === 'object' && arg4 !== null ? arg4 : {};
+  const apiKey = typeof arg4 === 'string' ? arg4 : arg5;
 
-  // 1. Scan the node's filesystem and pick a specific file to steal
-  let allFiles = [];
-  if (nodeData && nodeData.files) {
-    Object.keys(nodeData.files).forEach(dir => {
-      nodeData.files[dir].forEach(f => {
-        // Ignore folders, bash history, temp files, and random emails
-        if (!f.endsWith('/') && f !== '.bash_history' && !f.endsWith('.tmp') && !f.endsWith('.eml')) {
-          allFiles.push(f);
-        }
-      });
+  // 1. Roll the Sandbox Probability (1-100)
+  const prob = Math.floor(Math.random() * 100) + 1;
+
+  // 2. Set Difficulty Parameters based on Probability
+  let timeLimit, heatCap, minReward, maxReward, minRep, maxRep, numTargets;
+
+  if (prob <= 9) { // 💀 Insane (Tier 4)
+    numTargets = Math.floor(Math.random() * 2) + 3; // 3 to 4 objectives
+    timeLimit = 180; heatCap = 35;
+    minReward = 50000; maxReward = 150000; minRep = 100; maxRep = 250;
+  } else if (prob <= 49) { // 🔴 Hard (Tier 3)
+    numTargets = Math.floor(Math.random() * 2) + 2; // 2 to 3 objectives
+    timeLimit = 240; heatCap = 45;
+    minReward = 15000; maxReward = 55000; minRep = 50; maxRep = 120;
+  } else if (prob <= 74) { // 🟡 Medium (Tier 2)
+    numTargets = Math.floor(Math.random() * 2) + 1; // 1 to 2 objectives
+    timeLimit = 300; heatCap = 75;
+    minReward = 4000; maxReward = 18000; minRep = 20; maxRep = 55;
+  } else { // 🟢 Easy (Tier 1)
+    numTargets = 1;
+    timeLimit = 600; heatCap = 90;
+    minReward = 1000; maxReward = 4500; minRep = 10; maxRep = 25;
+  }
+
+  const reward = Math.floor(Math.random() * (maxReward - minReward + 1)) + minReward;
+  const repReward = Math.floor(Math.random() * (maxRep - minRep + 1)) + minRep;
+
+  // 3. Select Target Nodes from the World Map
+  // Filter out 'local', hidden nodes, and our starting node
+  const availableIPs = Object.keys(world).filter(ip => ip !== 'local' && ip !== targetIP && !world[ip].isHidden);
+  // Shuffle available IPs
+  const shuffledIPs = availableIPs.sort(() => 0.5 - Math.random());
+  // Combine our starting node with extra nodes (if available on the map)
+  const selectedIPs = [targetIP, ...shuffledIPs].slice(0, numTargets);
+
+  // 4. Generate the Objectives List
+  const objectives = [];
+  const actionTypes = ['exfil', 'destroy', 'ransom'];
+
+  for (let i = 0; i < numTargets; i++) {
+    // If we run out of unique IPs, cycle back (giving 1 node multiple tasks)
+    const ip = selectedIPs[i % selectedIPs.length];
+    const node = ip === targetIP ? nodeData : world[ip];
+    const type = actionTypes[Math.floor(Math.random() * actionTypes.length)];
+
+    let targetFile = null;
+    if (type === 'exfil') {
+      let allFiles = [];
+      if (node && node.files) {
+        Object.keys(node.files).forEach(dir => {
+          node.files[dir].forEach(f => {
+            if (!f.endsWith('/') && f !== '.bash_history' && !f.endsWith('.tmp') && !f.endsWith('.eml')) {
+              allFiles.push(f);
+            }
+          });
+        });
+      }
+      targetFile = allFiles.length > 0 ? allFiles[Math.floor(Math.random() * allFiles.length)] : 'proprietary_data.zip';
+    }
+
+    objectives.push({
+      ip: ip,
+      name: node?.org?.orgName || "Unknown Node",
+      type: type,
+      targetFile: targetFile
     });
   }
-  
-  // Pick a random file, or fallback if the drive is strangely empty
-  const targetFile = allFiles.length > 0 ? allFiles[Math.floor(Math.random() * allFiles.length)] : 'proprietary_data.zip';
 
   const fallbackContract = {
-    type: "exfil",
-    targetFile: targetFile, // Save the target file to the contract
-    desc: `[ENCRYPTED REROUTE] Client requires immediate extraction of '${targetFile}' from ${orgName}. Get in, find the file, and scrub your tracks.`,
-    timeLimit: isHigh ? 180 : 300,
-    reward: isHigh ? 150000 : 50000,
-    repReward: isHigh ? 50 : 20,
-    heatCap: isHigh ? 40 : 80,
+    probability: prob,
+    objectives: objectives,
+    desc: `[ENCRYPTED REROUTE] Client requires a multi-stage operation. See objective checklist for details. Scrub your tracks.`,
+    timeLimit, reward, repReward, heatCap,
     forbidden_tools: [],
-    isAmbush: Math.random() < 0.1
+    isAmbush: prob <= 20 && Math.random() < 0.2 // Ambush more likely on Hard/Insane
   };
 
-  const prompt = `You are a Darknet Fixer in a hacking simulator. Generate an "exfil" contract for a player targeting ${orgName}. Player Reputation: ${currentRep}.
-  The specific file the client wants to steal is named "${targetFile}".
-  Return ONLY raw JSON in this exact format. No markdown, no explanation:
+  // 5. Ask the AI Director to write the flavor text based on the objectives
+  const prompt = `You are a Darknet Fixer in a hacking simulator. Write a contract description.
+  The success probability is ${prob}%. (If low, make it sound dangerous/elite. If high, make it sound routine).
+  Objectives required:
+  ${objectives.map((o, i) => `${i+1}. ${o.type.toUpperCase()} on ${o.name} (${o.ip})${o.type === 'exfil' ? ` -> Target File: ${o.targetFile}` : ''}`).join('\n')}
+
+  Return ONLY raw JSON in this exact format. No markdown, no explanations:
   {
-    "type": "exfil",
-    "targetFile": "${targetFile}",
-    "desc": "2 sentences of immersive darknet flavor text explaining WHO wants the file '${targetFile}' and WHY they are paying you to steal it.",
-    "timeLimit": ${fallbackContract.timeLimit},
-    "reward": ${fallbackContract.reward},
-    "repReward": ${fallbackContract.repReward},
-    "heatCap": ${fallbackContract.heatCap},
-    "forbidden_tools": [],
-    "isAmbush": false
+    "desc": "2 sentences of immersive darknet flavor text explaining WHO hired the player and WHY they want these specific actions done."
   }`;
 
   try {
     let aiText = await generateDirectorText(prompt, "");
-    
     aiText = aiText.replace(/```json/gi, '').replace(/```/g, '').trim();
     const jsonMatch = aiText.match(/\{[\s\S]*\}/);
-    
+
     if (jsonMatch) {
       const parsedData = JSON.parse(jsonMatch[0]);
-      return { ...fallbackContract, ...parsedData };
+      return { ...fallbackContract, desc: parsedData.desc || fallbackContract.desc };
     } else {
       return fallbackContract;
     }
@@ -309,7 +353,6 @@ const generateAIContract = async (targetIP, nodeData, currentRep, apiKey) => {
     return fallbackContract;
   }
 };
-// ==========================================
 
 export {
   invokeBlueTeamAI,

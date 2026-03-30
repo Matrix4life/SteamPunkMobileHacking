@@ -291,15 +291,15 @@ const generateAIContract = async (targetIP, nodeData, currentRep, arg4, arg5) =>
 
   // 3. Select Target Nodes from the World Map
   const availableIPs = Object.keys(world).filter(ip => ip !== 'local' && ip !== targetIP && !world[ip].isHidden);
-  const shuffledIPs = availableIPs.sort(() => 0.5 - Math.random());
-  const selectedIPs = [targetIP, ...shuffledIPs].slice(0, numTargets);
+  const actualNumTargets = Math.min(numTargets, [targetIP, ...shuffledIPs].length);
+ const selectedIPs = [targetIP, ...shuffledIPs].slice(0, actualNumTargets);
 
   // 4. Generate the Objectives List
   const objectives = [];
   const actionTypes = ['exfil', 'destroy', 'ransom'];
 
-  for (let i = 0; i < numTargets; i++) {
-    const ip = selectedIPs[i % selectedIPs.length];
+  for (let i = 0; i < actualNumTargets; i++) {
+    const ip = selectedIPs[i];
     const node = ip === targetIP ? nodeData : world[ip];
     const type = actionTypes[Math.floor(Math.random() * actionTypes.length)];
 

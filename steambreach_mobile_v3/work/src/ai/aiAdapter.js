@@ -58,6 +58,12 @@ async function fetchGemini(prompt, system, key, model) {
 async function fetchGroq(prompt, system, key, model) {
   if (!key || key.trim() === '') return "ERROR: NO GROQ API KEY PROVIDED.";
   
+  // --- THE KEY ROTATOR ---
+  // Splits the keys by comma, picks a random one, and removes extra spaces
+  const keyList = key.split(',');
+  const randomKey = keyList[Math.floor(Math.random() * keyList.length)].trim();
+  // -----------------------
+
   // Groq crashes if the system message is empty, so we only add it if it exists
   const messages = [];
   if (system && system.trim() !== '') {
@@ -70,12 +76,12 @@ async function fetchGroq(prompt, system, key, model) {
 
   const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+    // Notice we are using randomKey here instead of key!
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${randomKey}` },
     body: JSON.stringify({ model: targetModel, messages: messages })
   });
   
   if (!res.ok) {
-    // This logs the EXACT reason Groq rejected the request to your console (F12)
     const err = await res.json().catch(() => ({}));
     console.error("[GROQ ERROR DETECTED]:", err);
     return `ERROR: GROQ CONNECTION FAILED (${res.status})`;

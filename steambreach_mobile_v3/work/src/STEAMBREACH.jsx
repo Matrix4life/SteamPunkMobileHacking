@@ -812,7 +812,9 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
     setContracts(prev => prev.map(c => c.id === id ? activated : c));
     setActiveContract(activated);
     setScreen('game');
-    setTerminal(prev => [...prev, { type: 'out', text: `[FIXER] Contract ${id} accepted.\n[*] Target: ${activated.targetName} (${activated.targetIP})\n[*] Time limit: ${activated.timeLimit}s | Max heat: ${activated.heatCap}%\n[*] Reward: ₿${activated.reward.toLocaleString()} + ${activated.repReward} REP`, isNew: true }]);
+    
+    // --- UPDATED TEXT TO SHOW THE TARGET FILE ---
+    setTerminal(prev => [...prev, { type: 'out', text: `[FIXER] Contract ${id} accepted.\n[*] Target: ${activated.targetName} (${activated.targetIP})\n[*] Objective: Extract '${activated.targetFile}'\n[*] Time limit: ${activated.timeLimit}s | Max heat: ${activated.heatCap}%\n[*] Reward: ₿${activated.reward.toLocaleString()} + ${activated.repReward} REP`, isNew: true }]);
   };
 
   const selectNodeFromMap = (ip) => {
@@ -1477,13 +1479,24 @@ CRITICAL RULES:
         playExfil();
 
         if (activeContract?.type === 'exfil' && activeContract.targetIP === targetIP) {
+          
+          // --- NEW: WRONG FILE CHECK FOR STASH ---
+          const fileNameOnly = arg1.split('/').pop();
+          if (activeContract.targetFile && fileNameOnly !== activeContract.targetFile) {
+            setIsProcessing(false);
+            return `[+] STASH EXFIL COMPLETE via ${stagingName}. ₿${val.toLocaleString()} secured.\n[-] Fixer Ping: "That's the wrong file. I explicitly asked for ${activeContract.targetFile}. Go back in."\n[+] Trace +8%, Heat +3% (staged routing).`;
+          }
+          // ---------------------------------------
+
           const timeTaken = (Date.now() - activeContract.startTime) / 1000;
           if (timeTaken <= activeContract.timeLimit && heat <= activeContract.heatCap) {
             setMoney(m => m + activeContract.reward);
             setReputation(r => r + activeContract.repReward);
             setContracts(prev => prev.map(c => c.id === activeContract.id ? { ...c, completed: true, active: false } : c));
-            setActiveContract(null); trackContract(true); setIsProcessing(false);
-            return `[+] EXFIL COMPLETE. ₿${val.toLocaleString()} secured.\n\n[FIXER] CONTRACT ${activeContract.id} FULFILLED.\n[+] BONUS: ₿${activeContract.reward.toLocaleString()} + ${activeContract.repReward} REP`;
+            setActiveContract(null); 
+            trackContract(true); 
+            setIsProcessing(false);
+            return `[+] STASH EXFIL COMPLETE via ${stagingName}. ₿${val.toLocaleString()} secured.\n[+] Trace +8%, Heat +3% (staged routing).\n\n[FIXER] CONTRACT ${activeContract.id} FULFILLED.\n[+] BONUS: ₿${activeContract.reward.toLocaleString()} + ${activeContract.repReward} REP`;
           }
         }
         setIsProcessing(false);

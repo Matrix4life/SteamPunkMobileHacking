@@ -250,9 +250,26 @@ const generateAIContract = async (targetIP, nodeData, currentRep, apiKey) => {
   const secLevel = nodeData?.sec || "mid";
   const isHigh = secLevel === 'high' || secLevel === 'elite';
 
+  // 1. Scan the node's filesystem and pick a specific file to steal
+  let allFiles = [];
+  if (nodeData && nodeData.files) {
+    Object.keys(nodeData.files).forEach(dir => {
+      nodeData.files[dir].forEach(f => {
+        // Ignore folders, bash history, temp files, and random emails
+        if (!f.endsWith('/') && f !== '.bash_history' && !f.endsWith('.tmp') && !f.endsWith('.eml')) {
+          allFiles.push(f);
+        }
+      });
+    });
+  }
+  
+  // Pick a random file, or fallback if the drive is strangely empty
+  const targetFile = allFiles.length > 0 ? allFiles[Math.floor(Math.random() * allFiles.length)] : 'proprietary_data.zip';
+
   const fallbackContract = {
     type: "exfil",
-    desc: `[ENCRYPTED REROUTE] Client requires immediate extraction of proprietary data from ${orgName}. Get in, get the files, and scrub your tracks.`,
+    targetFile: targetFile, // Save the target file to the contract
+    desc: `[ENCRYPTED REROUTE] Client requires immediate extraction of '${targetFile}' from ${orgName}. Get in, find the file, and scrub your tracks.`,
     timeLimit: isHigh ? 180 : 300,
     reward: isHigh ? 150000 : 50000,
     repReward: isHigh ? 50 : 20,
@@ -261,17 +278,19 @@ const generateAIContract = async (targetIP, nodeData, currentRep, apiKey) => {
     isAmbush: Math.random() < 0.1
   };
 
-  const prompt = `You are a Darknet Fixer in a hacking simulator. Generate a contract for a player targeting ${orgName} (Security: ${secLevel.toUpperCase()}). Player Reputation: ${currentRep}.
+  const prompt = `You are a Darknet Fixer in a hacking simulator. Generate an "exfil" contract for a player targeting ${orgName}. Player Reputation: ${currentRep}.
+  The specific file the client wants to steal is named "${targetFile}".
   Return ONLY raw JSON in this exact format. No markdown, no explanation:
   {
     "type": "exfil",
-    "desc": "2 sentences of immersive darknet flavor text explaining the job.",
-    "timeLimit": 200,
-    "reward": 50000,
-    "repReward": 20,
-    "heatCap": 50,
-    "forbidden_tools": [], 
-    "isAmbush": false 
+    "targetFile": "${targetFile}",
+    "desc": "2 sentences of immersive darknet flavor text explaining WHO wants the file '${targetFile}' and WHY they are paying you to steal it.",
+    "timeLimit": ${fallbackContract.timeLimit},
+    "reward": ${fallbackContract.reward},
+    "repReward": ${fallbackContract.repReward},
+    "heatCap": ${fallbackContract.heatCap},
+    "forbidden_tools": [],
+    "isAmbush": false
   }`;
 
   try {
@@ -290,7 +309,6 @@ const generateAIContract = async (targetIP, nodeData, currentRep, apiKey) => {
     return fallbackContract;
   }
 };
-
 // ==========================================
 
 export {

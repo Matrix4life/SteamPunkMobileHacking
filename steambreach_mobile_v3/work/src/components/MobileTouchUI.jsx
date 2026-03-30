@@ -105,7 +105,7 @@ export default function MobileTouchUI({
   const [panel, setPanel] = useState('actions');
   const [selectedIP, setSelectedIP] = useState(null);
   const [subMenu, setSubMenu] = useState(null); // e.g. 'shred' | 'openssl' | null
-
+  const [showEmployees, setShowEmployees] = useState(false); 
   const isField = gameMode === 'field';
   const isOperator = gameMode === 'operator';
 
@@ -162,8 +162,8 @@ export default function MobileTouchUI({
     tap(cmd);
   };
 
-  const selectIP = (ip) => { buzz(40); setSelectedIP(ip); setPanel('target_detail'); };
-  const switchPanel = (id) => { buzz(15); setPanel(id); setSubMenu(null); if (id === 'targets') setSelectedIP(null); };
+  const selectIP = (ip) => { buzz(40); setSelectedIP(ip); setPanel('target_detail'); setShowEmployees(false); };
+  const switchPanel = (id) => { buzz(15); setPanel(id); setSubMenu(null); if (id === 'targets') { setSelectedIP(null); setShowEmployees(false); } };
 
   const fileAction = (file) => {
     buzz(30);
@@ -455,43 +455,59 @@ export default function MobileTouchUI({
               </div>
             </>
           )}
-   {selectedNode.employees.length > 0 && (
-            <>
-              <div style={S.label}>EMPLOYEES / OSINT</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '8px' }}>
-                {selectedNode.employees.map((emp, i) => (
-                  <div key={i} style={{ background: `${COLORS.bgPanel}`, border: `1px solid ${COLORS.border}`, borderRadius: '4px', padding: '8px' }}>
-                    <div style={{ color: COLORS.text, fontSize: '12px', fontWeight: 'bold', marginBottom: '2px' }}>{emp.name}</div>
-                    <div style={{ color: COLORS.textDim, fontSize: '10px', marginBottom: '8px' }}>{emp.role} • {emp.email}</div>
-                    
-                    <div style={{ display: 'flex', gap: '4px', overflowX: 'auto', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
-                      {!isInside && (
-                        <>
-                          <button onClick={() => tap(`spearphish ${emp.email}@${selectedNode.ip}`)} style={{ ...btn(COLORS.chat, true, false), padding: '6px 10px', flexShrink: 0 }}>
-                            🎣 PHISH
-                          </button>
+  {selectedNode.employees.length > 0 && (
+            <div style={{ marginBottom: '8px' }}>
+              <button 
+                onClick={() => { buzz(15); setShowEmployees(!showEmployees); }}
+                style={{
+                  ...btn(COLORS.chat, false, false),
+                  width: '100%', display: 'flex', justifyContent: 'space-between', padding: '10px 14px'
+                }}
+              >
+                <span>👥 EMPLOYEES / OSINT ({selectedNode.employees.length})</span>
+                <span>{showEmployees ? '▼' : '▶'}</span>
+              </button>
+
+              {showEmployees && (
+                <div style={{ 
+                  display: 'flex', flexDirection: 'column', gap: '8px', 
+                  marginTop: '8px', maxHeight: '200px', overflowY: 'auto', 
+                  scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' 
+                }}>
+                  {selectedNode.employees.map((emp, i) => (
+                    <div key={i} style={{ background: `${COLORS.bgPanel}`, border: `1px solid ${COLORS.border}`, borderRadius: '4px', padding: '8px' }}>
+                      <div style={{ color: COLORS.text, fontSize: '12px', fontWeight: 'bold', marginBottom: '2px' }}>{emp.name}</div>
+                      <div style={{ color: COLORS.textDim, fontSize: '10px', marginBottom: '8px' }}>{emp.role} • {emp.email}</div>
+                      
+                      <div style={{ display: 'flex', gap: '4px', overflowX: 'auto', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
+                        {!isInside && (
+                          <>
+                            <button onClick={() => tap(`spearphish ${emp.email}@${selectedNode.ip}`)} style={{ ...btn(COLORS.chat, true, false), padding: '6px 10px', flexShrink: 0 }}>
+                              🎣 PHISH
+                            </button>
+                            <button onClick={() => { 
+                              buzz(40); 
+                              onFillInput?.(`ssh ${emp.email}@${selectedNode.ip} `); 
+                            }} style={{ ...btn(COLORS.primary, true, false), padding: '6px 10px', flexShrink: 0 }}>
+                              🔑 SSH
+                            </button>
+                          </>
+                        )}
+                        
+                        {isInside && (
                           <button onClick={() => { 
                             buzz(40); 
-                            onFillInput?.(`ssh ${emp.email}@${selectedNode.ip} `); 
-                          }} style={{ ...btn(COLORS.primary, true, false), padding: '6px 10px', flexShrink: 0 }}>
-                            🔑 SSH
+                            onFillInput?.(`sendmail -to ${emp.email} -attach payload.bin`); 
+                          }} style={{ ...btn(COLORS.warning, true, false), padding: '6px 10px', flexShrink: 0 }}>
+                            ✉️ SPOOF
                           </button>
-                        </>
-                      )}
-                      
-                      {isInside && (
-                        <button onClick={() => { 
-                          buzz(40); 
-                          onFillInput?.(`sendmail -to ${emp.email} -attach payload.bin`); 
-                        }} style={{ ...btn(COLORS.warning, true, false), padding: '6px 10px', flexShrink: 0 }}>
-                          ✉️ SPOOF
-                        </button>
-                      )}
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            </>
+                  ))}
+                </div>
+              )}
+            </div>
           )}
           <button onClick={() => { buzz(15); setSelectedIP(null); setPanel('targets'); }} style={{ ...btn(COLORS.textDim, false, false), marginTop: '4px' }}>← BACK</button>
         </>

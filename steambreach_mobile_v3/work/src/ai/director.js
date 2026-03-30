@@ -1,4 +1,5 @@
 // Split from UpdatedPeople.jsx
+import { generateDirectorText } from './aiAdapter';
 
 const DEFAULT_DIRECTOR = {
   metrics: {
@@ -114,7 +115,39 @@ const generateDirectorNarrative = async (direction, skillScore) => {
 };
 
 // ==========================================
-// 6. WORLD GENERATION (ENHANCED)
+// 6. DYNAMIC STORY ENGINE
+
+export const generateStoryEvent = async (currentAlignment) => {
+  const system = `You are the Story Director for STEAMBREACH, a gritty, M-rated cyberpunk hacking simulator.
+The player just intercepted a highly sensitive communication on a random server.
+Generate a short, dark, high-stakes scenario (e.g., cartel hit list, corporate assassination order, illegal organ harvesting ring, whistleblower needing protection, human trafficking intel, arms deal coordinates).
+The scenario MUST have two clear paths: one heroic, one ruthless.
+Return ONLY valid raw JSON in this exact format. No markdown, no conversational text:
+{
+  "story": "The intercepted raw message text (2-3 sentences max, gritty and urgent).",
+  "good_action": "Short description of the heroic/moral choice",
+  "evil_action": "Short description of the ruthless/profitable choice",
+  "good_payout": 5000,
+  "evil_payout": 25000,
+  "good_align": 20,
+  "evil_align": -20,
+  "heat_cost": 5
+}`;
+
+  const prompt = `Generate a new darknet interception. Player's current moral alignment is ${currentAlignment} (-100 is pure evil, 100 is pure good). Tailor the scenario darkness to their alignment — darker scenarios for evil players, more whistleblower/rescue scenarios for good players.`;
+
+  try {
+    let text = await generateDirectorText(prompt, system);
+    text = text.replace(/```json/gi, '').replace(/```/g, '').trim();
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      return JSON.parse(jsonMatch[0]);
+    }
+  } catch (e) {
+    console.error("[STORY] Generation failed", e);
+  }
+  return null;
+};
 
 export {
   DEFAULT_DIRECTOR,

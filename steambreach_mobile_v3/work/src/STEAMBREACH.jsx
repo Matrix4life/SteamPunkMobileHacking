@@ -814,7 +814,7 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
     setScreen('game');
     
     // --- UPDATED TEXT TO SHOW THE TARGET FILE ---
-    setTerminal(prev => [...prev, { type: 'out', text: `[FIXER] Contract ${id} accepted.\n[*] Target: ${activated.targetName} (${activated.targetIP})\n[*] Objective: Extract '${activated.targetFile}'\n[*] Time limit: ${activated.timeLimit}s | Max heat: ${activated.heatCap}%\n[*] Reward: ₿${activated.reward.toLocaleString()} + ${activated.repReward} REP`, isNew: true }]);
+    setTerminal(prev => [...prev, { type: 'out', text: `[FIXER] Contract ${id} accepted.\n[*] Target: ${activated.targetName || 'Multiple'}\n[*] Objectives: ${activated.objectives ? activated.objectives.length : 1} targets assigned.\n[*] Time limit: ${activated.timeLimit}s | Max heat: ${activated.heatCap}%\n[*] Reward: ₿${activated.reward.toLocaleString()} + ${activated.repReward} REP`, isNew: true }]);
   };
 
   const declineContract = (id) => {

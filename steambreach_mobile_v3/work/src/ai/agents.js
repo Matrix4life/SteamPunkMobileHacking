@@ -246,12 +246,24 @@ const generateInterceptedComms = async (targetIP, nodeData, apiKey) => {
 };
 
 const generateAIContract = async (targetIP, nodeData, currentRep, arg4, arg5) => {
-  // Safely handle arguments (in case the world map isn't passed correctly yet)
+  // Safely handle arguments
   const world = typeof arg4 === 'object' && arg4 !== null ? arg4 : {};
   const apiKey = typeof arg4 === 'string' ? arg4 : arg5;
 
-  // 1. Roll the Sandbox Probability (1-100)
-  const prob = Math.floor(Math.random() * 100) + 1;
+  // 1. Roll the Sandbox Probability based on strict Reputation milestones
+  let minProb = 1; // Default allows everything (1-100%)
+  
+  if (currentRep < 25) {
+    minProb = 75; // 0 to 24 REP: ONLY Easy / Tier 1 (75-100%)
+  } else if (currentRep < 80) {
+    minProb = 50; // 25 to 79 REP: Unlocks Medium / Tier 2 (50-100%)
+  } else if (currentRep < 200) {
+    minProb = 10; // 80 to 199 REP: Unlocks Hard / Tier 3 (10-100%)
+  }
+  // 200+ REP: Unlocks Insane / Tier 4 (1-100%)
+
+  // Roll the die using the calculated minimum probability
+  const prob = Math.floor(Math.random() * (100 - minProb + 1)) + minProb;
 
   // 2. Set Difficulty Parameters based on Probability
   let timeLimit, heatCap, minReward, maxReward, minRep, maxRep, numTargets;
@@ -278,11 +290,8 @@ const generateAIContract = async (targetIP, nodeData, currentRep, arg4, arg5) =>
   const repReward = Math.floor(Math.random() * (maxRep - minRep + 1)) + minRep;
 
   // 3. Select Target Nodes from the World Map
-  // Filter out 'local', hidden nodes, and our starting node
   const availableIPs = Object.keys(world).filter(ip => ip !== 'local' && ip !== targetIP && !world[ip].isHidden);
-  // Shuffle available IPs
   const shuffledIPs = availableIPs.sort(() => 0.5 - Math.random());
-  // Combine our starting node with extra nodes (if available on the map)
   const selectedIPs = [targetIP, ...shuffledIPs].slice(0, numTargets);
 
   // 4. Generate the Objectives List
@@ -290,7 +299,6 @@ const generateAIContract = async (targetIP, nodeData, currentRep, arg4, arg5) =>
   const actionTypes = ['exfil', 'destroy', 'ransom'];
 
   for (let i = 0; i < numTargets; i++) {
-    // If we run out of unique IPs, cycle back (giving 1 node multiple tasks)
     const ip = selectedIPs[i % selectedIPs.length];
     const node = ip === targetIP ? nodeData : world[ip];
     const type = actionTypes[Math.floor(Math.random() * actionTypes.length)];

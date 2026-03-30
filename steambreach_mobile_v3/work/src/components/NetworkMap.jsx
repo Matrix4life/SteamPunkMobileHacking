@@ -9,7 +9,9 @@ export default function NetworkMap({
   expanded, toggleExpand, currentRegion = 'UNKNOWN',
   consumables = { decoy: 0, burner: 0, zeroday: 0 },
   money = 0,
-  isMobile = false
+  isMobile = false,
+  contracts = [], // <-- Added contracts
+  activeContract = null // <-- Added activeContract
 }) {
   const svgRef = useRef(null);
   const [hoveredNode, setHoveredNode] = useState(null);
@@ -21,6 +23,19 @@ export default function NetworkMap({
   const [hasDragged, setHasDragged] = useState(false);
 
   const isHacking = Boolean(targetIP);
+
+  // --- Helper to check if an IP is a contract target ---
+  const isContractTarget = (ip) => {
+    if (activeContract) {
+      const objs = activeContract.objectives || [{ ip: activeContract.targetIP }];
+      return objs.some(o => o.ip === ip && !o.completed);
+    }
+    // Also check available contracts on the board
+    return contracts.some(c => {
+      const objs = c.objectives || [{ ip: c.targetIP }];
+      return objs.some(o => o.ip === ip && !o.completed);
+    });
+  };
 
   // --- LOOT ANIMATION STATE ---
   const [lootNotifs, setLootNotifs] = useState([]);
@@ -153,7 +168,6 @@ export default function NetworkMap({
     e.stopPropagation();
     if (hasDragged || !expanded) return;
     if (isMobile) {
-      // First tap: show info. Second tap on same node: nmap it
       if (hoveredNode === ip) {
         selectNodeFromMap(ip);
         setHoveredNode(null);
@@ -384,8 +398,12 @@ export default function NetworkMap({
           {Object.keys(world).filter(k => k !== 'local' && !world[k].isHidden).map(ip => {
             const node = world[ip];
             const isProxy = proxies.includes(ip);
+            const isTarget = isContractTarget(ip); // <-- Check if it's a target
             let nodeColor = node.sec === 'high' ? COLORS.danger : COLORS.mapNode;
-            if (isProxy) nodeColor = COLORS.proxy;
+            
+            // Color override logic
+            if (isTarget) nodeColor = COLORS.warning; // Highlight target in yellow
+            else if (isProxy) nodeColor = COLORS.proxy;
             else if (botnet.includes(ip)) nodeColor = COLORS.infected;
             else if (looted.includes(ip)) nodeColor = COLORS.looted;
             
@@ -393,6 +411,7 @@ export default function NetworkMap({
             const isHovered = hoveredNode === ip;
             
             let r = expanded ? (isMobile ? (isProxy ? 10 : 8) : (isProxy ? 6 : 5)) : (isProxy ? 4 : 3);
+            if (isTarget && expanded) r += 2; // Make target nodes slightly bigger
             const dimInactive = isHacking && !isActive && !isProxy && !botnet.includes(ip);
             
             return (
@@ -415,12 +434,15 @@ export default function NetworkMap({
                     {isActive && expanded && <circle cx="0" cy="0" r="12" fill="none" stroke={COLORS.primary} strokeWidth="1" className="data-stream" />}
                     {isProxy && <circle cx="0" cy="0" r={r + 4} fill="none" stroke={COLORS.proxy} strokeWidth="1.5" opacity="0.4" className="proxy-stream" />}
                     
+                    {/* Extra target ring */}
+                    {isTarget && !isProxy && <circle cx="0" cy="0" r={r + 3} fill="none" stroke={COLORS.warning} strokeWidth="1" opacity="0.6" strokeDasharray="2 2" />}
+                    
                     <circle cx="0" cy="0" r={r} fill={nodeColor} />
                     
                     {expanded && r >= 5 && <circle cx="0" cy="0" r={r/2} fill="#111" opacity="0.8" />}
                     {expanded && isProxy && (
                       <text x="0" y={isMobile ? -16 : -12} fill="#fff" fontSize={isMobile ? '9px' : '6px'} textAnchor="middle" fontFamily="inherit" style={{ fontWeight: 'bold', filter: 'drop-shadow(0 2px 2px rgba(0,0,0,0.8))' }}>
-                         HOP {proxyChain.indexOf(ip) + 1}
+                          HOP {proxyChain.indexOf(ip) + 1}
                       </text>
                     )}
                     {expanded && isMobile && !isProxy && (
@@ -458,17 +480,25 @@ export default function NetworkMap({
       {expanded && hoveredNode && world[hoveredNode] && (
         <div style={{
           position: 'absolute', top: isMobile ? '50px' : '16px', left: isMobile ? '10px' : '16px', right: isMobile ? '10px' : 'auto',
-          background: 'rgba(8,12,18,0.95)', border: `1px solid ${COLORS.primary}60`,
+          background: 'rgba(8,12,18,0.95)', border: `1px solid ${isContractTarget(hoveredNode) ? COLORS.warning : COLORS.primary}60`,
           padding: isMobile ? '14px 16px' : '12px 14px', fontSize: isMobile ? '13px' : '10px', pointerEvents: isMobile ? 'auto' : 'none',
           color: COLORS.text, minWidth: '180px', borderRadius: '4px',
           zIndex: 14, backdropFilter: 'blur(6px)',
-          boxShadow: `0 8px 32px rgba(0,0,0,0.8), 0 0 15px ${COLORS.primary}20`,
+          boxShadow: `0 8px 32px rgba(0,0,0,0.8), 0 0 15px ${isContractTarget(hoveredNode) ? COLORS.warning : COLORS.primary}20`,
           opacity: isHacking ? 0.3 : 1, 
           transition: 'opacity 0.3s ease'
         }}>
-          <div style={{ color: COLORS.primary, fontWeight: 'bold', marginBottom: '6px', fontSize: isMobile ? '15px' : '12px', letterSpacing: '1px', borderBottom: `1px solid ${COLORS.borderActive}`, paddingBottom: '4px' }}>
+          <div style={{ color: isContractTarget(hoveredNode) ? COLORS.warning : COLORS.primary, fontWeight: 'bold', marginBottom: '6px', fontSize: isMobile ? '15px' : '12px', letterSpacing: '1px', borderBottom: `1px solid ${COLORS.borderActive}`, paddingBottom: '4px' }}>
             {world[hoveredNode].name || world[hoveredNode].org?.orgName || 'Unknown'}
           </div>
+          
+          {/* Target Warning */}
+          {isContractTarget(hoveredNode) && (
+            <div style={{ color: COLORS.bgDark, background: COLORS.warning, padding: '4px 6px', borderRadius: '2px', display: 'block', marginBottom: '8px', fontWeight: 'bold', letterSpacing: '1px', textAlign: 'center' }}>
+              [!] CONTRACT TARGET
+            </div>
+          )}
+
           <div style={{ margin: '4px 0' }}><span style={{ color: COLORS.textDim }}>IP:</span> <span style={{ color: COLORS.ip }}>{hoveredNode}</span></div>
           <div style={{ margin: '4px 0' }}><span style={{ color: COLORS.textDim }}>SEC:</span> {inventory.includes('Scanner') ? world[hoveredNode].sec?.toUpperCase() : '[ENCRYPTED]'}</div>
           {world[hoveredNode].org && <div style={{ margin: '4px 0' }}><span style={{ color: COLORS.textDim }}>TYPE:</span> {world[hoveredNode].org.type?.toUpperCase()}</div>}

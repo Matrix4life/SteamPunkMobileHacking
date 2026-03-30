@@ -100,6 +100,7 @@ export default function MobileTouchUI({
   onCommand, onToggleKeyboard, onToggleMap,
   onFillInput, // fills input + opens keyboard (for operator mode)
   externalSelectedIP, clearExternalSelection,
+  activeStory, alignment,
 }) {
   const [panel, setPanel] = useState('actions');
   const [selectedIP, setSelectedIP] = useState(null);
@@ -255,6 +256,40 @@ export default function MobileTouchUI({
         />
 
         {subMenu && <SubMenu cmd={subMenu} />}
+
+        {/* STORY CHOICE — appears when intercept.log has been read */}
+        {activeStory && isInside && targetIP === activeStory.ip && (
+          <div style={{
+            background: `${COLORS.chat}10`, border: `1px solid ${COLORS.chat}40`,
+            borderRadius: '5px', padding: '12px', marginBottom: '8px',
+          }}>
+            <div style={{ ...S.label, color: COLORS.chat, fontSize: '11px', marginBottom: '8px' }}>
+              ⚡ MORAL CROSSROADS — CHOOSE YOUR PATH
+            </div>
+            <div style={{ display: 'flex', gap: '6px' }}>
+              <button onClick={() => tap('resolve 1')} style={{
+                ...btn('#00ff88', true, true), flex: 1,
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px',
+              }}>
+                <span style={{ fontSize: '14px' }}>PARAGON</span>
+                <span style={{ fontSize: '10px', fontWeight: 'normal', color: '#00ff8899' }}>
+                  {activeStory.good_action?.slice(0, 40)}{activeStory.good_action?.length > 40 ? '…' : ''}
+                </span>
+                <span style={{ fontSize: '11px' }}>₿{(activeStory.good_payout || 5000).toLocaleString()}</span>
+              </button>
+              <button onClick={() => tap('resolve 2')} style={{
+                ...btn('#ff3366', true, true), flex: 1,
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px',
+              }}>
+                <span style={{ fontSize: '14px' }}>SYNDICATE</span>
+                <span style={{ fontSize: '10px', fontWeight: 'normal', color: '#ff336699' }}>
+                  {activeStory.evil_action?.slice(0, 40)}{activeStory.evil_action?.length > 40 ? '…' : ''}
+                </span>
+                <span style={{ fontSize: '11px' }}>₿{(activeStory.evil_payout || 25000).toLocaleString()}</span>
+              </button>
+            </div>
+          </div>
+        )}
 
         {panel === 'actions' && !subMenu && (
           <>

@@ -455,12 +455,40 @@ export default function MobileTouchUI({
               </div>
             </>
           )}
-          {selectedNode.employees.length > 0 && !selectedNode.hacked && (
+   {selectedNode.employees.length > 0 && (
             <>
-              <div style={S.label}>EMPLOYEES — TAP TO SPEARPHISH</div>
-              <div style={S.row}>
+              <div style={S.label}>EMPLOYEES / OSINT</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '8px' }}>
                 {selectedNode.employees.map((emp, i) => (
-                  <button key={i} onClick={() => tap(`spearphish ${emp.email}@${selectedNode.ip}`)} style={btn(COLORS.chat, true, true)}>🎣 {emp.name} — {emp.role}</button>
+                  <div key={i} style={{ background: `${COLORS.bgPanel}`, border: `1px solid ${COLORS.border}`, borderRadius: '4px', padding: '8px' }}>
+                    <div style={{ color: COLORS.text, fontSize: '12px', fontWeight: 'bold', marginBottom: '2px' }}>{emp.name}</div>
+                    <div style={{ color: COLORS.textDim, fontSize: '10px', marginBottom: '8px' }}>{emp.role} • {emp.email}</div>
+                    
+                    <div style={{ display: 'flex', gap: '4px', overflowX: 'auto', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
+                      {!isInside && (
+                        <>
+                          <button onClick={() => tap(`spearphish ${emp.email}@${selectedNode.ip}`)} style={{ ...btn(COLORS.chat, true, false), padding: '6px 10px', flexShrink: 0 }}>
+                            🎣 PHISH
+                          </button>
+                          <button onClick={() => { 
+                            buzz(40); 
+                            onFillInput?.(`ssh ${emp.email}@${selectedNode.ip} `); 
+                          }} style={{ ...btn(COLORS.primary, true, false), padding: '6px 10px', flexShrink: 0 }}>
+                            🔑 SSH
+                          </button>
+                        </>
+                      )}
+                      
+                      {isInside && (
+                        <button onClick={() => { 
+                          buzz(40); 
+                          onFillInput?.(`sendmail -to ${emp.email} -attach payload.bin`); 
+                        }} style={{ ...btn(COLORS.warning, true, false), padding: '6px 10px', flexShrink: 0 }}>
+                          ✉️ SPOOF
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 ))}
               </div>
             </>

@@ -74,8 +74,8 @@ const ContractBoard = ({ contracts, activeContract, acceptContract, declineContr
 
       return (
         <div key={i} style={{ display: 'flex', gap: '8px', marginBottom: '8px', alignItems: 'flex-start', fontSize: '12px' }}>
-          <span style={{ color: contract.completed ? COLORS.secondary : COLORS.textDim }}>
-            [{contract.completed ? '✓' : ' '}]
+          <span style={{ color: (obj.completed || contract.completed) ? COLORS.secondary : COLORS.textDim }}>
+            [{(obj.completed || contract.completed) ? '✓' : ' '}]
           </span>
           <span style={{ lineHeight: '1.4' }}>
             <span style={{ color: COLORS.primary, fontWeight: 'bold' }}>{actionText}</span>

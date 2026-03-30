@@ -3,7 +3,8 @@ import { COLORS } from '../constants/gameConstants';
 
 const isMobile = () => typeof window !== 'undefined' && window.innerWidth <= 768;
 
-const ContractBoard = ({ contracts, activeContract, acceptContract, returnToGame }) => {
+// Added declineContract to the props here!
+const ContractBoard = ({ contracts, activeContract, acceptContract, declineContract, returnToGame }) => {
   const [selectedId, setSelectedId] = useState(null);
   const [isReady, setIsReady] = useState(false);
   const mobile = isMobile();
@@ -31,10 +32,15 @@ const ContractBoard = ({ contracts, activeContract, acceptContract, returnToGame
       if (e.key === 'ArrowDown') setSelectedId(contracts[(currentIndex + 1) % contracts.length].id);
       else if (e.key === 'ArrowUp') setSelectedId(contracts[(currentIndex - 1 + contracts.length) % contracts.length].id);
       else if (e.key === 'Enter' && canAccept && isReady) acceptContract(selectedId);
+      // Added DEL/Backspace hotkey for archiving/abandoning
+      else if ((e.key === 'Delete' || e.key === 'Backspace') && selected && !selected.active) {
+        declineContract(selectedId);
+        setSelectedId(null);
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [contracts, selectedId, canAccept, returnToGame, acceptContract, isReady, mobile]);
+  }, [contracts, selectedId, canAccept, returnToGame, acceptContract, declineContract, isReady, mobile, selected]);
 
   const btnStyle = {
     background: 'transparent', border: `1px solid ${COLORS.chat}`,
@@ -136,6 +142,22 @@ const ContractBoard = ({ contracts, activeContract, acceptContract, returnToGame
             ACCEPT CONTRACT
           </button>
         )}
+
+        {/* MOBILE ARCHIVE/ABANDON BUTTON IS RIGHT HERE */}
+        {!selected.active && (
+          <button onClick={() => { declineContract(selected.id); setSelectedId(null); }} style={{
+            background: 'transparent', 
+            color: selected.completed ? COLORS.textDim : COLORS.danger, 
+            border: `1px solid ${selected.completed ? COLORS.textDim : COLORS.danger}`,
+            padding: '14px', cursor: 'pointer', fontFamily: 'inherit',
+            borderRadius: '5px', fontSize: '15px', fontWeight: 'bold',
+            letterSpacing: '1px', width: '100%', marginBottom: '10px',
+            WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation',
+          }}>
+            {selected.completed ? 'ARCHIVE' : 'ABANDON'} CONTRACT
+          </button>
+        )}
+
         {activeContract && !selected.active && !selected.completed && (
           <div style={{ color: COLORS.danger, fontSize: '12px', textAlign: 'center', marginBottom: '12px' }}>
             Complete or abandon active contract first.
@@ -312,6 +334,21 @@ const ContractBoard = ({ contracts, activeContract, acceptContract, returnToGame
                   [ENTER] ACCEPT CONTRACT
                 </button>
               )}
+
+              {/* DESKTOP ARCHIVE/ABANDON BUTTON IS RIGHT HERE */}
+              {!selected.active && (
+                <button onClick={() => { declineContract(selected.id); setSelectedId(null); }} style={{
+                  background: 'transparent', 
+                  color: selected.completed ? COLORS.textDim : COLORS.danger, 
+                  border: `1px solid ${selected.completed ? COLORS.textDim : COLORS.danger}`,
+                  padding: '12px 20px', cursor: 'pointer', fontFamily: 'inherit',
+                  borderRadius: '4px', fontSize: '13px', fontWeight: 'bold',
+                  letterSpacing: '1px', marginTop: canAccept ? '8px' : '16px', width: '100%',
+                }}>
+                  [DEL] {selected.completed ? 'ARCHIVE' : 'ABANDON'} CONTRACT
+                </button>
+              )}
+
               {activeContract && !selected.active && !selected.completed && (
                 <div style={{ color: COLORS.danger, marginTop: '16px', fontSize: '11px', textAlign: 'center' }}>Complete or abandon active contract first.</div>
               )}

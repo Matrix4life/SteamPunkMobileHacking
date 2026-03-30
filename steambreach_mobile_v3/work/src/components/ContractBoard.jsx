@@ -16,7 +16,7 @@ const ContractBoard = ({ contracts, activeContract, acceptContract, returnToGame
   // Auto-select first contract on desktop
   useEffect(() => {
     if (!mobile && contracts.length > 0 && !selectedId) setSelectedId(contracts[0].id);
-  }, [contracts, mobile]);
+  }, [contracts, mobile, selectedId]);
 
   const selected = contracts.find(c => c.id === selectedId);
   const canAccept = selected && !selected.completed && !selected.active && !activeContract;
@@ -43,6 +43,45 @@ const ContractBoard = ({ contracts, activeContract, acceptContract, returnToGame
     fontSize: mobile ? '14px' : '12px', letterSpacing: '1px', width: mobile ? '100%' : 'auto',
   };
 
+  const getProbColor = (prob) => {
+    if (!prob) return COLORS.textDim;
+    if (prob >= 75) return COLORS.secondary; // Green - Easy
+    if (prob >= 50) return COLORS.warning;   // Yellow - Med
+    if (prob >= 10) return '#ff9900';        // Orange - Hard
+    return COLORS.danger;                    // Red - Insane
+  };
+
+  const renderChecklist = (contract) => {
+    // Fallback to single objective if multi-node 'objectives' array isn't generated yet
+    const objs = contract.objectives || [{
+      ip: contract.targetIP,
+      name: contract.targetName,
+      type: contract.type,
+      targetFile: contract.targetFile
+    }];
+
+    return objs.map((obj, i) => {
+      let actionText = '';
+      if (obj.type === 'exfil') actionText = `EXFIL '${obj.targetFile}'`;
+      else if (obj.type === 'destroy') actionText = `DESTROY (shred) server`;
+      else if (obj.type === 'ransom') actionText = `RANSOM (openssl) server`;
+
+      return (
+        <div key={i} style={{ display: 'flex', gap: '8px', marginBottom: '8px', alignItems: 'flex-start', fontSize: '12px' }}>
+          <span style={{ color: contract.completed ? COLORS.secondary : COLORS.textDim }}>
+            [{contract.completed ? '✓' : ' '}]
+          </span>
+          <span style={{ lineHeight: '1.4' }}>
+            <span style={{ color: COLORS.primary, fontWeight: 'bold' }}>{actionText}</span>
+            <span style={{ color: COLORS.textDim }}> at </span>
+            <span style={{ color: COLORS.ip }}>{obj.ip}</span>
+            <span style={{ color: COLORS.textDim }}> ({obj.name})</span>
+          </span>
+        </div>
+      );
+    });
+  };
+
   // ─── MOBILE: Detail view when a contract is selected ───
   if (mobile && selected) {
     return (
@@ -52,24 +91,29 @@ const ContractBoard = ({ contracts, activeContract, acceptContract, returnToGame
         fontFamily: "'Consolas', 'Fira Code', 'JetBrains Mono', monospace", zIndex: 20,
         padding: '16px', overflow: 'auto',
       }}>
-        <div style={{ color: COLORS.chat, fontSize: '12px', letterSpacing: '1.5px', marginBottom: '12px' }}>
-          {selected.id} {selected.active ? '● ACTIVE' : ''}{selected.completed ? '✓ DONE' : ''}
+        <div style={{ color: COLORS.chat, fontSize: '12px', letterSpacing: '1.5px', marginBottom: '12px', display: 'flex', justifyContent: 'space-between' }}>
+          <span>{selected.id} {selected.active ? '● ACTIVE' : ''}{selected.completed ? '✓ DONE' : ''}</span>
+          <span style={{ color: getProbColor(selected.probability), fontWeight: 'bold' }}>
+            {selected.probability ? `${selected.probability}% SUCCESS PROBABILITY` : 'PROBABILITY: CALC...'}
+          </span>
         </div>
 
         <div style={{ fontSize: '14px', lineHeight: '1.6', marginBottom: '20px', color: COLORS.text }}>
           {selected.desc}
         </div>
 
-        <div style={{ fontSize: '13px', color: COLORS.textDim, lineHeight: '2.2' }}>
-          <div>TARGET: <span style={{ color: COLORS.ip }}>{selected.targetIP}</span></div>
-          <div>ORG: <span style={{ color: COLORS.text }}>{selected.targetName}</span></div>
+        <div style={{ fontSize: '13px', color: COLORS.textDim, lineHeight: '2.2', borderBottom: `1px solid ${COLORS.border}`, paddingBottom: '12px', marginBottom: '12px' }}>
           <div>REWARD: <span style={{ color: COLORS.warning }}>₿{selected.reward?.toLocaleString()}</span> + <span style={{ color: COLORS.secondary }}>{selected.repReward} REP</span></div>
           <div>TIME LIMIT: <span style={{ color: COLORS.text }}>{selected.timeLimit}s</span></div>
-          <div>MAX HEAT: <span style={{ color: selected.heatCap <= 30 ? COLORS.danger : COLORS.warning }}>{selected.heatCap}%</span></div>
-          <div>TYPE: <span style={{ color: COLORS.text }}>{selected.type?.toUpperCase() || 'UNKNOWN'}</span></div>
+          <div>MAX HEAT: <span style={{ color: selected.heatCap <= 35 ? COLORS.danger : COLORS.warning }}>{selected.heatCap}%</span></div>
           {selected.forbidden_tools?.length > 0 && (
-            <div style={{ color: COLORS.danger, marginTop: '8px' }}>RESTRICTED: {selected.forbidden_tools.join(', ')}</div>
+            <div style={{ color: COLORS.danger }}>RESTRICTED: {selected.forbidden_tools.join(', ')}</div>
           )}
+        </div>
+
+        <div style={{ marginBottom: '20px' }}>
+          <div style={{ color: COLORS.textDim, fontSize: '11px', letterSpacing: '2px', marginBottom: '8px' }}>OBJECTIVES CHECKLIST</div>
+          {renderChecklist(selected)}
         </div>
 
         <div style={{ flex: 1 }} />
@@ -151,8 +195,9 @@ const ContractBoard = ({ contracts, activeContract, acceptContract, returnToGame
                   </span>
                 </div>
                 <div style={{ fontSize: '13px', lineHeight: '1.5' }}>{c.desc}</div>
-                <div style={{ fontSize: '11px', color: COLORS.textDim, marginTop: '6px' }}>
-                  {c.targetName} • {c.type?.toUpperCase()} • {c.timeLimit}s
+                <div style={{ fontSize: '11px', color: COLORS.textDim, marginTop: '8px', display: 'flex', justifyContent: 'space-between' }}>
+                  <span>{c.objectives ? `${c.objectives.length} TARGETS` : c.targetName} • {c.timeLimit}s</span>
+                  <span style={{ color: getProbColor(c.probability), fontWeight: 'bold' }}>{c.probability ? `${c.probability}% PROB` : ''}</span>
                 </div>
               </div>
             );
@@ -179,8 +224,8 @@ const ContractBoard = ({ contracts, activeContract, acceptContract, returnToGame
         {activeContract ? `ACTIVE CONTRACT: ${activeContract.id}` : 'Use [UP] and [DOWN] arrows to navigate.'}
       </p>
 
-      <div style={{ display: 'flex', gap: '16px', width: '720px', maxHeight: '420px' }}>
-        <div style={{ flex: '1 1 55%', overflowY: 'auto', paddingRight: '4px' }}>
+      <div style={{ display: 'flex', gap: '16px', width: '800px', maxHeight: '460px' }}>
+        <div style={{ flex: '1 1 50%', overflowY: 'auto', paddingRight: '8px' }}>
           {contracts.map(c => {
             const isSelected = selectedId === c.id;
             const isActive = c.active;
@@ -204,11 +249,15 @@ const ContractBoard = ({ contracts, activeContract, acceptContract, returnToGame
                   <span style={{ color: isActive ? COLORS.chat : COLORS.textDim, fontSize: '11px' }}>
                     {c.id} {isActive ? '● ACTIVE' : ''}
                   </span>
-                  <span style={{ color: c.completed ? COLORS.secondary : COLORS.warning, fontSize: '11px' }}>
+                  <span style={{ color: c.completed ? COLORS.secondary : COLORS.warning, fontSize: '11px', fontWeight: 'bold' }}>
                     {c.completed ? '✓ COMPLETED' : `₿${c.reward?.toLocaleString()}`}
                   </span>
                 </div>
                 <div style={{ fontSize: '12px', lineHeight: '1.4' }}>{c.desc}</div>
+                <div style={{ fontSize: '10px', color: COLORS.textDim, marginTop: '6px', display: 'flex', justifyContent: 'space-between' }}>
+                  <span>{c.objectives ? `${c.objectives.length} TARGETS` : c.targetName} • {c.timeLimit}s</span>
+                  <span style={{ color: getProbColor(c.probability), fontWeight: 'bold' }}>{c.probability ? `${c.probability}% PROB` : ''}</span>
+                </div>
               </div>
             );
           })}
@@ -220,39 +269,51 @@ const ContractBoard = ({ contracts, activeContract, acceptContract, returnToGame
         </div>
 
         <div style={{
-          flex: '1 1 45%', border: `1px solid ${COLORS.border}`, borderRadius: '4px',
-          background: COLORS.bgPanel, padding: '16px', display: 'flex', flexDirection: 'column',
+          flex: '1 1 50%', border: `1px solid ${COLORS.border}`, borderRadius: '4px',
+          background: COLORS.bgPanel, padding: '20px', display: 'flex', flexDirection: 'column',
           justifyContent: selected ? 'flex-start' : 'center', alignItems: selected ? 'stretch' : 'center',
+          overflowY: 'auto'
         }}>
           {selected ? (
             <>
-              <div style={{ color: COLORS.chat, fontSize: '11px', letterSpacing: '1px', marginBottom: '12px' }}>{selected.id}</div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                <span style={{ color: COLORS.chat, fontSize: '11px', letterSpacing: '1px' }}>{selected.id}</span>
+                <span style={{ color: getProbColor(selected.probability), fontSize: '12px', fontWeight: 'bold', letterSpacing: '1px' }}>
+                  {selected.probability ? `${selected.probability}% SUCCESS PROBABILITY` : 'PROBABILITY: CALC...'}
+                </span>
+              </div>
+              
               <div style={{ fontSize: '13px', lineHeight: '1.5', marginBottom: '16px' }}>{selected.desc}</div>
-              <div style={{ fontSize: '11px', color: COLORS.textDim, lineHeight: '2' }}>
-                <div>TARGET: <span style={{ color: COLORS.ip }}>{selected.targetIP}</span></div>
-                <div>ORG: <span style={{ color: COLORS.text }}>{selected.targetName}</span></div>
+              
+              <div style={{ fontSize: '11px', color: COLORS.textDim, lineHeight: '2', borderBottom: `1px solid ${COLORS.border}`, paddingBottom: '12px', marginBottom: '12px' }}>
                 <div>REWARD: <span style={{ color: COLORS.warning }}>₿{selected.reward?.toLocaleString()}</span> + <span style={{ color: COLORS.secondary }}>{selected.repReward} REP</span></div>
                 <div>TIME LIMIT: <span style={{ color: COLORS.text }}>{selected.timeLimit}s</span></div>
-                <div>MAX HEAT: <span style={{ color: selected.heatCap <= 30 ? COLORS.danger : COLORS.warning }}>{selected.heatCap}%</span></div>
-                <div>TYPE: <span style={{ color: COLORS.text }}>{selected.type?.toUpperCase() || 'UNKNOWN'}</span></div>
+                <div>MAX HEAT: <span style={{ color: selected.heatCap <= 35 ? COLORS.danger : COLORS.warning }}>{selected.heatCap}%</span></div>
                 {selected.forbidden_tools?.length > 0 && (
-                  <div style={{ color: COLORS.danger, marginTop: '8px' }}>RESTRICTED: {selected.forbidden_tools.join(', ')}</div>
+                  <div style={{ color: COLORS.danger, marginTop: '4px' }}>RESTRICTED: {selected.forbidden_tools.join(', ')}</div>
                 )}
               </div>
-              {selected.completed && <div style={{ color: COLORS.secondary, marginTop: '16px', fontSize: '12px', letterSpacing: '1px' }}>✓ CONTRACT FULFILLED</div>}
-              {selected.active && !selected.completed && <div style={{ color: COLORS.chat, marginTop: '16px', fontSize: '12px', letterSpacing: '1px' }}>● CONTRACT IN PROGRESS</div>}
+
+              <div style={{ flex: 1 }}>
+                <div style={{ color: COLORS.textDim, fontSize: '10px', letterSpacing: '2px', marginBottom: '8px' }}>OBJECTIVES CHECKLIST</div>
+                {renderChecklist(selected)}
+              </div>
+
+              {selected.completed && <div style={{ color: COLORS.secondary, marginTop: '16px', fontSize: '12px', letterSpacing: '1px', textAlign: 'center' }}>✓ CONTRACT FULFILLED</div>}
+              {selected.active && !selected.completed && <div style={{ color: COLORS.chat, marginTop: '16px', fontSize: '12px', letterSpacing: '1px', textAlign: 'center' }}>● CONTRACT IN PROGRESS</div>}
+              
               {canAccept && (
                 <button onClick={() => acceptContract(selected.id)} style={{
                   background: COLORS.secondary, color: COLORS.bgDark, border: 'none',
-                  padding: '10px 20px', cursor: 'pointer', fontFamily: 'inherit',
+                  padding: '12px 20px', cursor: 'pointer', fontFamily: 'inherit',
                   borderRadius: '4px', fontSize: '13px', fontWeight: 'bold',
-                  letterSpacing: '1px', marginTop: 'auto', width: '100%',
+                  letterSpacing: '1px', marginTop: '16px', width: '100%',
                 }}>
                   [ENTER] ACCEPT CONTRACT
                 </button>
               )}
               {activeContract && !selected.active && !selected.completed && (
-                <div style={{ color: COLORS.danger, marginTop: 'auto', fontSize: '11px', textAlign: 'center' }}>Complete or abandon active contract first.</div>
+                <div style={{ color: COLORS.danger, marginTop: '16px', fontSize: '11px', textAlign: 'center' }}>Complete or abandon active contract first.</div>
               )}
             </>
           ) : (

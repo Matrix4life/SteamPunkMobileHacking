@@ -1310,7 +1310,7 @@ CRITICAL RULES:
           const isFirstScan = contracts.length === 0;
           if ((isFirstScan || Math.random() < 0.3) && contracts.length < 8) {
             out += `\n[FIXER] Signal intercepted. Negotiating custom darknet contract for ${newNode.data.org.orgName}...`;
-            generateAIContract(newNode.ip, newNode.data, reputation, apiKey).then(aiContract => {
+            generateAIContract(newNode.ip, newNode.data, reputation, world, apiKey).then(aiContract => {
               if (aiContract) {
                 const newContract = { id: `CTR-${Date.now().toString(36).toUpperCase()}`, targetIP: newNode.ip, targetName: newNode.data.org.orgName, startTime: null, active: false, completed: false, ...aiContract };
                 setContracts(prev => [...prev, newContract]);

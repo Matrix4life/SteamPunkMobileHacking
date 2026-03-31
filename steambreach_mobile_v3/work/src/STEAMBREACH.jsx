@@ -905,15 +905,46 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
   };
 
   const acceptContract = (id) => {
-    const contract = contracts.find(c => c.id === id);
-    if (!contract || contract.completed) return;
-    const activated = { ...contract, active: true, startTime: Date.now() };
-    setContracts(prev => prev.map(c => c.id === id ? activated : c));
-    setActiveContract(activated);
-    setScreen('game');
-    setTerminal(prev => [...prev, { type: 'out', text: `[FIXER] Contract ${id} accepted.\n[*] Target: ${activated.targetName} (${activated.targetIP})\n[*] Time limit: ${activated.timeLimit}s | Max heat: ${activated.heatCap}%\n[*] Reward: ₿${activated.reward.toLocaleString()} + ${activated.repReward} REP`, isNew: true }]);
-  };
+  const contract = contracts.find(c => c.id === id);
+  if (!contract || contract.completed) return;
 
+  const activated = { ...contract, active: true, startTime: Date.now() };
+  setContracts(prev => prev.map(c => c.id === id ? activated : c));
+  setActiveContract(activated);
+  setScreen('game');
+
+  const objectiveLines = (activated.objectives || [])
+    .map((o, idx) => {
+      if (o.type === 'exfil') {
+        return `    ${idx + 1}. ${o.label}${o.targetFile ? ` [FILE: ${o.targetFile}]` : ''}`;
+      }
+      return `    ${idx + 1}. ${o.label}`;
+    })
+    .join('\n');
+
+  const intelLines = (activated.knownConditions || [])
+    .map((line) => `    - ${line}`)
+    .join('\n');
+
+  const contractText = [
+    `[FIXER] Contract ${id} accepted.`,
+    activated.briefing ? `\n${activated.briefing}` : '',
+    `\n[*] CLIENT: ${activated.client || 'unknown buyer'}`,
+    `[*] MOTIVE: ${activated.motive || 'undisclosed'}`,
+    `[*] TARGET PROFILE: ${activated.targetProfile || `${activated.targetName} (${activated.targetIP})`}`,
+    `[*] RISK: ${activated.riskLabel || 'STANDARD'}`,
+    intelLines ? `[*] KNOWN CONDITIONS:\n${intelLines}` : '',
+    activated.complication ? `[*] COMPLICATION: ${activated.complication}` : '',
+    `[*] TIME LIMIT: ${activated.timeLimit}s`,
+    `[*] MAX HEAT: ${activated.heatCap}%`,
+    `[*] PAYOUT: ₿${activated.reward.toLocaleString()} + ${activated.repReward} REP`,
+    objectiveLines ? `[*] OBJECTIVES:\n${objectiveLines}` : ''
+  ]
+    .filter(Boolean)
+    .join('\n');
+
+  setTerminal(prev => [...prev, { type: 'out', text: contractText, isNew: true }]);
+};
   const selectNodeFromMap = (ip) => {
     const node = world[ip]; if (!node) return;
     const port = node.port || 22; const svc = node.svc || 'ssh'; const exp = node.exp || 'hydra';
@@ -1406,7 +1437,11 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
               if (aiContract) {
                 const newContract = { id: `CTR-${Date.now().toString(36).toUpperCase()}`, targetIP: newNode.ip, targetName: newNode.data.org.orgName, startTime: null, active: false, completed: false, ...aiContract };
                 setContracts(prev => [...prev, newContract]);
-                setTerminal(prev => [...prev, { type: 'out', text: `\n[FIXER] Contract ${newContract.id} ready. Type 'contracts' to view.`, isNew: true }]);
+                setTerminal(prev => [...prev, {
+  type: 'out',
+  text: `\n[FIXER] Contract ${newContract.id} ready.\n[*] ${newContract.desc}\n[*] Risk: ${newContract.riskLabel} | Reward: ₿${newContract.reward.toLocaleString()} + ${newContract.repReward} REP\n[*] Type 'contracts' to review the dossier.`,
+  isNew: true
+}]);
               }
             });
           }

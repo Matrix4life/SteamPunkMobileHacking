@@ -85,24 +85,26 @@ function RigSlot({slot,partId,onRemove,onSell}){
   const part=partId?PARTS_BY_ID[partId]:null;
   const sellP=part?getSellPrice(partId,[]):0;
   return(
-    <div style={{display:'flex',alignItems:'center',gap:'6px',padding:'10px 12px',borderRadius:'4px',fontSize:'13px',
+    <div style={{padding:'10px 12px',borderRadius:'4px',fontSize:'13px',
       background:part?'rgba(120,220,232,0.04)':'rgba(255,255,255,0.02)',
       border:`1px solid ${part?C.bdr:'rgba(255,255,255,0.04)'}`,marginBottom:'4px'}}>
-      <span style={{color:C.dim,width:'30px',fontSize:'13px',letterSpacing:'1px',flexShrink:0,fontWeight:'bold'}}>
-        {TAB_LABELS[slot]}
-      </span>
-      {part?(
-        <div style={{display:'flex',alignItems:'center',gap:'4px',flex:1,minWidth:0}}>
-          <GenBadge gen={part.gen}/>
-          <span style={{color:C.text,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{part.name}</span>
-        </div>
-      ):<span style={{color:'#2a3545',flex:1}}>— empty</span>}
+      <div style={{display:'flex',alignItems:'center',gap:'6px'}}>
+        <span style={{color:C.dim,width:'30px',fontSize:'13px',letterSpacing:'1px',flexShrink:0,fontWeight:'bold'}}>
+          {TAB_LABELS[slot]}
+        </span>
+        {part?(
+          <div style={{display:'flex',alignItems:'center',gap:'5px',flex:1,minWidth:0}}>
+            <GenBadge gen={part.gen}/>
+            <span style={{color:C.text,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',flex:1}}>{part.name}</span>
+          </div>
+        ):<span style={{color:'#2a3545',flex:1}}>— empty</span>}
+      </div>
       {part&&(
-        <div style={{display:'flex',gap:'4px',flexShrink:0}}>
-          <button onClick={()=>onRemove(slot)} style={{background:'none',border:`1px solid ${C.pri}44`,color:C.pri,
-            fontSize:'11px',padding:'6px 10px',cursor:'pointer',borderRadius:'3px',fontFamily:'inherit'}}>REMOVE</button>
-          {onSell&&<button onClick={()=>onSell(partId)} style={{background:'none',border:`1px solid ${C.warn}44`,color:C.warn,
-            fontSize:'11px',padding:'6px 10px',cursor:'pointer',borderRadius:'3px',fontFamily:'inherit'}}>SELL {formatBTC(sellP)}</button>}
+        <div style={{display:'flex',gap:'6px',marginTop:'8px'}}>
+          <button onClick={()=>onRemove(slot)} style={{flex:1,background:'none',border:`1px solid ${C.pri}44`,color:C.pri,
+            fontSize:'11px',padding:'8px',cursor:'pointer',borderRadius:'3px',fontFamily:'inherit',fontWeight:'bold',letterSpacing:'0.5px'}}>REMOVE</button>
+          {onSell&&<button onClick={()=>onSell(partId)} style={{flex:1,background:'none',border:`1px solid ${C.warn}44`,color:C.warn,
+            fontSize:'11px',padding:'8px',cursor:'pointer',borderRadius:'3px',fontFamily:'inherit',fontWeight:'bold'}}>SELL {formatBTC(sellP)}</button>}
         </div>
       )}
     </div>

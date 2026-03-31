@@ -3059,8 +3059,8 @@ if (screen === 'soundmanager') {
     );
   }
   if (screen === 'aisettings') {
-  return <AiSettings returnToGame={() => setScreen('intro')} />;
-}
+    return <AiSettings returnToGame={() => setScreen('intro')} />;
+  }
   
   return (
     <div onMouseDown={(e) => { if (e.target === e.currentTarget && inputRef.current && !isProcessing && screen === 'game') inputRef.current.focus(); }} style={{
@@ -3194,6 +3194,6 @@ if (screen === 'soundmanager') {
       )}
     </div>
   );
-
+};
 
 export default STEAMBREACH;

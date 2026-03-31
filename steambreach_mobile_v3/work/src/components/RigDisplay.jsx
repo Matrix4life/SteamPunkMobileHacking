@@ -222,8 +222,8 @@ function CollapsedView({ tiers, heat, isProcessing }) {
 }
 
 export default function RigDisplay({
-  rig = {}, // Actual installed parts
-  inventory = [], // Still used for legacy items like 'RGB'
+  rig = {}, 
+  inventory = [], 
   heat = 0,
   isProcessing = false,
   expanded = false,
@@ -238,6 +238,7 @@ export default function RigDisplay({
   const safeHeat = clamp(heat, 0, 100);
   const isHot = safeHeat >= 78;
 
+  // RGB color cycling
   const hasRGB = inventory.includes('RGB');
   useEffect(() => {
     if (!hasRGB) return;
@@ -245,39 +246,44 @@ export default function RigDisplay({
     return () => clearInterval(id);
   }, [hasRGB]);
 
- const tiers = useMemo(() => {
-    const obj = {}; // Initialize the object properly
+  // Sync tiers based on the 'rig' object
+  const tiers = useMemo(() => {
+    const obj = {};
     const slots = ['CPU', 'GPU', 'RAM', 'SSD', 'PSU', 'COOL', 'NET', 'CASE'];
     
     slots.forEach(s => {
       const slotKey = s.toLowerCase();
       const partId = rig[slotKey];
       
-      // Safety check: ensure PARTS_BY_ID exists before looking up
+      // Look for the part in our database
       const part = (PARTS_BY_ID && partId) ? PARTS_BY_ID[partId] : null;
       
-      // Assign the generation (1, 2, or 3) as the tier. 
-      // This is what triggers the visual glow in the <Slot /> component.
-      obj[s] = part ? part.gen : 0;
+      // CRITICAL: We ensure tier is a number between 0-3
+      // This is what triggers the colors/glow in the SVG
+      obj[s] = part ? (part.gen || 1) : 0;
     });
-
-    console.log("Rig Status Update:", obj); // Debugging: check your console to see the sync
     return obj;
   }, [rig]);
-  
+
   const cpuPct = tiers.CPU > 0 ? clamp(Math.round(safeHeat * 0.72 + (isProcessing ? 10 : 0)), 8, 100) : 0;
   const gpuPct = tiers.GPU > 0 ? clamp(Math.round(safeHeat * 0.9 + (isProcessing ? 12 : 0)), 10, 100) : 0;
 
   const statusColor = isHot ? COLORS.danger : safeHeat >= 45 ? COLORS.warning : COLORS.secondary;
 
+  // ADJUSTED WIDTHS: 450 is plenty for the expanded view
+  const width = expanded ? 480 : 220; 
+  const height = expanded ? 260 : 56;
+
   return (
     <div
       style={{
-        width: expanded ? 500 : 220, height: expanded ? 260 : 56, flexShrink: 0,
+        width, height, flexShrink: 0,
         border: `1px solid ${isHot ? `${COLORS.danger}55` : COLORS.border}`,
         position: 'relative', background: COLORS.bgDark, overflow: 'hidden', borderRadius: '4px',
-        transition: 'width 0.25s ease, height 0.25s ease', cursor: expanded ? 'default' : 'pointer',
-        boxShadow: isHot ? `0 0 16px ${COLORS.danger}18, inset 0 0 24px ${COLORS.danger}08` : 'inset 0 0 20px rgba(0,0,0,0.4)',
+        transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1), height 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        cursor: expanded ? 'default' : 'pointer',
+        boxShadow: isHot ? `0 0 16px ${COLORS.danger}18` : 'inset 0 0 20px rgba(0,0,0,0.4)',
+        zIndex: 100 // Ensure it stays above other elements
       }}
       onClick={!expanded ? toggleExpand : undefined}
     >
@@ -290,30 +296,53 @@ export default function RigDisplay({
         .pulse-bar { animation: pulseBar 1s ease-in-out infinite; }
       `}</style>
 
+      {/* Grid and Scanlines */}
       <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', backgroundImage: `linear-gradient(rgba(120,220,232,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(120,220,232,0.03) 1px, transparent 1px)`, backgroundSize: '18px 18px' }} />
-      <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.06) 2px, rgba(0,0,0,0.06) 4px)' }} />
 
-      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 18, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 8px', zIndex: 4, borderBottom: `1px solid ${COLORS.border}` }}>
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 18, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 8px', zIndex: 4, borderBottom: `1px solid ${COLORS.border}` }}>
         <div style={{ display: 'flex', gap: 8, fontSize: '7.5px', letterSpacing: '1px' }}>
-          <span style={{ color: COLORS.textDim }}>RIG</span>
-          <span style={{ color: statusColor }}>{safeHeat}°</span>
-          {expanded && <span style={{ color: COLORS.proxy }}>{gpuPct}% GPU</span>}
+          <span style={{ color: COLORS.textDim }}>RIG STATUS</span>
+          <span style={{ color: statusColor }}>{safeHeat}°C</span>
+          {expanded && <span style={{ color: COLORS.proxy }}>POWER: {rig.power || 0}W</span>}
         </div>
-        <button onClick={(e) => { e.stopPropagation(); toggleExpand?.(); }} style={{ background: 'none', border: 'none', color: COLORS.textDim, fontSize: '9px', cursor: 'pointer', padding: 0 }}>{expanded ? '▲' : '▼'}</button>
+        <button onClick={(e) => { e.stopPropagation(); toggleExpand(); }} style={{ background: 'none', border: 'none', color: COLORS.textDim, fontSize: '10px', cursor: 'pointer' }}>
+          {expanded ? '✕' : '⇲'}
+        </button>
       </div>
 
       {expanded ? (
-        <svg width="500" height="260" viewBox="0 0 500 260">
-          <g transform="translate(8 18)">
-            <rect x={4} y={20} width={286} height={210} rx={12} fill="rgba(8,12,18,0.3)" stroke={hasRGB ? `hsla(${rgbPhase % 360}, 60%, 50%, 0.2)` : 'rgba(120,220,232,0.1)'} strokeWidth="0.8" />
+        <svg width="480" height="260" viewBox="0 0 480 260">
+          <g transform="translate(8 22)">
+             {/* Motherboard Base */}
+            <rect x={4} y={20} width={286} height={210} rx={12} fill="rgba(15,20,30,0.5)" stroke={hasRGB ? `hsla(${rgbPhase % 360}, 60%, 50%, 0.3)` : 'rgba(120,220,232,0.1)'} strokeWidth="1" />
+            
+            {/* Traces */}
             {TRACES.map((t, i) => (
               <EnergyTrace key={i} pts={t.pts} active={isProcessing} tier={Math.max(tiers[t.from] || 0, tiers[t.to] || 0)} rgbPhase={rgbPhase} isCase={t.to === 'CASE' && tiers.CASE >= 2} />
             ))}
+
+            {/* Slots */}
             {Object.entries(SLOT_LAYOUT).map(([slot, pos]) => (
-              <Slot key={slot} slot={slot} pos={pos} tier={tiers[slot]} selected={selected === slot} isProcessing={isProcessing} rgbPhase={rgbPhase} onClick={() => setSelected(slot)} />
+              <Slot 
+                key={slot} slot={slot} pos={pos} 
+                tier={tiers[slot]} 
+                selected={selected === slot} 
+                isProcessing={isProcessing} 
+                rgbPhase={rgbPhase} 
+                onClick={() => setSelected(slot)} 
+              />
             ))}
           </g>
-          <DetailPanel slot={selected} partId={rig[selected.toLowerCase()]} heat={safeHeat} cpuPct={cpuPct} gpuPct={gpuPct} isProcessing={isProcessing} />
+
+          {/* Right side detail panel */}
+          <DetailPanel 
+            slot={selected} 
+            partId={rig[selected.toLowerCase()]} 
+            heat={safeHeat} 
+            cpuPct={cpuPct} 
+            gpuPct={gpuPct} 
+            isProcessing={isProcessing} 
+          />
         </svg>
       ) : (
         <CollapsedView tiers={tiers} heat={safeHeat} isProcessing={isProcessing} />

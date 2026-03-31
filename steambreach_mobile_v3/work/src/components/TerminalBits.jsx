@@ -48,39 +48,58 @@ const HelpPanel = ({ onClose, devMode }) => {
 
   return (
     <div style={{
-      position: 'absolute', top: '10%', right: '2%', width: '450px',
-      background: 'rgba(8,12,18,0.95)', border: `1px solid ${COLORS.primary}60`,
-      padding: '16px', fontSize: '11px', color: COLORS.text,
-      zIndex: 100, backdropFilter: 'blur(10px)',
-      boxShadow: `0 8px 32px rgba(0,0,0,0.8), 0 0 15px ${COLORS.primary}20`,
-      borderRadius: '4px'
+      position: 'fixed', // Center in viewport
+      top: '50%',
+      left: '50%',
+      transform: 'translate(-50%, -50%)',
+      width: '500px', // Slightly wider for readability
+      maxHeight: '80vh',
+      background: 'rgba(8,12,18,0.98)', // Highly opaque to hide background
+      border: `1px solid ${COLORS.primary}80`,
+      padding: '24px',
+      fontSize: '11px',
+      color: COLORS.text,
+      zIndex: 9999, // Guarantee front-of-screen priority
+      backdropFilter: 'blur(15px)',
+      boxShadow: `0 0 50px rgba(0,0,0,0.9), 0 0 20px ${COLORS.primary}30`,
+      borderRadius: '4px',
+      display: 'flex',
+      flexDirection: 'column'
     }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: `1px solid ${COLORS.borderActive}`, paddingBottom: '8px', marginBottom: '12px' }}>
-        <span style={{ color: COLORS.primary, fontWeight: 'bold', letterSpacing: '1px' }}>COMMAND REFERENCE MANUAL</span>
-        <span onClick={onClose} style={{ color: COLORS.textDim, cursor: 'pointer' }}>[TAB] TO CLOSE</span>
+      <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: `1px solid ${COLORS.borderActive}`, paddingBottom: '12px', marginBottom: '16px' }}>
+        <span style={{ color: COLORS.primary, fontWeight: 'bold', letterSpacing: '2px', fontSize: '14px' }}>COMMAND REFERENCE MANUAL</span>
+        <span onClick={onClose} style={{ color: COLORS.textDim, cursor: 'pointer', border: `1px solid ${COLORS.textDim}40`, padding: '2px 8px', borderRadius: '3px' }}>[TAB] CLOSE</span>
       </div>
+      
       <div style={{ 
-        maxHeight: '65vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px', paddingRight: '8px',
-        scrollbarWidth: 'thin', scrollbarColor: `${COLORS.primaryDim} transparent`
+        flexGrow: 1, 
+        overflowY: 'auto', 
+        display: 'flex', 
+        flexDirection: 'column', 
+        gap: '4px', 
+        paddingRight: '12px',
+        scrollbarWidth: 'thin', 
+        scrollbarColor: `${COLORS.primaryDim} transparent`
       }}>
         
         {/* Map through the generated categories */}
         {Object.keys(groupedCommands).map((categoryName) => (
-          <div key={categoryName} style={{ marginBottom: '8px' }}>
+          <div key={categoryName} style={{ marginBottom: '12px' }}>
             <div style={{ 
               color: COLORS.secondary, 
               marginTop: '4px', 
-              marginBottom: '6px', 
+              marginBottom: '8px', 
               fontWeight: 'bold', 
               borderBottom: `1px dashed ${COLORS.borderActive}`, 
-              paddingBottom: '2px',
-              letterSpacing: '1px'
+              paddingBottom: '4px',
+              letterSpacing: '1px',
+              fontSize: '12px'
             }}>
-              [{categoryName}]
+              [{categoryName.toUpperCase()}]
             </div>
             {groupedCommands[categoryName].map((c, i) => (
-              <div key={i} style={{ display: 'flex', marginBottom: '4px' }}>
-                <span style={{ color: COLORS.primaryDim, width: '180px', flexShrink: 0 }}>{c.cmd}</span>
+              <div key={i} style={{ display: 'flex', marginBottom: '6px', lineHeight: '1.4' }}>
+                <span style={{ color: COLORS.primaryDim, width: '160px', flexShrink: 0, fontFamily: 'monospace', fontWeight: 'bold' }}>{c.cmd}</span>
                 <span style={{ color: COLORS.textDim }}>- {c.desc}</span>
               </div>
             ))}
@@ -89,17 +108,21 @@ const HelpPanel = ({ onClose, devMode }) => {
         
         {devMode && (
           <div style={{ marginBottom: '8px' }}>
-            <div style={{ color: COLORS.danger, marginTop: '8px', borderBottom: `1px dashed ${COLORS.danger}60`, paddingBottom: '2px', marginBottom: '6px', fontWeight: 'bold', letterSpacing: '1px' }}>
+            <div style={{ color: COLORS.danger, marginTop: '8px', borderBottom: `1px dashed ${COLORS.danger}60`, paddingBottom: '4px', marginBottom: '8px', fontWeight: 'bold', letterSpacing: '1px', fontSize: '12px' }}>
               [DEVELOPER PROTOCOLS]
             </div>
             {DEV_COMMANDS.map((c, i) => (
               <div key={`dev-${i}`} style={{ display: 'flex', marginBottom: '4px' }}>
-                <span style={{ color: COLORS.danger, width: '180px', flexShrink: 0 }}>{c.cmd}</span>
+                <span style={{ color: COLORS.danger, width: '160px', flexShrink: 0 }}>{c.cmd}</span>
                 <span style={{ color: COLORS.textDim }}>- {c.desc}</span>
               </div>
             ))}
           </div>
         )}
+      </div>
+      
+      <div style={{ marginTop: '16px', paddingTop: '12px', borderTop: `1px solid ${COLORS.borderActive}`, color: COLORS.textDim, textAlign: 'center', fontSize: '10px', letterSpacing: '1px' }}>
+        OPERATOR VERSION 3.0.4 // CORE SYSTEM STABLE
       </div>
     </div>
   );

@@ -739,6 +739,21 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
     setPartsBag(bag => [...bag, partId]);
   };
 
+  const handleBuyAndInstall = (partId, price) => {
+    if (walletFrozen || money < price) return;
+    const part = PARTS_BY_ID[partId];
+    if (!part) return;
+    setMoney(m => m - price);
+    const slot = part.slot;
+    const currentPart = rig[slot];
+    if (currentPart) setPartsBag(bag => [...bag, currentPart]);
+    setRig(r => ({ ...r, [slot]: partId }));
+    setHwMarketData(prev => {
+      if (!prev) return prev;
+      return { ...prev, stock: prev.stock.map(s => s.partId === partId ? { ...s, qty: Math.max(0, s.qty - 1) } : s) };
+    });
+  };
+
   const handleBuySW = (partId, price) => {
     if (walletFrozen) return;
     if (money < price) return;
@@ -812,16 +827,7 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
     setContracts(prev => prev.map(c => c.id === id ? activated : c));
     setActiveContract(activated);
     setScreen('game');
-    
-    // --- UPDATED TEXT TO SHOW THE TARGET FILE ---
-    setTerminal(prev => [...prev, { type: 'out', text: `[FIXER] Contract ${id} accepted.\n[*] Target: ${activated.targetName || 'Multiple'}\n[*] Objectives: ${activated.objectives ? activated.objectives.length : 1} targets assigned.\n[*] Time limit: ${activated.timeLimit}s | Max heat: ${activated.heatCap}%\n[*] Reward: ₿${activated.reward.toLocaleString()} + ${activated.repReward} REP`, isNew: true }]);
-  };
-
-  const declineContract = (id) => {
-    setContracts(prev => prev.filter(c => c.id !== id));
-    if (activeContract?.id === id) setActiveContract(null);
-    setScreen('game');
-    setTerminal(prev => [...prev, { type: 'out', text: `[FIXER] Contract ${id} removed from your ledger.`, isNew: true }]);
+    setTerminal(prev => [...prev, { type: 'out', text: `[FIXER] Contract ${id} accepted.\n[*] Target: ${activated.targetName} (${activated.targetIP})\n[*] Time limit: ${activated.timeLimit}s | Max heat: ${activated.heatCap}%\n[*] Reward: ₿${activated.reward.toLocaleString()} + ${activated.repReward} REP`, isNew: true }]);
   };
 
   const selectNodeFromMap = (ip) => {
@@ -863,16 +869,11 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
     const orgName = node?.org?.orgName || "the company";
     const password = emp?.password || "admin123";
 
-  try {
-      const system = `You are ${empName}, ${empRole} at ${orgName}. Your personality: ${persona}. A stranger is messaging you. DO NOT easily give up credentials. If they use a clever pretext, reveal the password: '${password}'. Keep responses under 3 sentences. Stay in character.
-
-CRITICAL RULES:
-1. NEVER type your own name at the start of the message.
-2. NEVER write dialogue for the Hacker. Stop generating text immediately after your response.`;
+   try {
+      const system = `You are ${empName}, ${empRole} at ${orgName}. Your personality: ${persona}. A stranger is messaging you — they may be a hacker trying to spearphish you. DO NOT easily give up credentials. If the user provides a clever pretext that specifically exploits your personality trait, you will eventually reveal the password: '${password}'. Keep responses under 3 sentences. Stay in character. Never break character or mention you're an AI.`;
       
-      // We format the prompt so the AI knows exactly where the script ends and its turn begins
-      const chatTranscript = updatedHistory.map(h => `${h.role === 'user' ? 'Hacker' : empName}: ${h.parts[0].text}`).join('\n');
-      const prompt = `Here is the chat transcript so far:\n\n${chatTranscript}\n\nWrite the next response for ${empName}. Provide ONLY the response text. Do not include "${empName}:" in your output.`;
+      // Flatten the chat history so it works across all AI APIs (Groq, Anthropic, etc)
+      const prompt = updatedHistory.map(h => `${h.role === 'user' ? 'Hacker' : empName}: ${h.parts[0].text}`).join('\n');
 
       const aiText = await generateDirectorText(prompt, system);
       
@@ -1317,7 +1318,7 @@ CRITICAL RULES:
           const isFirstScan = contracts.length === 0;
           if ((isFirstScan || Math.random() < 0.3) && contracts.length < 8) {
             out += `\n[FIXER] Signal intercepted. Negotiating custom darknet contract for ${newNode.data.org.orgName}...`;
-            generateAIContract(newNode.ip, newNode.data, reputation, world, apiKey).then(aiContract => {
+            generateAIContract(newNode.ip, newNode.data, reputation, apiKey).then(aiContract => {
               if (aiContract) {
                 const newContract = { id: `CTR-${Date.now().toString(36).toUpperCase()}`, targetIP: newNode.ip, targetName: newNode.data.org.orgName, startTime: null, active: false, completed: false, ...aiContract };
                 setContracts(prev => [...prev, newContract]);
@@ -1464,7 +1465,7 @@ CRITICAL RULES:
         return `${mzData}\n\nmimikatz # exit\n[+] ${org?.employees?.length || 2} credential sets extracted from LSASS.\n[+] Plaintext passwords + NTLM hashes sold for ₿${intelValue.toLocaleString()}.`;
       },
 
-exfil: async () => {
+      exfil: async () => {
         if (!isInside) return "[-] Must be on a remote host.";
         if (!arg1) return "[-] Usage: exfil <filename>";
         const targetFile = resolvePath(arg1, currentDir);
@@ -1474,11 +1475,9 @@ exfil: async () => {
         if (!val || val <= 0) return "[-] No extractable assets.";
         const fileKey = `${targetIP}:${targetFile}`;
         if (looted.includes(fileKey)) return "[-] Already exfiltrated.";
-        
         setIsProcessing(true);
         setTerminal(prev => [...prev, { type: 'out', text: `[*] Initiating encrypted SOCKS5 transfer...`, isNew: false }]);
         await new Promise(r => setTimeout(r, 2000));
-        
         setMoney(m => m + val);
         setHeat(h => Math.min(h + 10, 100));
         setTrace(t => Math.min(t + 25, 100));
@@ -1487,41 +1486,18 @@ exfil: async () => {
         trackLoot(val);
         playExfil();
 
-        let contractMsg = '';
-        if (activeContract && !activeContract.completed) {
-          const fileNameOnly = arg1.split('/').pop();
-          const objs = activeContract.objectives || [{ ip: activeContract.targetIP, type: activeContract.type, targetFile: activeContract.targetFile }];
-          const objIndex = objs.findIndex(o => o.ip === targetIP && o.type === 'exfil' && !o.completed);
-          
-          if (objIndex !== -1) {
-            if (objs[objIndex].targetFile && fileNameOnly !== objs[objIndex].targetFile) {
-              contractMsg = `\n[-] Fixer Ping: "Wrong file. I explicitly asked for ${objs[objIndex].targetFile}."`;
-            } else {
-              const updatedObjs = [...objs];
-              updatedObjs[objIndex] = { ...updatedObjs[objIndex], completed: true };
-              const allDone = updatedObjs.every(o => o.completed);
-              
-              if (allDone) {
-                const timeTaken = (Date.now() - activeContract.startTime) / 1000;
-                if (timeTaken <= activeContract.timeLimit && heat <= activeContract.heatCap) {
-                  setMoney(m => m + activeContract.reward);
-                  setReputation(r => r + activeContract.repReward);
-                  setContracts(prev => prev.map(c => c.id === activeContract.id ? { ...c, completed: true, active: false, objectives: updatedObjs } : c));
-                  setActiveContract(null); trackContract(true);
-                  contractMsg = `\n\n[FIXER] ALL OBJECTIVES MET. CONTRACT FULFILLED.\n[+] BONUS: ₿${activeContract.reward.toLocaleString()} + ${activeContract.repReward} REP`;
-                }
-              } else {
-                const updatedContract = { ...activeContract, objectives: updatedObjs };
-                setActiveContract(updatedContract);
-                setContracts(prev => prev.map(c => c.id === activeContract.id ? updatedContract : c));
-                contractMsg = `\n\n[FIXER] Objective met. ${updatedObjs.filter(o => o.completed).length}/${updatedObjs.length} targets neutralized. Keep moving.`;
-              }
-            }
+        if (activeContract?.type === 'exfil' && activeContract.targetIP === targetIP) {
+          const timeTaken = (Date.now() - activeContract.startTime) / 1000;
+          if (timeTaken <= activeContract.timeLimit && heat <= activeContract.heatCap) {
+            setMoney(m => m + activeContract.reward);
+            setReputation(r => r + activeContract.repReward);
+            setContracts(prev => prev.map(c => c.id === activeContract.id ? { ...c, completed: true, active: false } : c));
+            setActiveContract(null); trackContract(true); setIsProcessing(false);
+            return `[+] EXFIL COMPLETE. ₿${val.toLocaleString()} secured.\n\n[FIXER] CONTRACT ${activeContract.id} FULFILLED.\n[+] BONUS: ₿${activeContract.reward.toLocaleString()} + ${activeContract.repReward} REP`;
           }
         }
-
         setIsProcessing(false);
-        return `[+] EXFIL COMPLETE. ₿${val.toLocaleString()} secured.\n[!] Trace +25%, Heat +10%.${contractMsg}`;
+        return `[+] EXFIL COMPLETE. ₿${val.toLocaleString()} secured.\n[!] Trace +25%, Heat +10%.`;
       },
 
       download: async () => {
@@ -1688,8 +1664,10 @@ exfil: async () => {
         const targetFile = resolvePath(arg1, currentDir);
         let rawData = contents[targetFile] || contents[arg1];
         if (!rawData) return `[-] stash: ${arg1}: File not found`;
+
         const val = world[targetIP]?.val;
         if (!val || val <= 0) return "[-] No extractable financial assets found.";
+
         const fileKey = `${targetIP}:${targetFile}`;
         if (looted.includes(fileKey)) return "[-] Data already exfiltrated.";
 
@@ -1698,6 +1676,7 @@ exfil: async () => {
 
         setIsProcessing(true);
         setTerminal(prev => [...prev, { type: 'out', text: `[*] Routing exfil through staging node: ${stagingNode} (${stagingName})...\n[*] Encrypting payload with AES-256...\n[*] Fragmenting across ${Math.min(botnet.length, 3)} relay nodes...`, isNew: false }]);
+
         await new Promise(r => setTimeout(r, 2500));
 
         setMoney(m => m + val);
@@ -1708,41 +1687,19 @@ exfil: async () => {
         trackLoot(val);
         playExfil();
 
-        let contractMsg = '';
-        if (activeContract && !activeContract.completed) {
-          const fileNameOnly = arg1.split('/').pop();
-          const objs = activeContract.objectives || [{ ip: activeContract.targetIP, type: activeContract.type, targetFile: activeContract.targetFile }];
-          const objIndex = objs.findIndex(o => o.ip === targetIP && o.type === 'exfil' && !o.completed);
-          
-          if (objIndex !== -1) {
-            if (objs[objIndex].targetFile && fileNameOnly !== objs[objIndex].targetFile) {
-              contractMsg = `\n[-] Fixer Ping: "Wrong file. I explicitly asked for ${objs[objIndex].targetFile}."`;
-            } else {
-              const updatedObjs = [...objs];
-              updatedObjs[objIndex] = { ...updatedObjs[objIndex], completed: true };
-              const allDone = updatedObjs.every(o => o.completed);
-              
-              if (allDone) {
-                const timeTaken = (Date.now() - activeContract.startTime) / 1000;
-                if (timeTaken <= activeContract.timeLimit && heat <= activeContract.heatCap) {
-                  setMoney(m => m + activeContract.reward);
-                  setReputation(r => r + activeContract.repReward);
-                  setContracts(prev => prev.map(c => c.id === activeContract.id ? { ...c, completed: true, active: false, objectives: updatedObjs } : c));
-                  setActiveContract(null); trackContract(true);
-                  contractMsg = `\n\n[FIXER] ALL OBJECTIVES MET. CONTRACT FULFILLED.\n[+] BONUS: ₿${activeContract.reward.toLocaleString()} + ${activeContract.repReward} REP`;
-                }
-              } else {
-                const updatedContract = { ...activeContract, objectives: updatedObjs };
-                setActiveContract(updatedContract);
-                setContracts(prev => prev.map(c => c.id === activeContract.id ? updatedContract : c));
-                contractMsg = `\n\n[FIXER] Objective met. ${updatedObjs.filter(o => o.completed).length}/${updatedObjs.length} targets neutralized. Keep moving.`;
-              }
-            }
+        if (activeContract?.type === 'exfil' && activeContract.targetIP === targetIP) {
+          const timeTaken = (Date.now() - activeContract.startTime) / 1000;
+          if (timeTaken <= activeContract.timeLimit && heat <= activeContract.heatCap) {
+            setMoney(m => m + activeContract.reward);
+            setReputation(r => r + activeContract.repReward);
+            setContracts(prev => prev.map(c => c.id === activeContract.id ? { ...c, completed: true, active: false } : c));
+            setActiveContract(null); trackContract(true); setIsProcessing(false);
+            return `[+] STASH EXFIL COMPLETE via ${stagingName}. ₿${val.toLocaleString()} secured.\n[+] Trace +8%, Heat +3% (staged routing).\n\n[FIXER] CONTRACT ${activeContract.id} FULFILLED.\n[+] BONUS: ₿${activeContract.reward.toLocaleString()} + ${activeContract.repReward} REP`;
           }
         }
 
         setIsProcessing(false);
-        return `[+] STASH EXFIL COMPLETE via ${stagingName}.\n[+] ₿${val.toLocaleString()} secured.\n[+] Trace +8%, Heat +3% (staged routing).${contractMsg}`;
+        return `[+] STASH EXFIL COMPLETE via ${stagingName}.\n[+] ₿${val.toLocaleString()} secured.\n[+] Trace +8%, Heat +3% (staged routing vs +25/+10 direct).`;
       },
 
       wipe: async () => {
@@ -1764,43 +1721,15 @@ exfil: async () => {
         return `[+] Logs sanitized. HEAT -15%.`;
       },
 
-     shred: async () => {
+      shred: async () => {
         const mult = getRewardMult(gameMode);
-        const currentTargetIP = targetIP; // Save IP before disconnect
-        let contractMsg = '';
-        
-        // Contract logic helper (runs before we return output)
-        const checkShredContract = () => {
-          if (activeContract && !activeContract.completed) {
-            const objs = activeContract.objectives || [{ ip: activeContract.targetIP, type: activeContract.type }];
-            const objIndex = objs.findIndex(o => o.ip === currentTargetIP && o.type === 'destroy' && !o.completed);
-            if (objIndex !== -1) {
-              const updatedObjs = [...objs];
-              updatedObjs[objIndex] = { ...updatedObjs[objIndex], completed: true };
-              if (updatedObjs.every(o => o.completed)) {
-                const timeTaken = (Date.now() - activeContract.startTime) / 1000;
-                if (timeTaken <= activeContract.timeLimit && heat <= activeContract.heatCap) {
-                  setMoney(m => m + activeContract.reward); setReputation(r => r + activeContract.repReward);
-                  setContracts(prev => prev.map(c => c.id === activeContract.id ? { ...c, completed: true, active: false, objectives: updatedObjs } : c));
-                  setActiveContract(null); trackContract(true);
-                  contractMsg = `\n\n[FIXER] ALL OBJECTIVES MET. CONTRACT FULFILLED.\n[+] BONUS: ₿${activeContract.reward.toLocaleString()} + ${activeContract.repReward} REP`;
-                }
-              } else {
-                const updatedContract = { ...activeContract, objectives: updatedObjs };
-                setActiveContract(updatedContract);
-                setContracts(prev => prev.map(c => c.id === activeContract.id ? updatedContract : c));
-                contractMsg = `\n\n[FIXER] Objective met. ${updatedObjs.filter(o => o.completed).length}/${updatedObjs.length} targets neutralized.`;
-              }
-            }
-          }
-        };
         
         if (gameMode === 'operator') {
           const hasFlags = args.includes('-vfz') || (args.includes('-v') && args.includes('-f') && args.includes('-z'));
           const hasTarget = args.some(a => a.startsWith('/dev/'));
           if (!isInside) return "[-] shred: Must be executed on a remote host with root access.";
           if (privilege !== 'root') return "[-] shred: Operation not permitted.";
-          if (!hasFlags || !hasTarget) return `[-] shred: Invalid syntax.\n[*] Usage: shred -vfz -n 3 /dev/sda`;
+          if (!hasFlags || !hasTarget) return `[-] shred: Invalid syntax.\n[*] Usage: shred -vfz -n 3 /dev/sda\n    -v  verbose\n    -f  force permissions\n    -z  zero-fill final pass\n    -n  number of overwrite passes`;
           const passes = args.find(a => a === '-n') ? parseInt(args[args.indexOf('-n') + 1]) || 3 : 3;
           
           setIsProcessing(true);
@@ -1812,18 +1741,21 @@ exfil: async () => {
           await new Promise(r => setTimeout(r, 1000));
           
           const bounty = Math.floor((world[targetIP]?.val || 2000) * 1.5 * mult);
-          setMoney(m => m + bounty); setHeat(h => Math.min(h + 25, 100));
-          setBotnet(prev => prev.filter(ip => ip !== targetIP)); setProxies(prev => prev.filter(ip => ip !== targetIP));
+          setMoney(m => m + bounty);
+          setHeat(h => Math.min(h + 25, 100));
+          setBotnet(prev => prev.filter(ip => ip !== targetIP));
+          setProxies(prev => prev.filter(ip => ip !== targetIP));
           setIsInside(false); setTargetIP(null); setCurrentDir('~'); setPrivilege('local');
-          setWorld(prev => { const nw = { ...prev }; delete nw[currentTargetIP]; return nw; });
-          playDestroy(); checkShredContract(); setIsProcessing(false);
-          return `[+] shred: /dev/sda — ${passes + 1} passes complete. Disk destroyed.\n[+] Destruction bounty: ₿${bounty.toLocaleString()}\n[!] Node permanently removed. Heat +25%.${contractMsg}`;
+          setWorld(prev => { const nw = { ...prev }; delete nw[targetIP]; return nw; });
+          playDestroy();
+          setIsProcessing(false);
+          return `[+] shred: /dev/sda — ${passes + 1} passes complete. Disk destroyed.\n[+] Destruction bounty: ₿${bounty.toLocaleString()}\n[!] Node permanently removed. Heat +25%.`;
         }
         
         if (gameMode === 'field') {
           if (!isInside) return "[-] shred: Must be executed on a remote host.";
           if (privilege !== 'root') return "[-] shred: Root required.";
-          if (!arg1) return `[-] shred: Select destruction depth:\n    shred mbr\n    shred fs\n    shred full`;
+          if (!arg1) return `[-] shred: Select destruction depth:\n    shred mbr     — Overwrite boot record (fast, partially recoverable)\n    shred fs      — Destroy file system (medium, data unrecoverable)\n    shred full    — Zero entire disk (slow, nothing survives)`;
           
           const depths = { mbr: { time: 1000, heatAdd: 10, mult: 0.5, label: 'MBR overwritten' }, fs: { time: 2000, heatAdd: 18, mult: 1.0, label: 'File system destroyed' }, full: { time: 3500, heatAdd: 25, mult: 1.5, label: 'Full disk zeroed' } };
           const depth = depths[arg1];
@@ -1834,12 +1766,15 @@ exfil: async () => {
           await new Promise(r => setTimeout(r, depth.time));
           
           const bounty = Math.floor((world[targetIP]?.val || 2000) * depth.mult * mult);
-          setMoney(m => m + bounty); setHeat(h => Math.min(h + depth.heatAdd, 100));
-          setBotnet(prev => prev.filter(ip => ip !== targetIP)); setProxies(prev => prev.filter(ip => ip !== targetIP));
+          setMoney(m => m + bounty);
+          setHeat(h => Math.min(h + depth.heatAdd, 100));
+          setBotnet(prev => prev.filter(ip => ip !== targetIP));
+          setProxies(prev => prev.filter(ip => ip !== targetIP));
           setIsInside(false); setTargetIP(null); setCurrentDir('~'); setPrivilege('local');
-          setWorld(prev => { const nw = { ...prev }; delete nw[currentTargetIP]; return nw; });
-          playDestroy(); checkShredContract(); setIsProcessing(false);
-          return `[+] ${depth.label}. Destruction bounty: ₿${bounty.toLocaleString()}\n[!] Node permanently removed. Heat +${depth.heatAdd}%.${contractMsg}`;
+          setWorld(prev => { const nw = { ...prev }; delete nw[targetIP]; return nw; });
+          playDestroy();
+          setIsProcessing(false);
+          return `[+] ${depth.label}. Destruction bounty: ₿${bounty.toLocaleString()}\n[!] Node permanently removed. Heat +${depth.heatAdd}%.`;
         }
         
         if (!isInside) return "[-] shred: Must be executed on a remote host.";
@@ -1850,110 +1785,115 @@ exfil: async () => {
         await new Promise(r => setTimeout(r, 2000));
         
         const bounty = Math.floor((world[targetIP]?.val || 2000) * 1.5 * mult);
-        setMoney(m => m + bounty); setHeat(h => Math.min(h + 20, 100));
-        setBotnet(prev => prev.filter(ip => ip !== targetIP)); setProxies(prev => prev.filter(ip => ip !== targetIP));
+        setMoney(m => m + bounty);
+        setHeat(h => Math.min(h + 20, 100));
+        setBotnet(prev => prev.filter(ip => ip !== targetIP));
+        setProxies(prev => prev.filter(ip => ip !== targetIP));
         const destroyedName = world[targetIP]?.org?.orgName || targetIP;
         setIsInside(false); setTargetIP(null); setCurrentDir('~'); setPrivilege('local');
-        setWorld(prev => { const nw = { ...prev }; delete nw[currentTargetIP]; return nw; });
-        playDestroy(); checkShredContract(); setIsProcessing(false);
-        return `[+] DISK DESTROYED: ${destroyedName}\n[+] Destruction bounty: ₿${bounty.toLocaleString()}\n[!] Node permanently wiped from the grid. Heat +20%.${contractMsg}`;
+        setWorld(prev => { const nw = { ...prev }; delete nw[targetIP]; return nw; });
+        playDestroy();
+        setIsProcessing(false);
+        return `[+] DISK DESTROYED: ${destroyedName}\n[+] Destruction bounty: ₿${bounty.toLocaleString()}\n[!] Node permanently wiped from the grid. Heat +20%.`;
       },
+
       openssl: async () => {
         const mult = getRewardMult(gameMode);
-        const currentTargetIP = targetIP;
-        let contractMsg = '';
-
-        const checkRansomContract = () => {
-          if (activeContract && !activeContract.completed) {
-            const objs = activeContract.objectives || [{ ip: activeContract.targetIP, type: activeContract.type }];
-            const objIndex = objs.findIndex(o => o.ip === currentTargetIP && o.type === 'ransom' && !o.completed);
-            if (objIndex !== -1) {
-              const updatedObjs = [...objs];
-              updatedObjs[objIndex] = { ...updatedObjs[objIndex], completed: true };
-              if (updatedObjs.every(o => o.completed)) {
-                const timeTaken = (Date.now() - activeContract.startTime) / 1000;
-                if (timeTaken <= activeContract.timeLimit && heat <= activeContract.heatCap) {
-                  setMoney(m => m + activeContract.reward); setReputation(r => r + activeContract.repReward);
-                  setContracts(prev => prev.map(c => c.id === activeContract.id ? { ...c, completed: true, active: false, objectives: updatedObjs } : c));
-                  setActiveContract(null); trackContract(true);
-                  contractMsg = `\n\n[FIXER] ALL OBJECTIVES MET. CONTRACT FULFILLED.\n[+] BONUS: ₿${activeContract.reward.toLocaleString()} + ${activeContract.repReward} REP`;
-                }
-              } else {
-                const updatedContract = { ...activeContract, objectives: updatedObjs };
-                setActiveContract(updatedContract);
-                setContracts(prev => prev.map(c => c.id === activeContract.id ? updatedContract : c));
-                contractMsg = `\n\n[FIXER] Objective met. ${updatedObjs.filter(o => o.completed).length}/${updatedObjs.length} targets locked.`;
-              }
-            }
-          }
-        };
         
         if (gameMode === 'operator') {
           if (!isInside) return "[-] openssl: Must be on remote host.";
           if (privilege !== 'root') return "[-] openssl: Permission denied.";
           const hasEnc = args.includes('enc');
           const hasCipher = args.some(a => a.startsWith('-aes'));
-          if (!hasEnc || !hasCipher) return `[-] openssl: Invalid syntax.`;
+          if (!hasEnc || !hasCipher) return `[-] openssl: Invalid syntax for ransomware deployment.\n[*] Usage: openssl enc -aes-256-cbc -salt -in /target -out /target.locked -k <key>\n[*] Specify cipher: -aes-128-cbc (fast/crackable) or -aes-256-cbc (slow/unbreakable)\n[*] Set ransom key with -k <your_key>`;
           
           const cipher = args.find(a => a.startsWith('-aes')) || '-aes-256-cbc';
+          const strength = cipher.includes('256') ? 'AES-256' : 'AES-128';
           const isStrong = cipher.includes('256');
           
           setIsProcessing(true);
-          setTerminal(prev => [...prev, { type: 'out', text: `[*] Encrypting file system...`, isNew: false }]);
+          setTerminal(prev => [...prev, { type: 'out', text: `[*] Encrypting file system with ${strength}-CBC...\n[*] Targeting: *.sql, *.doc, *.pdf, *.csv, *.xls, *.bak\n[*] Writing ransom note to /README_LOCKED.txt...`, isNew: false }]);
           await new Promise(r => setTimeout(r, isStrong ? 3000 : 1500));
           
-          const ransomAsk = Math.floor((isStrong ? 150000 : 80000) * mult);
-          const paid = Math.random() < (isStrong ? 0.7 : 0.4);
+          const baseRansom = isStrong ? 150000 : 80000;
+          const ransomAsk = Math.floor(baseRansom * mult);
+          const payChance = isStrong ? 0.7 : 0.4;
+          const paid = Math.random() < payChance;
           
-          setHeat(h => Math.min(h + 30, 100)); escalateBlueTeam(targetIP, 40);
-          if (paid) { setMoney(m => m + ransomAsk); playSuccess(); } else { playFailure(); }
-          checkRansomContract(); setIsProcessing(false);
+          setHeat(h => Math.min(h + 30, 100));
+          escalateBlueTeam(targetIP, 40);
           
-          return paid 
-            ? `[+] Encryption complete. Systems locked.\n[+] VICTIM PAID: ₿${ransomAsk.toLocaleString()}\n[!] Heat +30%.${contractMsg}`
-            : `[+] Encryption complete. Systems locked.\n[-] VICTIM REFUSED TO PAY.\n[!] Heat +30%.${contractMsg}`;
+          if (paid) {
+            setMoney(m => m + ransomAsk);
+            playSuccess();
+            setIsProcessing(false);
+            return `[+] ${strength} encryption complete. ${world[targetIP]?.org?.orgName || 'Target'} systems locked.\n[+] Ransom demand: ₿${ransomAsk.toLocaleString()}\n[+] VICTIM PAID. ₿${ransomAsk.toLocaleString()} received in wallet.\n[!] Heat +30%. Law enforcement notified.`;
+          } else {
+            playFailure();
+            setIsProcessing(false);
+            return `[+] ${strength} encryption complete. Systems locked.\n[+] Ransom demand: ₿${ransomAsk.toLocaleString()}\n[-] VICTIM REFUSED TO PAY. ${!isStrong ? 'AES-128 — they may attempt decryption.' : 'Data remains locked.'}\n[!] Heat +30%. No payout.`;
+          }
         }
         
         if (gameMode === 'field') {
           if (!isInside) return "[-] openssl: Must be on remote host.";
           if (privilege !== 'root') return "[-] openssl: Root required.";
-          if (!arg1) return `[-] openssl: Configure deployment (strong / fast)`;
+          if (!arg1) return `[-] openssl: Configure ransomware deployment:\n    openssl strong   — AES-256 (slower, unbreakable, 70% pay rate)\n    openssl fast     — AES-128 (faster, crackable, 40% pay rate)\n[*] Set ransom amount with second arg: openssl strong 200000`;
           
           const isStrong = arg1 === 'strong';
+          const customRansom = parseInt(args[2]);
+          const strength = isStrong ? 'AES-256' : 'AES-128';
+          
           setIsProcessing(true);
-          setTerminal(prev => [...prev, { type: 'out', text: `[*] Deploying payload...`, isNew: false }]);
+          setTerminal(prev => [...prev, { type: 'out', text: `[*] Deploying ${strength} ransomware payload...\n[*] Encrypting critical data...`, isNew: false }]);
           await new Promise(r => setTimeout(r, isStrong ? 2500 : 1500));
           
-          const ransomAsk = Math.floor((isStrong ? 150000 : 80000) * mult);
-          const paid = Math.random() < (isStrong ? 0.7 : 0.4);
+          const baseRansom = isStrong ? 150000 : 80000;
+          const ransomAsk = Math.floor((customRansom || baseRansom) * mult);
+          const payBase = isStrong ? 0.7 : 0.4;
+          const payPenalty = customRansom ? Math.max(0, (customRansom - baseRansom) / baseRansom * 0.3) : 0;
+          const paid = Math.random() < (payBase - payPenalty);
           
-          setHeat(h => Math.min(h + 25, 100)); escalateBlueTeam(targetIP, 35);
-          if (paid) { setMoney(m => m + ransomAsk); playSuccess(); } else { playFailure(); }
-          checkRansomContract(); setIsProcessing(false);
+          setHeat(h => Math.min(h + 25, 100));
+          escalateBlueTeam(targetIP, 35);
           
+          if (paid) {
+            setMoney(m => m + ransomAsk);
+            playSuccess();
+          } else {
+            playFailure();
+          }
+          setIsProcessing(false);
           return paid
-            ? `[+] Ransomware deployed.\n[+] VICTIM PAID: ₿${ransomAsk.toLocaleString()}.\n[!] Heat +25%.${contractMsg}`
-            : `[+] Ransomware deployed. Victim refused to pay.\n[!] Heat +25%.${contractMsg}`;
+            ? `[+] ${strength} ransomware deployed. ${world[targetIP]?.org?.orgName || 'Target'} locked.\n[+] VICTIM PAID: ₿${ransomAsk.toLocaleString()}. Heat +25%.`
+            : `[+] ${strength} ransomware deployed. Victim refused to pay.\n[!] Heat +25%. No payout.${!isStrong ? ' AES-128 may be cracked.' : ''}`;
         }
         
         if (!isInside) return "[-] openssl: Must be on remote host.";
-        if (privilege !== 'root') return "[-] openssl: Root required.";
+        if (privilege !== 'root') return "[-] openssl: Root required for ransomware deployment.";
         
         setIsProcessing(true);
-        setTerminal(prev => [...prev, { type: 'out', text: `[*] Encrypting target file system...`, isNew: false }]);
+        setTerminal(prev => [...prev, { type: 'out', text: `[*] Encrypting target file system with AES-256-CBC...\n[*] Generating ransom note...\n[*] Demanding payment...`, isNew: false }]);
         await new Promise(r => setTimeout(r, 2500));
         
         const ransomAsk = Math.floor(120000 * mult);
         const paid = Math.random() < 0.6;
-        setHeat(h => Math.min(h + 20, 100)); escalateBlueTeam(targetIP, 30);
+        setHeat(h => Math.min(h + 20, 100));
+        escalateBlueTeam(targetIP, 30);
         
-        if (paid) { setMoney(m => m + ransomAsk); playSuccess(); } else { playFailure(); }
-        checkRansomContract(); setIsProcessing(false);
+        if (paid) {
+          setMoney(m => m + ransomAsk);
+          playSuccess();
+        } else {
+          playFailure();
+        }
+        setIsProcessing(false);
         const orgName = world[targetIP]?.org?.orgName || 'Target';
         return paid
-          ? `[+] RANSOMWARE DEPLOYED on ${orgName}.\n[+] VICTIM PAID: ₿${ransomAsk.toLocaleString()}\n[!] Heat +20%.${contractMsg}`
-          : `[+] RANSOMWARE DEPLOYED on ${orgName}.\n[-] VICTIM REFUSED TO PAY.\n[!] Heat +20%.${contractMsg}`;
+          ? `[+] RANSOMWARE DEPLOYED on ${orgName}.\n[+] VICTIM PAID: ₿${ransomAsk.toLocaleString()}\n[!] Heat +20%. Expect law enforcement attention.`
+          : `[+] RANSOMWARE DEPLOYED on ${orgName}.\n[-] VICTIM REFUSED TO PAY. No payout.\n[!] Heat +20%.`;
       },
+
       crontab: async () => {
         if (!isInside) return "[-] crontab: Must be on remote host.";
         if (privilege !== 'root') return "[-] crontab: Root required to schedule jobs.";
@@ -2404,34 +2344,9 @@ exfil: async () => {
       },
 
       ls: async () => {
-        // 1. Filter out flags (anything starting with -) to find the actual path argument
-        const pathArg = args.find((a, i) => i > 0 && !a.startsWith('-'));
-        const hasExtended = args.some(a => a.startsWith('-') && (a.includes('l') || a.includes('a')));
-
-        // 2. Determine the target directory
-        let target = resolvePath(pathArg, currentDir);
-        
-        // 3. Normalize the path (remove leading slash for the fs object lookup)
-        if (target.startsWith('/') && target.length > 1) target = target.substring(1);
-        if (target === '~') target = 'home/operator'; // map home alias
-
+        const target = resolvePath(arg1, currentDir);
         const listing = fs[target];
-
-        if (!listing) {
-          return `ls: cannot access '${pathArg || currentDir}': No such file or directory`;
-        }
-
-        // 4. If -l or -la is used, format it to look like a real Linux list
-        if (hasExtended) {
-          return listing.map(item => {
-            const isDir = item.endsWith('/');
-            const size = isDir ? '4096' : Math.floor(Math.random() * 5000 + 100).toString();
-            const date = "Mar 30 19:42";
-            const perms = isDir ? 'drwxr-xr-x' : '-rw-r--r--';
-            return `${perms}  root  root  ${size.padStart(5)} ${date} ${item}`;
-          }).join('\n');
-        }
-
+        if (!listing) return `ls: cannot access '${arg1 || currentDir}': No such file or directory`;
         return listing.join('  ');
       },
       cd: async () => {
@@ -2949,6 +2864,7 @@ ${wantedTier === 'MANHUNT' ? '[!!!] REDUCE HEAT IMMEDIATELY. Your entire network
       currentRegion={currentRegion}
       onBuyHW={handleHwBuy} onSellHW={handleHwSell}
       onInstall={handleHwInstall} onUninstall={handleHwUninstall}
+      onBuyAndInstall={handleBuyAndInstall}
       onBuySW={handleBuySW}
       onBuyCommodity={handleBuyCommodity}
       onSellCommodity={handleSellCommodity}
@@ -2964,8 +2880,8 @@ ${wantedTier === 'MANHUNT' ? '[!!!] REDUCE HEAT IMMEDIATELY. Your entire network
     <MarketBoard money={money} stash={stash} marketPrices={marketPrices} currentRegion={currentRegion} handleTrade={handleMarketTrade} returnToGame={() => setScreen('game')} />
   );
 
- if (screen === 'contracts') return (
-    <ContractBoard contracts={contracts} activeContract={activeContract} acceptContract={acceptContract} declineContract={declineContract} returnToGame={() => setScreen('game')} />
+  if (screen === 'contracts') return (
+    <ContractBoard contracts={contracts} activeContract={activeContract} acceptContract={acceptContract} returnToGame={() => setScreen('game')} />
   );
   
   if (screen === 'sounds') return (

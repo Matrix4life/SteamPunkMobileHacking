@@ -130,16 +130,19 @@ const [soundMap, setSoundMapState] = useState({});
 // Pass to soundEngine whenever it changes:
 useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
 
+  // --- AUTO-SCROLL AND FOCUS KEEPER ---
   useEffect(() => {
-    if (terminalEndRef.current) terminalEndRef.current.scrollIntoView({ behavior: 'auto', block: 'end' });
-    if (!isProcessing && !showHelpMenu) {
+    if (terminalEndRef.current) {
+      terminalEndRef.current.scrollIntoView({ behavior: 'auto', block: 'end' });
+    }
+    
+    // Auto-focus input when terminal updates, but only if we're in the terminal screens
+    if (!isProcessing && !showHelpMenu && (screen === 'game' || screen === 'login')) {
       inputRef.current?.focus();
-      }
-  }, [terminal, isProcessing, showHelpMenu]);
-    if (inputRef.current && !isProcessing && (screen === 'game' || screen === 'login') && !showHelpMenu) inputRef.current.focus();
-  }, [terminal, mapExpanded, screen, isProcessing, showHelpMenu]);
+    }
+  }, [terminal, isProcessing, showHelpMenu, screen]);
 
-  // Initialize Capacitor native plugins
+  // --- INITIALIZE PLUGINS ---
   useEffect(() => {
     initNative();
   }, []);
@@ -2970,16 +2973,16 @@ if (screen === 'soundmanager') {
         </span> 
       ) : (
         t.isNew ? ( 
-          <Typewriter 
-            text={t.text} 
-            scrollRef={terminalEndRef} 
-            onComplete={() => { 
-              t.isNew = false; 
-              // This ensures the cursor stays in the input box after typing finishes
-              inputRef.current?.focus(); 
-            }} 
-            customColor={t.isChat ? COLORS.chat : undefined} 
-          /> 
+         <Typewriter 
+  text={t.text} 
+  scrollRef={terminalEndRef} 
+  onComplete={() => { 
+    t.isNew = false; 
+    // This is the safety net focus call
+    inputRef.current?.focus(); 
+  }} 
+  customColor={t.isChat ? COLORS.chat : undefined} 
+/>
         ) : ( 
           <span style={{ color: t.isChat ? COLORS.chat : undefined }}>
             <SyntaxText text={t.text} />

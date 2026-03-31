@@ -132,6 +132,10 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
 
   useEffect(() => {
     if (terminalEndRef.current) terminalEndRef.current.scrollIntoView({ behavior: 'auto', block: 'end' });
+    if (!isProcessing && !showHelpMenu) {
+      inputRef.current?.focus();
+      }
+  }, [terminal, isProcessing, showHelpMenu]);
     if (inputRef.current && !isProcessing && (screen === 'game' || screen === 'login') && !showHelpMenu) inputRef.current.focus();
   }, [terminal, mapExpanded, screen, isProcessing, showHelpMenu]);
 
@@ -2960,10 +2964,29 @@ if (screen === 'soundmanager') {
           let inColor = isChatting ? COLORS.chat : (t.remote ? COLORS.primary : COLORS.textDim);
           return (
             <div key={i} style={{ marginBottom: '4px', wordBreak: 'break-all', whiteSpace: 'pre-wrap', background: t.isChat ? `${COLORS.chat}10` : 'transparent', padding: t.isChat ? '2px 6px' : '0', borderRadius: t.isChat ? '3px' : '0', lineHeight: '1.5' }}>
-              {t.type === 'in' ? ( <span style={{ color: inColor }}><span style={{ color: COLORS.textDim }}>{t.dir}</span> <span style={{ color: COLORS.secondary }}>$</span> {t.text}</span> ) : (
-                t.isNew ? ( <Typewriter text={t.text} scrollRef={terminalEndRef} onComplete={() => { t.isNew = false; }} customColor={t.isChat ? COLORS.chat : undefined} /> ) : ( <span style={{ color: t.isChat ? COLORS.chat : undefined }}><SyntaxText text={t.text} /></span> )
-              )}
-            </div>
+      {t.type === 'in' ? ( 
+        <span style={{ color: inColor }}>
+          <span style={{ color: COLORS.textDim }}>{t.dir}</span> <span style={{ color: COLORS.secondary }}>$</span> {t.text}
+        </span> 
+      ) : (
+        t.isNew ? ( 
+          <Typewriter 
+            text={t.text} 
+            scrollRef={terminalEndRef} 
+            onComplete={() => { 
+              t.isNew = false; 
+              // This ensures the cursor stays in the input box after typing finishes
+              inputRef.current?.focus(); 
+            }} 
+            customColor={t.isChat ? COLORS.chat : undefined} 
+          /> 
+        ) : ( 
+          <span style={{ color: t.isChat ? COLORS.chat : undefined }}>
+            <SyntaxText text={t.text} />
+          </span> 
+        )
+      )}
+    </div>
           );
         })}
         <div ref={terminalEndRef} style={{ height: '8px' }} />

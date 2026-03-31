@@ -245,25 +245,26 @@ export default function RigDisplay({
     return () => clearInterval(id);
   }, [hasRGB]);
 
-  // Sync tiers based on the 'rig' object
-  const tiers = useMemo(() => {
-    const obj = {}; // <--- THIS LINE WAS MISSING
+ const tiers = useMemo(() => {
+    const obj = {}; // Initialize the object properly
     const slots = ['CPU', 'GPU', 'RAM', 'SSD', 'PSU', 'COOL', 'NET', 'CASE'];
     
     slots.forEach(s => {
       const slotKey = s.toLowerCase();
       const partId = rig[slotKey];
       
-      // Look up the part in your central database
-      const part = PARTS_BY_ID && PARTS_BY_ID[partId];
+      // Safety check: ensure PARTS_BY_ID exists before looking up
+      const part = (PARTS_BY_ID && partId) ? PARTS_BY_ID[partId] : null;
       
-      // Use the generation (gen) as the tier (0, 1, 2, or 3)
+      // Assign the generation (1, 2, or 3) as the tier. 
+      // This is what triggers the visual glow in the <Slot /> component.
       obj[s] = part ? part.gen : 0;
     });
-    
+
+    console.log("Rig Status Update:", obj); // Debugging: check your console to see the sync
     return obj;
   }, [rig]);
-
+  
   const cpuPct = tiers.CPU > 0 ? clamp(Math.round(safeHeat * 0.72 + (isProcessing ? 10 : 0)), 8, 100) : 0;
   const gpuPct = tiers.GPU > 0 ? clamp(Math.round(safeHeat * 0.9 + (isProcessing ? 12 : 0)), 10, 100) : 0;
 

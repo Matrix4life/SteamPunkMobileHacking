@@ -118,6 +118,76 @@ const STEAMBREACH = () => {
   const [wantedTier, setWantedTier] = useState('COLD');
   const [walletFrozen, setWalletFrozen] = useState(false);
 
+  const rigFx = getRigEffects(rig);
+  const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
+  const getEconomyNodeValue = (ip = targetIP) => {
+    const node = world?.[ip];
+    if (!node) return 2500;
+    if (typeof node.val === 'number' && node.val > 0) return node.val;
+    const secBase = { low: 2500, mid: 9000, high: 30000, elite: 90000 };
+    return secBase[node.sec] || 2500;
+  };
+  const getEconomyModeMult = () => 0.8 + (getRewardMult(gameMode) * 0.2);
+  const getEconomyMarketMult = () => clamp(0.75 + (btcIndex * 0.35), 0.9, 1.5);
+  const getHashRigMult = () => clamp(0.9 + (rigFx.hashSpeed / 12), 0.9, 1.8);
+  const getExfilRigMult = () => clamp(0.9 + (rigFx.exfilMultiplier / 10), 0.9, 1.7);
+  const getMineRigMult = () => clamp(0.75 + (rigFx.mineMultiplier / 3000), 0.75, 2.5);
+  const getHeatRiskMult = (baseHeat = heat) => clamp(1 + ((100 - baseHeat) / 200), 1, 1.5);
+  const getEconomyPayout = ({
+    ip = targetIP,
+    action = 'generic',
+    staged = false,
+    distributedNodes = 0,
+    isStrong = true,
+    customTargetValue = null,
+  } = {}) => {
+    const targetValue = customTargetValue || getEconomyNodeValue(ip);
+    const actionMult = {
+      john: 0.18,
+      hashcat: 0.28,
+      exfil: 0.28,
+      stash: 0.34,
+      shred: 0.42,
+      ransom_fast: 0.4,
+      ransom_strong: 0.58,
+      fence: 0.22,
+      generic: 0.2,
+    }[action] || 0.2;
+
+    const rigMult = action === 'john' || action === 'hashcat'
+      ? getHashRigMult()
+      : action === 'exfil' || action === 'stash'
+        ? getExfilRigMult()
+        : action.startsWith('ransom')
+          ? clamp((getHashRigMult() + getExfilRigMult()) / 2, 1, 1.7)
+          : 1;
+
+    const distributedMult = distributedNodes > 0 ? clamp(1 + (distributedNodes * 0.08), 1, 1.6) : 1;
+    const stagingMult = staged ? 1.1 : 1;
+    const volatilityMult = getEconomyMarketMult() * getEconomyModeMult() * getHeatRiskMult();
+    const raw = targetValue * actionMult * rigMult * distributedMult * stagingMult * volatilityMult;
+
+    const floors = {
+      john: 1200,
+      hashcat: 2500,
+      exfil: 900,
+      stash: 1200,
+      shred: 1800,
+      ransom_fast: 8000,
+      ransom_strong: 15000,
+      fence: 6000,
+      generic: 1000,
+    };
+
+    return Math.max(floors[action] || 1000, Math.floor(raw));
+  };
+  const getMinerNodes = (lootList = looted) => lootList.filter(x => typeof x === 'string' && x.startsWith('xmrig_')).length;
+  const getPassiveIncomeRate = (lootList = looted) => {
+    const minerNodes = getMinerNodes(lootList);
+    if (minerNodes <= 0) return 0;
+    return Math.floor(minerNodes * HOURLY_RATE * getMineRigMult() * getEconomyMarketMult());
+  };
+
   const [director, setDirector] = useState(DEFAULT_DIRECTOR);
   const directorRef = useRef(DEFAULT_DIRECTOR);
 
@@ -343,12 +413,17 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
       const data = JSON.parse(localStorage.getItem(`breach_slot_${slotName}`));
       if (!data) return false;
       applySaveData(data);
-      if (data.timestamp && data.botnet?.length > 0) {
+      const savedLoot = data.looted || [];
+      const savedMinerNodes = savedLoot.filter(x => typeof x === 'string' && x.startsWith('xmrig_')).length;
+      if (data.timestamp && savedMinerNodes > 0) {
         const hours = (Date.now() - data.timestamp) / (1000 * 60 * 60);
-        const earned = Math.floor(hours * data.botnet.length * HOURLY_RATE);
+        const savedRigFx = getRigEffects(data.rig || { cpu:null, gpu:null, ram:null, ssd:null, psu:null, cool:null, net:null, case:null });
+        const savedMineMult = clamp(0.75 + (savedRigFx.mineMultiplier / 3000), 0.75, 2.5);
+        const savedMarketMult = clamp(0.75 + ((data.btcIndex || 1.0) * 0.35), 0.9, 1.5);
+        const earned = Math.floor(hours * savedMinerNodes * HOURLY_RATE * savedMineMult * savedMarketMult);
         if (earned > 0) {
           setMoney(m => m + earned);
-          setTerminal([{ type: 'out', text: `[SYSTEM] Offline C2 revenue: +₿${earned.toLocaleString()}`, isNew: false }]);
+          setTerminal([{ type: 'out', text: `[SYSTEM] Offline mining revenue: +₿${earned.toLocaleString()} from ${savedMinerNodes} active miner node${savedMinerNodes > 1 ? 's' : ''}`, isNew: false }]);
         }
       }
       return true;
@@ -1480,7 +1555,7 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
         const targetFile = resolvePath(arg1, currentDir);
         let rawData = contents[targetFile] || contents[arg1];
         if (!rawData) return `[-] exfil: ${arg1}: File not found`;
-        const val = world[targetIP]?.val;
+        const val = getEconomyPayout({ action: 'exfil' });
         if (!val || val <= 0) return "[-] No extractable assets.";
         const fileKey = `${targetIP}:${targetFile}`;
         if (looted.includes(fileKey)) return "[-] Already exfiltrated.";
@@ -1579,9 +1654,8 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
         const orgData = sourceIP ? world[sourceIP]?.org : null;
 
         const hasCPU = inventory.includes('CPU');
-        const crackTime = hasCPU ? 1200 : 3500;
-        
-        const baseReward = Math.floor(Math.random() * 1000 + 1500);
+        const crackTime = Math.max(900, Math.floor((hasCPU ? 2400 : 3600) / getHashRigMult()));
+        const baseReward = getEconomyPayout({ ip: sourceIP || targetIP, action: 'john' });
 
         setIsProcessing(true);
         setTerminal(prev => [...prev, { 
@@ -1631,13 +1705,13 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
         const nodeCount = distributed ? botnet.length : 0;
         const speedMult = distributed ? Math.max(1, nodeCount) : 1;
         
-        const baseCrackTime = Math.max(800, Math.floor(3000 / speedMult));
-        let crackTime = inventory.includes('CPU') ? Math.floor(baseCrackTime * 0.5) : baseCrackTime;
-        if (inventory.includes('GPU')) crackTime = 10;
+        const baseCrackTime = Math.max(700, Math.floor(3200 / (speedMult * getHashRigMult())));
+        let crackTime = inventory.includes('CPU') ? Math.floor(baseCrackTime * 0.7) : baseCrackTime;
+        if (inventory.includes('GPU')) crackTime = Math.max(250, Math.floor(baseCrackTime * 0.35));
         
-        const baseReward = 3500;
-        const bonusReward = distributed ? nodeCount * 500 : 0;
-        const totalReward = baseReward + bonusReward;
+        const totalReward = getEconomyPayout({ action: 'hashcat', distributedNodes: nodeCount });
+        const baseReward = Math.floor(totalReward / (distributed ? (1 + (nodeCount * 0.08)) : 1));
+        const bonusReward = totalReward - baseReward;
 
         setIsProcessing(true);
         if (distributed) {
@@ -1674,7 +1748,7 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
         let rawData = contents[targetFile] || contents[arg1];
         if (!rawData) return `[-] stash: ${arg1}: File not found`;
 
-        const val = world[targetIP]?.val;
+        const val = getEconomyPayout({ action: 'stash', staged: true });
         if (!val || val <= 0) return "[-] No extractable financial assets found.";
 
         const fileKey = `${targetIP}:${targetFile}`;
@@ -1824,8 +1898,7 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
           setTerminal(prev => [...prev, { type: 'out', text: `[*] Encrypting file system with ${strength}-CBC...\n[*] Targeting: *.sql, *.doc, *.pdf, *.csv, *.xls, *.bak\n[*] Writing ransom note to /README_LOCKED.txt...`, isNew: false }]);
           await new Promise(r => setTimeout(r, isStrong ? 3000 : 1500));
           
-          const baseRansom = isStrong ? 150000 : 80000;
-          const ransomAsk = Math.floor(baseRansom * mult);
+          const ransomAsk = getEconomyPayout({ action: isStrong ? 'ransom_strong' : 'ransom_fast' });
           const payChance = isStrong ? 0.7 : 0.4;
           const paid = Math.random() < payChance;
           
@@ -1857,8 +1930,9 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
           setTerminal(prev => [...prev, { type: 'out', text: `[*] Deploying ${strength} ransomware payload...\n[*] Encrypting critical data...`, isNew: false }]);
           await new Promise(r => setTimeout(r, isStrong ? 2500 : 1500));
           
+          const econRansom = getEconomyPayout({ action: isStrong ? 'ransom_strong' : 'ransom_fast' });
           const baseRansom = isStrong ? 150000 : 80000;
-          const ransomAsk = Math.floor((customRansom || baseRansom) * mult);
+          const ransomAsk = customRansom ? Math.floor((econRansom + customRansom) / 2) : econRansom;
           const payBase = isStrong ? 0.7 : 0.4;
           const payPenalty = customRansom ? Math.max(0, (customRansom - baseRansom) / baseRansom * 0.3) : 0;
           const paid = Math.random() < (payBase - payPenalty);
@@ -1885,7 +1959,7 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
         setTerminal(prev => [...prev, { type: 'out', text: `[*] Encrypting target file system with AES-256-CBC...\n[*] Generating ransom note...\n[*] Demanding payment...`, isNew: false }]);
         await new Promise(r => setTimeout(r, 2500));
         
-        const ransomAsk = Math.floor(120000 * mult);
+        const ransomAsk = getEconomyPayout({ action: 'ransom_strong' });
         const paid = Math.random() < 0.6;
         setHeat(h => Math.min(h + 20, 100));
         escalateBlueTeam(targetIP, 30);
@@ -2259,8 +2333,6 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
         
         const xmrigKey = `xmrig_${targetIP}`;
         if (looted.includes(xmrigKey)) return "[-] xmrig: Miner already running on this node.";
-        const mult = getRewardMult(gameMode);
-
         if (gameMode === 'operator') {
           const hasConfig = args.includes('--config') || args.some(a => a.includes('config.json'));
           const hasBg = args.includes('--background') || args.includes('-B');
@@ -2272,7 +2344,7 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
 
           const threads = args.includes('--threads') ? parseInt(args[args.indexOf('--threads') + 1]) || 4 : 4;
           const maxCpu = args.includes('--max-cpu') ? parseInt(args[args.indexOf('--max-cpu') + 1]) || 75 : 75;
-          const incomeBonus = Math.floor(threads * maxCpu * 2 * mult);
+          const incomeBonus = Math.floor(((threads * maxCpu * 2) + HOURLY_RATE) * getMineRigMult() * getEconomyMarketMult());
 
           setIsProcessing(true);
           setTerminal(prev => [...prev, { type: 'out', text: ` * ABOUT       ig/6.19.0 gcc/11.3.0\n * LIBS         libuv/1.44.1 OpenSSL/3.0.2\n * POOL         pool.minexmr.com:443\n * CPU          ${threads} threads, ${maxCpu}% max usage\n * DONATE       1%\n[*] Starting mining daemon in background...\n[*] pid: ${Math.floor(Math.random() * 30000 + 10000)}`, isNew: false }]);
@@ -2302,7 +2374,7 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
           setTerminal(prev => [...prev, { type: 'out', text: `[*] Deployingig at ${intensity.cpu}% CPU...\n[*] Connecting to mining pool...`, isNew: false }]);
           await new Promise(r => setTimeout(r, 1200));
 
-          const hourlyIncome = Math.floor(intensity.income * mult);
+          const hourlyIncome = Math.floor(intensity.income * getMineRigMult() * getEconomyMarketMult());
           setLooted(prev => [...prev, xmrigKey]);
           const heatAdd = inventory.includes('Cooling') ? Math.ceil(intensity.heatAdd / 2) : intensity.heatAdd;
           setHeat(h => Math.min(h + heatAdd, 100));
@@ -2315,7 +2387,7 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
         setTerminal(prev => [...prev, { type: 'out', text: `[*] Installingig cryptominer...\n[*] Connecting to Monero pool...`, isNew: false }]);
         await new Promise(r => setTimeout(r, 1200));
 
-        const hourlyIncome = Math.floor(500 * mult);
+        const hourlyIncome = Math.floor(HOURLY_RATE * getMineRigMult() * getEconomyMarketMult());
         setLooted(prev => [...prev, xmrigKey]);
         const heatAdd = inventory.includes('Cooling') ? 2 : 3;
         setHeat(h => Math.min(h + heatAdd, 100));
@@ -2495,7 +2567,7 @@ MARKET PRICES: ${priceStr}${walletFrozen ? ' | WALLET: FROZEN' : ' | WALLET: ACT
 THREAT ASSESSMENT: ${threatLevel}
 GLOBAL SOC POSTURE: ${score >= 15 ? 'AGGRESSIVE' : score <= -15 ? 'DISTRACTED' : 'NOMINAL'}
 PROXY CHAIN CAPACITY: ${proxies.length}/${maxHops} HOPS
-BOTNET NODES: ${botnet.length} (PASSIVE INCOME: ₿${(botnet.length * HOURLY_RATE).toLocaleString()}/hr)
+BOTNET NODES: ${botnet.length} | ACTIVE MINERS: ${getMinerNodes()} (PASSIVE INCOME: ₿${getPassiveIncomeRate().toLocaleString()}/hr)
 CONTRACTS COMPLETED: ${d.metrics.contractsCompleted}
 NODES LOOTED: ${d.metrics.nodesLooted}
 

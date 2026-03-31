@@ -697,8 +697,10 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
     if (walletFrozen) return;
     if (money < price) return;
     setMoney(m => m - price);
-    setPartsBag(bag => [...bag, partId]);
-    // Reduce stock
+    
+    // This adds the part to your "Bag" so it shows up in the "Inventory" list
+    setPartsBag(bag => [...bag, partId]); 
+    
     setHwMarketData(prev => {
       if (!prev) return prev;
       const stock = prev.stock.map(s =>

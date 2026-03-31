@@ -1649,8 +1649,7 @@ const completeContractAndRemove = (id) => {
           if (timeTaken <= activeContract.timeLimit && heat <= activeContract.heatCap) {
             setMoney(m => m + activeContract.reward);
             setReputation(r => r + activeContract.repReward);
-            setContracts(prev => prev.map(c => c.id === activeContract.id ? { ...c, completed: true, active: false } : c));
-            setActiveContract(null); trackContract(true); setIsProcessing(false);
+          completeContractAndRemove(activeContract.id); trackContract(true); setIsProcessing(false);
             return `[+] EXFIL COMPLETE. ₿${val.toLocaleString()} secured.\n\n[FIXER] CONTRACT ${activeContract.id} FULFILLED.\n[+] BONUS: ₿${activeContract.reward.toLocaleString()} + ${activeContract.repReward} REP`;
           }
         }
@@ -1849,8 +1848,7 @@ const completeContractAndRemove = (id) => {
           if (timeTaken <= activeContract.timeLimit && heat <= activeContract.heatCap) {
             setMoney(m => m + activeContract.reward);
             setReputation(r => r + activeContract.repReward);
-            setContracts(prev => prev.map(c => c.id === activeContract.id ? { ...c, completed: true, active: false } : c));
-            setActiveContract(null); trackContract(true); setIsProcessing(false);
+            completeContractAndRemove(activeContract.id); trackContract(true); setIsProcessing(false);
             return `[+] STASH EXFIL COMPLETE via ${stagingName}. ₿${val.toLocaleString()} secured.\n[+] Trace +8%, Heat +3% (staged routing).\n\n[FIXER] CONTRACT ${activeContract.id} FULFILLED.\n[+] BONUS: ₿${activeContract.reward.toLocaleString()} + ${activeContract.repReward} REP`;
           }
         }
@@ -3036,8 +3034,14 @@ ${wantedTier === 'MANHUNT' ? '[!!!] REDUCE HEAT IMMEDIATELY. Your entire network
   );
 
   if (screen === 'contracts') return (
-    <ContractBoard contracts={contracts} activeContract={activeContract} acceptContract={acceptContract} returnToGame={() => setScreen('game')} />
-  );
+  <ContractBoard
+    contracts={contracts.filter(c => !c.completed)}
+    activeContract={activeContract}
+    acceptContract={acceptContract}
+    denyContract={denyContract}
+    returnToGame={() => setScreen('game')}
+  />
+);
   
   if (screen === 'sounds') return (
     <SoundManager

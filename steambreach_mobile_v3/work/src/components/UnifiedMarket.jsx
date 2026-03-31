@@ -247,7 +247,6 @@ export default function UnifiedMarket({
   const btc=marketData?.btcIndex||1;
   const trend=btcTrend(btc);
 
-  // Filter + sort stock
   const filtered=useMemo(()=>{
     let items=marketData?.stock||[];
     if(tab!=='commodities'){
@@ -284,7 +283,6 @@ export default function UnifiedMarket({
           <span style={{color:C.dim,fontSize:'12px'}}>{currentRegion?.toUpperCase().replace('-',' ')}</span>
         </div>
         <div style={{display:'flex',alignItems:'center',gap:'14px'}}>
-          {/* Market volatility */}
           <div style={{display:'flex',alignItems:'center',gap:'6px'}}>
             <span style={{color:trend.color,fontSize:'12px'}}>{trend.icon}</span>
             <span style={{color:trend.color,fontSize:'12px'}}>{trend.text}</span>
@@ -350,7 +348,7 @@ export default function UnifiedMarket({
 
       {/* BODY */}
       <div style={{display:'flex',flex:1,overflow:'hidden'}}>
-        {/* LEFT: LISTINGS — full width on mobile */}
+        {/* LEFT: LISTINGS */}
         {(!isMobile || mobileView==='shop') && (
         <div style={{flex:1,overflow:'auto',padding:'8px 10px',scrollbarWidth:'thin',scrollbarColor:`${C.bdr} transparent`}}>
           {tab==='commodities'?(
@@ -377,14 +375,38 @@ export default function UnifiedMarket({
         </div>
         )}
 
-        {/* RIGHT: RIG + BAG — full width on mobile when toggled */}
+        {/* RIGHT: RIG + BAG — Overflow fix applied below */}
         {(!isMobile || mobileView==='rig') && (
-        <div style={{width:isMobile?'100%':'250px',borderLeft:isMobile?'none':`1px solid ${C.bdr}`,display:'flex',flexDirection:'column',overflow:'hidden'}}>
-          <div style={{padding:'8px',borderBottom:`1px solid ${C.bdr}`,overflow:'auto',scrollbarWidth:'thin',scrollbarColor:`${C.bdr} transparent`}}>
+        <div style={{
+          width:isMobile?'100%':'250px',
+          borderLeft:isMobile?'none':`1px solid ${C.bdr}`,
+          display:'flex',
+          flexDirection:'column',
+          height:'100%', // Fixed height container
+          overflow:'hidden'
+        }}>
+          {/* Top half: Installed rig (Scrollable) */}
+          <div style={{
+            flex: '0 1 auto', 
+            maxHeight: '60%', 
+            padding:'8px',
+            borderBottom:`1px solid ${C.bdr}`,
+            overflowY:'auto',
+            scrollbarWidth:'thin',
+            scrollbarColor:`${C.bdr} transparent`
+          }}>
             <SynergyPanel rig={rig}/>
             {HW_SLOTS.map(s=><RigSlot key={s} slot={s} partId={rig[s]} onRemove={onUninstall} onSell={onSellHW}/>)}
           </div>
-          <div style={{flex:1,overflow:'auto',padding:'6px',scrollbarWidth:'thin',scrollbarColor:`${C.bdr} transparent`}}>
+          
+          {/* Bottom half: Inventory Bag (Independent Scroll) */}
+          <div style={{
+            flex:1,
+            overflowY:'auto',
+            padding:'6px',
+            scrollbarWidth:'thin',
+            scrollbarColor:`${C.bdr} transparent`
+          }}>
             <div style={{fontSize:'13px',letterSpacing:'1.5px',color:C.dim,marginBottom:'4px'}}>
               INVENTORY ({partsBag.length+softwareOwned.length})
             </div>

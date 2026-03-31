@@ -247,13 +247,20 @@ export default function RigDisplay({
 
   // Sync tiers based on the 'rig' object
   const tiers = useMemo(() => {
-    const obj = {};
-    Object.keys(SLOT_LAYOUT).forEach(s => {
+    const obj = {}; // <--- THIS LINE WAS MISSING
+    const slots = ['CPU', 'GPU', 'RAM', 'SSD', 'PSU', 'COOL', 'NET', 'CASE'];
+    
+    slots.forEach(s => {
       const slotKey = s.toLowerCase();
       const partId = rig[slotKey];
-      const part = PARTS_BY_ID[partId];
+      
+      // Look up the part in your central database
+      const part = PARTS_BY_ID && PARTS_BY_ID[partId];
+      
+      // Use the generation (gen) as the tier (0, 1, 2, or 3)
       obj[s] = part ? part.gen : 0;
     });
+    
     return obj;
   }, [rig]);
 

@@ -252,7 +252,7 @@ const generateAIContract = async (targetIP, nodeData, currentRep, arg4, arg5) =>
 
   // 1. Roll the Sandbox Probability based on strict Reputation milestones
   let minProb = 1; // Default allows everything (1-100%)
-  
+
   if (currentRep < 25) {
     minProb = 75; // 0 to 24 REP: ONLY Easy / Tier 1 (75-100%)
   } else if (currentRep < 80) {
@@ -270,76 +270,119 @@ const generateAIContract = async (targetIP, nodeData, currentRep, arg4, arg5) =>
 
   if (prob <= 9) { // 💀 Insane (Tier 4)
     numTargets = Math.floor(Math.random() * 2) + 3; // 3 to 4 objectives
-    timeLimit = 180; heatCap = 35;
-    minReward = 50000; maxReward = 150000; minRep = 100; maxRep = 250;
+    timeLimit = 180;
+    heatCap = 35;
+    minReward = 50000;
+    maxReward = 150000;
+    minRep = 100;
+    maxRep = 250;
   } else if (prob <= 49) { // 🔴 Hard (Tier 3)
     numTargets = Math.floor(Math.random() * 2) + 2; // 2 to 3 objectives
-    timeLimit = 240; heatCap = 45;
-    minReward = 15000; maxReward = 55000; minRep = 50; maxRep = 120;
+    timeLimit = 240;
+    heatCap = 45;
+    minReward = 15000;
+    maxReward = 55000;
+    minRep = 50;
+    maxRep = 120;
   } else if (prob <= 74) { // 🟡 Medium (Tier 2)
     numTargets = Math.floor(Math.random() * 2) + 1; // 1 to 2 objectives
-    timeLimit = 300; heatCap = 75;
-    minReward = 4000; maxReward = 18000; minRep = 20; maxRep = 55;
+    timeLimit = 300;
+    heatCap = 75;
+    minReward = 4000;
+    maxReward = 18000;
+    minRep = 20;
+    maxRep = 55;
   } else { // 🟢 Easy (Tier 1)
     numTargets = 1;
-    timeLimit = 600; heatCap = 90;
-    minReward = 1000; maxReward = 4500; minRep = 10; maxRep = 25;
+    timeLimit = 600;
+    heatCap = 90;
+    minReward = 1000;
+    maxReward = 4500;
+    minRep = 10;
+    maxRep = 25;
   }
 
   const reward = Math.floor(Math.random() * (maxReward - minReward + 1)) + minReward;
   const repReward = Math.floor(Math.random() * (maxRep - minRep + 1)) + minRep;
 
   // 3. Select Target Nodes from the World Map
-  const availableIPs = Object.keys(world).filter(ip => ip !== 'local' && ip !== targetIP && !world[ip].isHidden);
-  const actualNumTargets = Math.min(numTargets, [targetIP, ...shuffledIPs].length);
- const selectedIPs = [targetIP, ...shuffledIPs].slice(0, actualNumTargets);
+  const availableIPs = Object.keys(world).filter(
+    (ip) => ip !== 'local' && ip !== targetIP && world[ip] && !world[ip].isHidden
+  );
+
+  const shuffledIPs = [...availableIPs].sort(() => 0.5 - Math.random());
+  const actualNumTargets = Math.min(numTargets, 1 + shuffledIPs.length);
+  const selectedIPs = [targetIP, ...shuffledIPs].slice(0, actualNumTargets);
 
   // 4. Generate the Objectives List
   const objectives = [];
   const actionTypes = ['exfil', 'destroy', 'ransom'];
 
-  for (let i = 0; i < actualNumTargets; i++) {
+  for (let i = 0; i < selectedIPs.length; i++) {
     const ip = selectedIPs[i];
     const node = ip === targetIP ? nodeData : world[ip];
+    if (!node) continue;
+
     const type = actionTypes[Math.floor(Math.random() * actionTypes.length)];
 
     let targetFile = null;
     if (type === 'exfil') {
-      let allFiles = [];
-      if (node && node.files) {
-        Object.keys(node.files).forEach(dir => {
-          node.files[dir].forEach(f => {
-            if (!f.endsWith('/') && f !== '.bash_history' && !f.endsWith('.tmp') && !f.endsWith('.eml')) {
-              allFiles.push(f);
-            }
-          });
+      const allFiles = [];
+      if (node.files && typeof node.files === 'object') {
+        Object.keys(node.files).forEach((dir) => {
+          const dirFiles = node.files[dir];
+          if (Array.isArray(dirFiles)) {
+            dirFiles.forEach((f) => {
+              if (
+                !f.endsWith('/') &&
+                f !== '.bash_history' &&
+                !f.endsWith('.tmp') &&
+                !f.endsWith('.eml')
+              ) {
+                allFiles.push(f);
+              }
+            });
+          }
         });
       }
-      targetFile = allFiles.length > 0 ? allFiles[Math.floor(Math.random() * allFiles.length)] : 'proprietary_data.zip';
+      targetFile =
+        allFiles.length > 0
+          ? allFiles[Math.floor(Math.random() * allFiles.length)]
+          : 'proprietary_data.zip';
     }
 
     objectives.push({
-      ip: ip,
-      name: node?.org?.orgName || "Unknown Node",
-      type: type,
-      targetFile: targetFile
+      ip,
+      name: node?.org?.orgName || 'Unknown Node',
+      type,
+      targetFile,
     });
   }
 
   const fallbackContract = {
     probability: prob,
-    objectives: objectives,
+    objectives,
     desc: `[ENCRYPTED REROUTE] Client requires a multi-stage operation. See objective checklist for details. Scrub your tracks.`,
-    timeLimit, reward, repReward, heatCap,
+    timeLimit,
+    reward,
+    repReward,
+    heatCap,
     forbidden_tools: [],
-    isAmbush: prob <= 20 && Math.random() < 0.2 // Ambush more likely on Hard/Insane
+    isAmbush: prob <= 20 && Math.random() < 0.2, // Ambush more likely on Hard/Insane
   };
 
   // 5. Ask the AI Director to write the flavor text based on the objectives
   const prompt = `You are a Darknet Fixer in a hacking simulator. Write a contract description.
   The success probability is ${prob}%. (If low, make it sound dangerous/elite. If high, make it sound routine).
   Objectives required:
-  ${objectives.map((o, i) => `${i+1}. ${o.type.toUpperCase()} on ${o.name} (${o.ip})${o.type === 'exfil' ? ` -> Target File: ${o.targetFile}` : ''}`).join('\n')}
+  ${objectives
+    .map(
+      (o, i) =>
+        `${i + 1}. ${o.type.toUpperCase()} on ${o.name} (${o.ip})${
+          o.type === 'exfil' ? ` -> Target File: ${o.targetFile}` : ''
+        }`
+    )
+    .join('\n')}
 
   Return ONLY raw JSON in this exact format. No markdown, no explanations:
   {
@@ -347,7 +390,7 @@ const generateAIContract = async (targetIP, nodeData, currentRep, arg4, arg5) =>
   }`;
 
   try {
-    let aiText = await generateDirectorText(prompt, "");
+    let aiText = await generateDirectorText(prompt, '');
     aiText = aiText.replace(/```json/gi, '').replace(/```/g, '').trim();
     const jsonMatch = aiText.match(/\{[\s\S]*\}/);
 

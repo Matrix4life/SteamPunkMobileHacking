@@ -2404,9 +2404,34 @@ exfil: async () => {
       },
 
       ls: async () => {
-        const target = resolvePath(arg1, currentDir);
+        // 1. Filter out flags (anything starting with -) to find the actual path argument
+        const pathArg = args.find((a, i) => i > 0 && !a.startsWith('-'));
+        const hasExtended = args.some(a => a.startsWith('-') && (a.includes('l') || a.includes('a')));
+
+        // 2. Determine the target directory
+        let target = resolvePath(pathArg, currentDir);
+        
+        // 3. Normalize the path (remove leading slash for the fs object lookup)
+        if (target.startsWith('/') && target.length > 1) target = target.substring(1);
+        if (target === '~') target = 'home/operator'; // map home alias
+
         const listing = fs[target];
-        if (!listing) return `ls: cannot access '${arg1 || currentDir}': No such file or directory`;
+
+        if (!listing) {
+          return `ls: cannot access '${pathArg || currentDir}': No such file or directory`;
+        }
+
+        // 4. If -l or -la is used, format it to look like a real Linux list
+        if (hasExtended) {
+          return listing.map(item => {
+            const isDir = item.endsWith('/');
+            const size = isDir ? '4096' : Math.floor(Math.random() * 5000 + 100).toString();
+            const date = "Mar 30 19:42";
+            const perms = isDir ? 'drwxr-xr-x' : '-rw-r--r--';
+            return `${perms}  root  root  ${size.padStart(5)} ${date} ${item}`;
+          }).join('\n');
+        }
+
         return listing.join('  ');
       },
       cd: async () => {

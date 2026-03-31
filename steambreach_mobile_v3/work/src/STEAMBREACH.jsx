@@ -903,16 +903,55 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
         }
     }
   };
+  const denyContract = (id) => {
+  setContracts(prev => prev.filter(c => c.id !== id));
+  if (activeContract?.id === id) {
+    setActiveContract(null);
+  }
+};
+
+const completeContractAndRemove = (id) => {
+  setContracts(prev => prev.filter(c => c.id !== id));
+  if (activeContract?.id === id) {
+    setActiveContract(null);
+  }
+};
 
   const acceptContract = (id) => {
   const contract = contracts.find(c => c.id === id);
   if (!contract || contract.completed) return;
 
-  const activated = { ...contract, active: true, startTime: Date.now() };
-  setContracts(prev => prev.map(c => c.id === id ? activated : c));
+  const activated = {
+    ...contract,
+    active: true,
+    completed: false,
+    startTime: Date.now(),
+  };
+
+  setContracts(prev =>
+    prev.map(c =>
+      c.id === id
+        ? activated
+        : { ...c, active: false }
+    )
+  );
+
   setActiveContract(activated);
   setScreen('game');
 
+  setTerminal(prev => [
+    ...prev,
+    {
+      type: 'out',
+      text:
+        `[FIXER] Contract ${id} accepted.\n` +
+        `[*] Target: ${activated.targetName} (${activated.targetIP})\n` +
+        `[*] Time limit: ${activated.timeLimit}s | Max heat: ${activated.heatCap}%\n` +
+        `[*] Reward: ₿${activated.reward.toLocaleString()} + ${activated.repReward} REP`,
+      isNew: true
+    }
+  ]);
+};
   const objectiveLines = (activated.objectives || [])
     .map((o, idx) => {
       if (o.type === 'exfil') {

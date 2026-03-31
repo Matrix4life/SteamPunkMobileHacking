@@ -1,7 +1,25 @@
 const generateAIContract = async (targetIP, nodeData, currentRep, arg4, arg5) => {
   const world = typeof arg4 === 'object' && arg4 !== null ? arg4 : {};
   const apiKey = typeof arg4 === 'string' ? arg4 : arg5;
+// 1. Export your main contract generator
+export const generateAIContract = async (targetIP, nodeData, currentRep, arg4, arg5) => {
+    // ... (All the code you just pasted) ...
+};
 
+// 2. THE FIX: Alias for the world generator
+// world/generation.js looks for this name specifically. 
+// We point it to the new function so the build succeeds.
+export const generateOrgNarrative = generateAIContract;
+
+// 3. Ensure the file system generator is exported
+export const generateOrgFileSystem = (orgName) => {
+  // Logic for creating the folder structures
+  return {
+    '/': ['home', 'var', 'etc', 'rd'],
+    '/home/admin': ['passwords.txt', 'config.yaml'],
+    // ...
+  };
+};
   let minProb = 1;
   if (currentRep < 25) minProb = 75;
   else if (currentRep < 80) minProb = 50;

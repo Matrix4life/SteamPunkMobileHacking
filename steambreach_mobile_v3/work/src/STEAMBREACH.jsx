@@ -2956,6 +2956,7 @@ if (screen === 'soundmanager') {
           isMobile={isMobile}
         />
         <RigDisplay 
+          rig={rig} // <-- Pass the actual installed hardware
           inventory={inventory} heat={heat} isProcessing={isProcessing} expanded={mapExpanded} toggleExpand={() => setMapExpanded(e => !e)}
           isMobile={isMobile}
         />

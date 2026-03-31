@@ -3194,6 +3194,6 @@ if (screen === 'soundmanager') {
       )}
     </div>
   );
-};
+
 
 export default STEAMBREACH;

@@ -1475,6 +1475,13 @@ const completeContractAndRemove = (id) => {
           if (Object.keys(world || {}).filter(k => k !== 'local' && !world[k].isHidden).length + i >= 25) break;
           
           const newNode = generateNewTarget(null, null, director.modifiers);
+          
+          // --- NEW: BEGINNER PROTECTION ---
+          // If reputation is under 15, silently disable honeypots so new players don't get instantly burned
+          if (reputation < 15) {
+            newNode.data.isHoneypot = false;
+          }
+
           setWorld(prev => ({ ...prev, [newNode.ip]: newNode.data }));
           out += `\nDiscovered ${newNode.data.port}/tcp on ${newNode.ip}`;
           out += `\n[*] ORG: ${newNode.data.org.orgName} (${newNode.data.org.type})`;
@@ -1483,7 +1490,7 @@ const completeContractAndRemove = (id) => {
           const isFirstScan = contracts.length === 0;
           if ((isFirstScan || Math.random() < 0.3) && contracts.length < 8) {
             out += `\n[FIXER] Signal intercepted. Negotiating custom darknet contract for ${newNode.data.org.orgName}...`;
-            generateAIContract(newNode.ip, newNode.data, reputation, world, apiKey).then(aiContract => {
+            generateAIContract(newNode.ip, newNode.data, reputation, apiKey).then(aiContract => {
               if (aiContract) {
                 const newContract = { id: `CTR-${Date.now().toString(36).toUpperCase()}`, targetIP: newNode.ip, targetName: newNode.data.org.orgName, startTime: null, active: false, completed: false, ...aiContract };
                 setContracts(prev => [...prev, newContract]);

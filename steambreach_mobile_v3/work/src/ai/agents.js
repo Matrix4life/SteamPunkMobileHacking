@@ -1,25 +1,10 @@
-const generateAIContract = async (targetIP, nodeData, currentRep, arg4, arg5) => {
-  const world = typeof arg4 === 'object' && arg4 !== null ? arg4 : {};
-  const apiKey = typeof arg4 === 'string' ? arg4 : arg5;
+import { generateDirectorText } from './aiAdapter';
+
 // 1. Export your main contract generator
 export const generateAIContract = async (targetIP, nodeData, currentRep, arg4, arg5) => {
-    // ... (All the code you just pasted) ...
-};
+  const world = typeof arg4 === 'object' && arg4 !== null ? arg4 : {};
+  const apiKey = typeof arg4 === 'string' ? arg4 : arg5;
 
-// 2. THE FIX: Alias for the world generator
-// world/generation.js looks for this name specifically. 
-// We point it to the new function so the build succeeds.
-export const generateOrgNarrative = generateAIContract;
-
-// 3. Ensure the file system generator is exported
-export const generateOrgFileSystem = (orgName) => {
-  // Logic for creating the folder structures
-  return {
-    '/': ['home', 'var', 'etc', 'rd'],
-    '/home/admin': ['passwords.txt', 'config.yaml'],
-    // ...
-  };
-};
   let minProb = 1;
   if (currentRep < 25) minProb = 75;
   else if (currentRep < 80) minProb = 50;
@@ -207,52 +192,23 @@ export const generateOrgFileSystem = (orgName) => {
     isAmbush: prob <= 20 && Math.random() < 0.2
   };
 
-  const prompt = `You are a darknet fixer writing premium mission briefings for a hacking game.
-
-Success probability: ${prob}%
-Primary target: ${primaryOrg}
-Target type: ${primaryType}
-Security tier: ${nodeData?.sec || 'mid'}
-Objective summary:
-${objectives.map((o, i) => `${i + 1}. ${o.label}${o.type === 'exfil' ? ` (target file: ${o.targetFile})` : ''}`).join('\n')}
-
-Write a mission dossier with mystery and style, but DO NOT tell the player how to complete it.
-Do NOT include any recommended path, tool instructions, exploit suggestions, or step-by-step solution.
-
-Return ONLY raw JSON in this exact shape:
-{
-  "desc": "1 short hook line for the contract card",
-  "briefing": "2-4 sentences of immersive fixer briefing",
-  "client": "who is paying",
-  "motive": "why they want it done",
-  "targetProfile": "short target profile line",
-  "knownConditions": ["condition 1", "condition 2"],
-  "complication": "one possible complication"
-}`;
+  const prompt = `You are a darknet fixer writing premium mission briefings for a hacking game. Return ONLY raw JSON. shape: { "desc": string, "briefing": string, "client": string, "motive": string, "targetProfile": string, "knownConditions": string[], "complication": string }`;
 
   try {
     let aiText = await generateDirectorText(prompt, '');
-    aiText = aiText.replace(/```json/gi, '').replace(/```/g, '').trim();
     const jsonMatch = aiText.match(/\{[\s\S]*\}/);
-
     if (!jsonMatch) return fallbackContract;
-
     const parsedData = JSON.parse(jsonMatch[0]);
-
-    return {
-      ...fallbackContract,
-      desc: parsedData.desc || fallbackContract.desc,
-      briefing: parsedData.briefing || fallbackContract.briefing,
-      client: parsedData.client || fallbackContract.client,
-      motive: parsedData.motive || fallbackContract.motive,
-      targetProfile: parsedData.targetProfile || fallbackContract.targetProfile,
-      knownConditions:
-        Array.isArray(parsedData.knownConditions) && parsedData.knownConditions.length
-          ? parsedData.knownConditions.slice(0, 2)
-          : fallbackContract.knownConditions,
-      complication: parsedData.complication || fallbackContract.complication
-    };
+    return { ...fallbackContract, ...parsedData };
   } catch (e) {
     return fallbackContract;
   }
+};
+
+// 2. THE BUILD FIX: Alias for the world generator
+export const generateOrgNarrative = generateAIContract;
+
+// 3. Ensure the file system generator is exported
+export const generateOrgFileSystem = (orgName) => {
+  return { '/': ['home', 'var', 'etc'], '/home/admin': ['passwords.txt'] };
 };

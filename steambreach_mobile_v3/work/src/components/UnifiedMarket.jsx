@@ -376,13 +376,13 @@ export default function UnifiedMarket({
         )}
 
         {/* RIGHT: RIG + BAG — Overflow fix applied below */}
-        <div style={{
+       <div style={{
   width: isMobile ? '100%' : '250px',
   borderLeft: isMobile ? 'none' : `1px solid ${C.bdr}`,
   display: 'flex',
   flexDirection: 'column',
-  height: '100vh', // Keep it locked to the screen height
-  overflow: 'hidden'
+  height: '100vh', // <--- Add this
+  overflow: 'hidden' // <--- Add this
 }}>
           {/* Top Section: Synergy & Installed Slots (Independent Scroll) */}
   <div style={{ flex: '0 1 auto', maxHeight: '60%', overflowY: 'auto', padding: '8px', borderBottom: `1px solid ${C.bdr}` }}>

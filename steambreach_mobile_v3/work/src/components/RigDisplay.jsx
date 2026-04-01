@@ -222,7 +222,7 @@ function CollapsedView({ tiers, heat, isProcessing }) {
 }
 
 export default function RigDisplay({
- rig={} 
+  rig = {}, 
   inventory = [], 
   heat = 0,
   isProcessing = false,
@@ -252,9 +252,14 @@ export default function RigDisplay({
     const slots = ['CPU', 'GPU', 'RAM', 'SSD', 'PSU', 'COOL', 'NET', 'CASE'];
     
     slots.forEach(s => {
-      const slotKey = s.toLowerCase(); // Fixes the lowercase/uppercase mismatch
+      const slotKey = s.toLowerCase();
       const partId = rig[slotKey];
+      
+      // Look for the part in our database
       const part = (PARTS_BY_ID && partId) ? PARTS_BY_ID[partId] : null;
+      
+      // CRITICAL: We ensure tier is a number between 0-3
+      // This is what triggers the colors/glow in the SVG
       obj[s] = part ? (part.gen || 1) : 0;
     });
     return obj;

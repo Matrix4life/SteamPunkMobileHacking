@@ -4,7 +4,7 @@ import { generateDirectorText } from './aiAdapter';
 // 3. AI AGENTS (FIXER, EMPLOYEES, BLUE TEAM)
 // ==========================================
 
-const invokeBlueTeamAI = async (apiKey, playerCommand, nodeName, currentTrace, currentHeat) => {
+export const invokeBlueTeamAI = async (apiKey, playerCommand, nodeName, currentTrace, currentHeat) => {
   const prompt = `You are an elite, highly aggressive Cybersecurity SOC Analyst defending the network "${nodeName}". 
   An attacker (the player) has infiltrated your network. Their current Heat is ${currentHeat}% and you have traced them to ${currentTrace}%.
   They just attempted to run this command on your network: "${playerCommand}"
@@ -19,11 +19,10 @@ const invokeBlueTeamAI = async (apiKey, playerCommand, nodeName, currentTrace, c
   }
 };
 
-const ORG_TEMPLATES = {
+export const ORG_TEMPLATES = {
   low: [
     { type: 'startup', names: ['NovaTech Solutions', 'BrightPath Digital', 'Apex Micro', 'CloudNine Labs', 'DataPulse Inc'] },
     { type: 'smallbiz', names: ['Greenfield Consulting', 'Metro Legal Group', 'Sunrise Healthcare', 'Pinnacle Realty', 'Harbor Financial'] },
-    // --- ADDED CIVILIAN TARGETS ---
     { type: 'personal', names: ['Desktop PC', 'Home Network', 'MacBook Pro', 'Public WiFi Client', 'Smart Home Hub'] } 
   ],
   mid: [
@@ -39,16 +38,16 @@ const ORG_TEMPLATES = {
   ]
 };
 
-const FIRST_NAMES = ['James','Sarah','Mike','Elena','David','Lisa','Robert','Anna','Kevin','Maria','Tom','Rachel','Chris','Diana','Alex','Nina','Steve','Julia','Mark','Yuki'];
-const LAST_NAMES = ['Chen','Williams','Petrov','Garcia','Kim','Mueller','Okafor','Tanaka','Singh','Anderson','Reeves','Costa','Nakamura','Walsh','Ibrahim','Novak','Park','Foster','Dubois','Sharma'];
-const ROLES = {
+export const FIRST_NAMES = ['James','Sarah','Mike','Elena','David','Lisa','Robert','Anna','Kevin','Maria','Tom','Rachel','Chris','Diana','Alex','Nina','Steve','Julia','Mark','Yuki'];
+export const LAST_NAMES = ['Chen','Williams','Petrov','Garcia','Kim','Mueller','Okafor','Tanaka','Singh','Anderson','Reeves','Costa','Nakamura','Walsh','Ibrahim','Novak','Park','Foster','Dubois','Sharma'];
+export const ROLES = {
   low: ['IT Support', 'Junior Dev', 'Office Manager', 'Intern', 'Receptionist'],
   mid: ['Sysadmin', 'Network Engineer', 'DBA', 'Security Analyst', 'DevOps Lead', 'VP Engineering'],
   high: ['CISO', 'Director of Operations', 'Senior Analyst', 'Incident Commander', 'Threat Hunter'],
   elite: ['Station Chief', 'Signals Officer', 'Crypto Analyst', 'Black Ops Coordinator']
 };
 
-const generateEmployee = (tier, index) => {
+export const generateEmployee = (tier, index) => {
   const first = FIRST_NAMES[Math.floor(Math.random() * FIRST_NAMES.length)];
   const last = LAST_NAMES[Math.floor(Math.random() * LAST_NAMES.length)];
   const roles = ROLES[tier] || ROLES.mid;
@@ -82,23 +81,20 @@ const generateEmployee = (tier, index) => {
   };
 };
 
-const generateOrgNarrative = (tier) => {
+export const generateOrgNarrative = (tier) => {
   const templates = ORG_TEMPLATES[tier] || ORG_TEMPLATES.mid;
   const template = templates[Math.floor(Math.random() * templates.length)];
   let orgName = template.names[Math.floor(Math.random() * template.names.length)];
   
-  // Personal PCs usually only have 1 or 2 users (Owner and maybe a Guest/Family member)
   let employeeCount = tier === 'low' ? 3 : tier === 'mid' ? 5 : tier === 'high' ? 4 : 3;
   if (template.type === 'personal') employeeCount = Math.floor(Math.random() * 2) + 1; 
   
   const employees = Array.from({ length: employeeCount }, (_, i) => {
     const emp = generateEmployee(tier, i);
-    // Assign personal roles instead of corporate titles
     if (template.type === 'personal') emp.role = i === 0 ? 'Admin / Owner' : 'Guest User';
     return emp;
   });
   
-  // Dynamically name the PC after the owner! (e.g., "David's MacBook Pro")
   if (template.type === 'personal') {
     orgName = `${employees[0].name.split(' ')[0]}'s ${orgName}`;
   }
@@ -119,6 +115,7 @@ const generateOrgNarrative = (tier) => {
   
   return { orgName, type: template.type, employees, secrets };
 };
+
 const FILE_SYSTEM_THEMES = {
   personal: {
     dirs: ['documents', 'pictures', 'downloads', 'desktop', 'private'],
@@ -154,35 +151,25 @@ const FILE_SYSTEM_THEMES = {
   }
 };
 
-const generateOrgFileSystem = (org, tier, layout) => {
-  // 1. Pick the theme based on the organization type generated earlier
+export const generateOrgFileSystem = (org, tier, layout) => {
   const theme = FILE_SYSTEM_THEMES[org.type] || FILE_SYSTEM_THEMES.corporation;
-  
-  // 2. Randomly select 2-3 directories from the theme
   const shuffledDirs = theme.dirs.sort(() => 0.5 - Math.random()).slice(0, Math.floor(Math.random() * 2) + 2);
   
   let filesObj = { '/': ['mail/', 'tmp/'] };
   let contents = {};
   
-  // Add the chosen directories to root
   shuffledDirs.forEach(d => filesObj['/'].push(`${d}/`));
 
-  // 3. Populate directories with themed files
   shuffledDirs.forEach(dir => {
     const dirPath = `/${dir}`;
     filesObj[dirPath] = [];
-    
-    // Put 1-3 random themed files in this directory
     const shuffledFiles = theme.files.sort(() => 0.5 - Math.random()).slice(0, Math.floor(Math.random() * 3) + 1);
     
     shuffledFiles.forEach(file => {
       filesObj[dirPath].push(file);
       const fullPath = `${dirPath}/${file}`;
-      
-      // Determine if the file is locked based on security tier
       const isLocked = (tier === 'high' || tier === 'elite') ? '[LOCKED] ' : '';
       
-      // Give hashes their specific content tag so John the Ripper works
       if (file.endsWith('.sql') || file.endsWith('.env') || file.endsWith('.pgp') || file.endsWith('.sqlite')) {
         contents[fullPath] = `${isLocked}[HASH] SHA-512 System Hashes: df98a2b1c...`;
       } else {
@@ -191,7 +178,6 @@ const generateOrgFileSystem = (org, tier, layout) => {
     });
   });
 
-  // 4. Always generate employee mail files
   const mailFiles = [];
   org.employees.forEach((emp, idx) => {
     const filename = `msg_${String(idx + 1).padStart(3, '0')}.eml`;
@@ -200,12 +186,10 @@ const generateOrgFileSystem = (org, tier, layout) => {
   });
   filesObj['/mail'] = mailFiles;
 
-  // 5. Always generate standard tmp files
   filesObj['/tmp'] = ['.bash_history', 'syslog.tmp'];
   contents['/tmp/.bash_history'] = '[LORE_PENDING]';
   contents['/tmp/syslog.tmp'] = '[LORE_PENDING]';
 
-  // 6. Randomly sprinkle game consumables across all available directories
   const allDirs = Object.keys(filesObj);
   const randomDir = () => allDirs[Math.floor(Math.random() * allDirs.length)];
   
@@ -222,7 +206,7 @@ const generateOrgFileSystem = (org, tier, layout) => {
   return { files: filesObj, contents };
 };
 
-const generateInterceptedComms = async (targetIP, nodeData, apiKey) => {
+export const generateInterceptedComms = async (targetIP, nodeData, apiKey) => {
   const orgName = nodeData?.org?.orgName || "Unknown Corp";
   const employees = nodeData?.org?.employees || [];
   
@@ -245,7 +229,7 @@ const generateInterceptedComms = async (targetIP, nodeData, apiKey) => {
   }
 };
 
-const generateAIContract = async (targetIP, nodeData, currentRep, arg4, arg5) => {
+export const generateAIContract = async (targetIP, nodeData, currentRep, arg4, arg5) => {
   const world = typeof arg4 === 'object' && arg4 !== null ? arg4 : {};
   const apiKey = typeof arg4 === 'string' ? arg4 : arg5;
 
@@ -311,20 +295,10 @@ const generateAIContract = async (targetIP, nodeData, currentRep, arg4, arg5) =>
       targetFile = allFiles.length > 0 ? allFiles[Math.floor(Math.random() * allFiles.length)] : 'proprietary_data.zip';
     }
 
-    // --- CRITICAL FIX: Ensure 'label' exists for the AI prompt ---
-    // --- CRITICAL FIX: Ensure 'label' exists for the AI prompt ---
     let label = '';
-    if (type === 'exfil') {
-      // Use the actual file name if we found one, otherwise fallback
-      const fileName = targetFile || 'proprietary_data.zip';
-      label = `Exfiltrate ${fileName} from ${node?.org?.orgName || 'target node'}`;
-    }
-    else if (type === 'destroy') {
-      label = `Destroy the target environment at ${node?.org?.orgName || 'target node'}`;
-    }
-    else if (type === 'ransom') {
-      label = `Deploy ransomware against ${node?.org?.orgName || 'target node'}`;
-    }
+    if (type === 'exfil') label = `Exfiltrate ${targetFile || 'proprietary_data.zip'} from ${node?.org?.orgName || 'target node'}`;
+    else if (type === 'destroy') label = `Destroy the target environment at ${node?.org?.orgName || 'target node'}`;
+    else if (type === 'ransom') label = `Deploy ransomware against ${node?.org?.orgName || 'target node'}`;
 
     objectives.push({
       ip,
@@ -335,7 +309,6 @@ const generateAIContract = async (targetIP, nodeData, currentRep, arg4, arg5) =>
     });
   }
 
-  // --- CRITICAL FIX: Restore variables needed for the AI Prompt ---
   const primaryOrg = nodeData?.org?.orgName || 'Unknown Target';
   const primaryType = nodeData?.org?.type || 'unknown';
   
@@ -397,7 +370,6 @@ Return ONLY raw JSON:
 
     if (jsonMatch) {
       const parsedData = JSON.parse(jsonMatch[0]);
-      // --- CRITICAL FIX: Merge ALL the AI generated fields, not just 'desc' ---
       return { 
         ...fallbackContract, 
         desc: parsedData.desc || fallbackContract.desc,
@@ -414,17 +386,4 @@ Return ONLY raw JSON:
   } catch (e) {
     return fallbackContract;
   }
-};
-
-export {
-  invokeBlueTeamAI,
-  ORG_TEMPLATES,
-  FIRST_NAMES,
-  LAST_NAMES,
-  ROLES,
-  generateEmployee,
-  generateOrgNarrative,
-  generateOrgFileSystem,
-  generateAIContract,
-  generateInterceptedComms,
 };

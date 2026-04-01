@@ -1,6 +1,6 @@
 import { generateDirectorText } from './aiAdapter';
 
-// 1. Export your main contract generator
+// 1. YOUR FULL CONTRACT GENERATOR
 export const generateAIContract = async (targetIP, nodeData, currentRep, arg4, arg5) => {
   const world = typeof arg4 === 'object' && arg4 !== null ? arg4 : {};
   const apiKey = typeof arg4 === 'string' ? arg4 : arg5;
@@ -192,7 +192,7 @@ export const generateAIContract = async (targetIP, nodeData, currentRep, arg4, a
     isAmbush: prob <= 20 && Math.random() < 0.2
   };
 
-  const prompt = `You are a darknet fixer writing premium mission briefings for a hacking game. Return ONLY raw JSON. shape: { "desc": string, "briefing": string, "client": string, "motive": string, "targetProfile": string, "knownConditions": string[], "complication": string }`;
+  const prompt = `You are a darknet fixer writing mission dossiers for a hacking game. Return ONLY JSON shape: { "desc": string, "briefing": string, "client": string, "motive": string, "targetProfile": string, "knownConditions": string[], "complication": string }`;
 
   try {
     let aiText = await generateDirectorText(prompt, '');
@@ -205,10 +205,13 @@ export const generateAIContract = async (targetIP, nodeData, currentRep, arg4, a
   }
 };
 
-// 2. THE BUILD FIX: Alias for the world generator
+// 2. REQUIRED BUILD FIXES
 export const generateOrgNarrative = generateAIContract;
 
-// 3. Ensure the file system generator is exported
 export const generateOrgFileSystem = (orgName) => {
   return { '/': ['home', 'var', 'etc'], '/home/admin': ['passwords.txt'] };
 };
+
+export const generateInterceptedComms = async () => "Packet stream encrypted.";
+
+export const invokeBlueTeamAI = async () => "Blue Team hunting active.";

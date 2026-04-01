@@ -215,3 +215,15 @@ export const generateOrgFileSystem = (orgName) => {
 export const generateInterceptedComms = async () => "Packet stream encrypted.";
 
 export const invokeBlueTeamAI = async () => "Blue Team hunting active.";
+export const generateInterceptedComms = async (targetIP, node, apiKey) => {
+  return "ANOMALY: Internal traffic encrypted. Metadata suggests spearphishing attempt.";
+};
+
+export const invokeBlueTeamAI = async (apiKey, cmd, nodeName, trace, heat) => {
+  return `[SOC-ALERT] Unusual ${cmd} activity on ${nodeName}. Threat hunting initiated.`;
+};
+
+
+
+
+

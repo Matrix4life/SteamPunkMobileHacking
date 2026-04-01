@@ -1623,9 +1623,11 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
         if (!val || val <= 0) return "[-] No extractable assets.";
         const fileKey = `${targetIP}:${targetFile}`;
         if (looted.includes(fileKey)) return "[-] Already exfiltrated.";
+        
         setIsProcessing(true);
         setTerminal(prev => [...prev, { type: 'out', text: `[*] Initiating encrypted SOCKS5 transfer...`, isNew: false }]);
         await new Promise(r => setTimeout(r, 2000));
+        
         setMoney(m => m + val);
         setHeat(h => Math.min(h + 10, 100));
         setTrace(t => Math.min(t + 25, 100));
@@ -1634,18 +1636,26 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
         trackLoot(val);
         playExfil();
 
-        if (activeContract?.type === 'exfil' && activeContract.targetIP === targetIP) {
-          const timeTaken = (Date.now() - activeContract.startTime) / 1000;
-          if (timeTaken <= activeContract.timeLimit && heat <= activeContract.heatCap) {
-            setMoney(m => m + activeContract.reward);
-            setReputation(r => r + activeContract.repReward);
-            setContracts(prev => prev.map(c => c.id === activeContract.id ? { ...c, completed: true, active: false } : c));
-            setActiveContract(null); trackContract(true); setIsProcessing(false);
-            return `[+] EXFIL COMPLETE. ₿${val.toLocaleString()} secured.\n\n[FIXER] CONTRACT ${activeContract.id} FULFILLED.\n[+] BONUS: ₿${activeContract.reward.toLocaleString()} + ${activeContract.repReward} REP`;
+        // --- CONTRACT COMPLETION CHECK ---
+        let contractMsg = '';
+        if (activeContract?.active) {
+          const isExfil = activeContract.objectives?.some(o => o.ip === targetIP && o.type === 'exfil');
+          if (isExfil) {
+            const timeTaken = (Date.now() - activeContract.startTime) / 1000;
+            if (timeTaken <= activeContract.timeLimit && heat <= activeContract.heatCap) {
+              setMoney(m => m + activeContract.reward);
+              setReputation(r => r + activeContract.repReward);
+              completeContractAndRemove(activeContract.id); trackContract(true);
+              contractMsg = `\n\n[FIXER] CONTRACT FULFILLED.\n[+] BONUS: ₿${activeContract.reward.toLocaleString()} + ${activeContract.repReward} REP`;
+            } else {
+              completeContractAndRemove(activeContract.id); trackContract(false);
+              contractMsg = `\n\n[FIXER] CONTRACT FAILED. Time Limit or Heat Cap exceeded.`;
+            }
           }
         }
+
         setIsProcessing(false);
-        return `[+] EXFIL COMPLETE. ₿${val.toLocaleString()} secured.\n[!] Trace +25%, Heat +10%.`;
+        return `[+] EXFIL COMPLETE. ₿${val.toLocaleString()} secured.\n[!] Trace +25%, Heat +10%.${contractMsg}`;
       },
 
       download: async () => {
@@ -1871,6 +1881,24 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
       shred: async () => {
         const mult = getRewardMult(gameMode);
         
+        // --- CONTRACT COMPLETION CHECK ---
+        let contractMsg = '';
+        if (activeContract?.active) {
+          const isDest = activeContract.objectives?.some(o => o.ip === targetIP && o.type === 'destroy');
+          if (isDest) {
+            const timeTaken = (Date.now() - activeContract.startTime) / 1000;
+            if (timeTaken <= activeContract.timeLimit && heat <= activeContract.heatCap) {
+              setMoney(m => m + activeContract.reward);
+              setReputation(r => r + activeContract.repReward);
+              completeContractAndRemove(activeContract.id); trackContract(true);
+              contractMsg = `\n\n[FIXER] CONTRACT FULFILLED.\n[+] BONUS: ₿${activeContract.reward.toLocaleString()} + ${activeContract.repReward} REP`;
+            } else {
+              completeContractAndRemove(activeContract.id); trackContract(false);
+              contractMsg = `\n\n[FIXER] CONTRACT FAILED. Time Limit or Heat Cap exceeded.`;
+            }
+          }
+        }
+        
         if (gameMode === 'operator') {
           const hasFlags = args.includes('-vfz') || (args.includes('-v') && args.includes('-f') && args.includes('-z'));
           const hasTarget = args.some(a => a.startsWith('/dev/'));
@@ -1896,7 +1924,7 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
           setWorld(prev => { const nw = { ...prev }; delete nw[targetIP]; return nw; });
           playDestroy();
           setIsProcessing(false);
-          return `[+] shred: /dev/sda — ${passes + 1} passes complete. Disk destroyed.\n[+] Destruction bounty: ₿${bounty.toLocaleString()}\n[!] Node permanently removed. Heat +25%.`;
+          return `[+] shred: /dev/sda — ${passes + 1} passes complete. Disk destroyed.\n[+] Destruction bounty: ₿${bounty.toLocaleString()}\n[!] Node permanently removed. Heat +25%.${contractMsg}`;
         }
         
         if (gameMode === 'field') {
@@ -1921,7 +1949,7 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
           setWorld(prev => { const nw = { ...prev }; delete nw[targetIP]; return nw; });
           playDestroy();
           setIsProcessing(false);
-          return `[+] ${depth.label}. Destruction bounty: ₿${bounty.toLocaleString()}\n[!] Node permanently removed. Heat +${depth.heatAdd}%.`;
+          return `[+] ${depth.label}. Destruction bounty: ₿${bounty.toLocaleString()}\n[!] Node permanently removed. Heat +${depth.heatAdd}%.${contractMsg}`;
         }
         
         if (!isInside) return "[-] shred: Must be executed on a remote host.";
@@ -1941,12 +1969,30 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
         setWorld(prev => { const nw = { ...prev }; delete nw[targetIP]; return nw; });
         playDestroy();
         setIsProcessing(false);
-        return `[+] DISK DESTROYED: ${destroyedName}\n[+] Destruction bounty: ₿${bounty.toLocaleString()}\n[!] Node permanently wiped from the grid. Heat +20%.`;
+        return `[+] DISK DESTROYED: ${destroyedName}\n[+] Destruction bounty: ₿${bounty.toLocaleString()}\n[!] Node permanently wiped from the grid. Heat +20%.${contractMsg}`;
       },
 
       openssl: async () => {
         const mult = getRewardMult(gameMode);
         
+        // --- CONTRACT COMPLETION CHECK ---
+        let contractMsg = '';
+        if (activeContract?.active) {
+          const isRansom = activeContract.objectives?.some(o => o.ip === targetIP && o.type === 'ransom');
+          if (isRansom) {
+            const timeTaken = (Date.now() - activeContract.startTime) / 1000;
+            if (timeTaken <= activeContract.timeLimit && heat <= activeContract.heatCap) {
+              setMoney(m => m + activeContract.reward);
+              setReputation(r => r + activeContract.repReward);
+              completeContractAndRemove(activeContract.id); trackContract(true);
+              contractMsg = `\n\n[FIXER] CONTRACT FULFILLED.\n[+] BONUS: ₿${activeContract.reward.toLocaleString()} + ${activeContract.repReward} REP`;
+            } else {
+              completeContractAndRemove(activeContract.id); trackContract(false);
+              contractMsg = `\n\n[FIXER] CONTRACT FAILED. Time Limit or Heat Cap exceeded.`;
+            }
+          }
+        }
+
         if (gameMode === 'operator') {
           if (!isInside) return "[-] openssl: Must be on remote host.";
           if (privilege !== 'root') return "[-] openssl: Permission denied.";
@@ -1973,11 +2019,11 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
             setMoney(m => m + ransomAsk);
             playSuccess();
             setIsProcessing(false);
-            return `[+] ${strength} encryption complete. ${world[targetIP]?.org?.orgName || 'Target'} systems locked.\n[+] Ransom demand: ₿${ransomAsk.toLocaleString()}\n[+] VICTIM PAID. ₿${ransomAsk.toLocaleString()} received in wallet.\n[!] Heat +30%. Law enforcement notified.`;
+            return `[+] ${strength} encryption complete. ${world[targetIP]?.org?.orgName || 'Target'} systems locked.\n[+] Ransom demand: ₿${ransomAsk.toLocaleString()}\n[+] VICTIM PAID. ₿${ransomAsk.toLocaleString()} received in wallet.\n[!] Heat +30%. Law enforcement notified.${contractMsg}`;
           } else {
             playFailure();
             setIsProcessing(false);
-            return `[+] ${strength} encryption complete. Systems locked.\n[+] Ransom demand: ₿${ransomAsk.toLocaleString()}\n[-] VICTIM REFUSED TO PAY. ${!isStrong ? 'AES-128 — they may attempt decryption.' : 'Data remains locked.'}\n[!] Heat +30%. No payout.`;
+            return `[+] ${strength} encryption complete. Systems locked.\n[+] Ransom demand: ₿${ransomAsk.toLocaleString()}\n[-] VICTIM REFUSED TO PAY. ${!isStrong ? 'AES-128 — they may attempt decryption.' : 'Data remains locked.'}\n[!] Heat +30%. No payout.${contractMsg}`;
           }
         }
         
@@ -2012,8 +2058,8 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
           }
           setIsProcessing(false);
           return paid
-            ? `[+] ${strength} ransomware deployed. ${world[targetIP]?.org?.orgName || 'Target'} locked.\n[+] VICTIM PAID: ₿${ransomAsk.toLocaleString()}. Heat +25%.`
-            : `[+] ${strength} ransomware deployed. Victim refused to pay.\n[!] Heat +25%. No payout.${!isStrong ? ' AES-128 may be cracked.' : ''}`;
+            ? `[+] ${strength} ransomware deployed. ${world[targetIP]?.org?.orgName || 'Target'} locked.\n[+] VICTIM PAID: ₿${ransomAsk.toLocaleString()}. Heat +25%.${contractMsg}`
+            : `[+] ${strength} ransomware deployed. Victim refused to pay.\n[!] Heat +25%. No payout.${!isStrong ? ' AES-128 may be cracked.' : ''}${contractMsg}`;
         }
         
         if (!isInside) return "[-] openssl: Must be on remote host.";
@@ -2037,8 +2083,8 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
         setIsProcessing(false);
         const orgName = world[targetIP]?.org?.orgName || 'Target';
         return paid
-          ? `[+] RANSOMWARE DEPLOYED on ${orgName}.\n[+] VICTIM PAID: ₿${ransomAsk.toLocaleString()}\n[!] Heat +20%. Expect law enforcement attention.`
-          : `[+] RANSOMWARE DEPLOYED on ${orgName}.\n[-] VICTIM REFUSED TO PAY. No payout.\n[!] Heat +20%.`;
+          ? `[+] RANSOMWARE DEPLOYED on ${orgName}.\n[+] VICTIM PAID: ₿${ransomAsk.toLocaleString()}\n[!] Heat +20%. Expect law enforcement attention.${contractMsg}`
+          : `[+] RANSOMWARE DEPLOYED on ${orgName}.\n[-] VICTIM REFUSED TO PAY. No payout.\n[!] Heat +20%.${contractMsg}`;
       },
 
       crontab: async () => {

@@ -252,14 +252,11 @@ export default function RigDisplay({
     const slots = ['CPU', 'GPU', 'RAM', 'SSD', 'PSU', 'COOL', 'NET', 'CASE'];
     
     slots.forEach(s => {
-      const slotKey = s.toLowerCase();
+      const slotKey = s.toLowerCase(); // Map CPU -> cpu
       const partId = rig[slotKey];
       
-      // Look for the part in our database
       const part = (PARTS_BY_ID && partId) ? PARTS_BY_ID[partId] : null;
-      
-      // CRITICAL: We ensure tier is a number between 0-3
-      // This is what triggers the colors/glow in the SVG
+      // Use generation or default to 1 if part exists, otherwise 0
       obj[s] = part ? (part.gen || 1) : 0;
     });
     return obj;

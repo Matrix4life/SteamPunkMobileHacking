@@ -977,7 +977,15 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
     setScreen('game');
     setTerminal(prev => [...prev, { type: 'out', text: `[FIXER] Contract ${id} accepted.\n[*] Target: ${activated.targetName} (${activated.targetIP})\n[*] Time limit: ${activated.timeLimit}s | Max heat: ${activated.heatCap}%\n[*] Reward: ₿${activated.reward.toLocaleString()} + ${activated.repReward} REP`, isNew: true }]);
   };
-
+const completeContractAndRemove = (id) => {
+    // 1. Remove the contract from the board
+    setContracts(prev => prev.filter(c => c.id !== id));
+    
+    // 2. Clear it from the active state
+    if (activeContract?.id === id) {
+      setActiveContract(null);
+    }
+  };
   const selectNodeFromMap = (ip) => {
     const node = world[ip]; if (!node) return;
     const port = node.port || 22; const svc = node.svc || 'ssh'; const exp = node.exp || 'hydra';

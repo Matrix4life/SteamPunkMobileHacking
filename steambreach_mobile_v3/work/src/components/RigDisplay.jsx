@@ -252,11 +252,9 @@ export default function RigDisplay({
     const slots = ['CPU', 'GPU', 'RAM', 'SSD', 'PSU', 'COOL', 'NET', 'CASE'];
     
     slots.forEach(s => {
-      const slotKey = s.toLowerCase(); // Map CPU -> cpu
+      const slotKey = s.toLowerCase(); // Fixes the lowercase/uppercase mismatch
       const partId = rig[slotKey];
-      
       const part = (PARTS_BY_ID && partId) ? PARTS_BY_ID[partId] : null;
-      // Use generation or default to 1 if part exists, otherwise 0
       obj[s] = part ? (part.gen || 1) : 0;
     });
     return obj;

@@ -1092,7 +1092,16 @@ const completeContractAndRemove = (id) => {
         setHeat(h => Math.min(h + 40, 100));
         setWorld(prev => { const nw = { ...prev }; delete nw[targetIPArg]; return nw; });
         trackHoneypot(); trackExploit(false);
-        return `[!!!] HONEYPOT TRIGGERED [!!!]\n[-] Blue Team trap. IP logged by SOC. HEAT +40%`;
+
+        // --- NEW: HONEYPOT CONTRACT FAIL LOGIC ---
+        let contractFailMsg = '';
+        if (activeContract && activeContract.active && activeContract.objectives?.some(o => o.ip === targetIPArg)) {
+          completeContractAndRemove(activeContract.id);
+          trackContract(false);
+          contractFailMsg = `\n\n[FIXER] CONTRACT BURNT.\n[-] Target was a federal trap. Op is compromised. I'm scrubbing my tracks, you should do the same.`;
+        }
+
+        return `[!!!] HONEYPOT TRIGGERED [!!!]\n[-] Blue Team trap. IP logged by SOC. HEAT +40%${contractFailMsg}`;
       }
       
       if (node.exp !== toolName) {
@@ -1108,7 +1117,7 @@ const completeContractAndRemove = (id) => {
       trackExploit(true);
       const orgName = node.org?.orgName || 'target';
 
-      if (activeContract && activeContract.targetIP === targetIPArg && activeContract.isAmbush) {
+      if (activeContract && activeContract.active && activeContract.objectives?.some(o => o.ip === targetIPArg) && activeContract.isAmbush) {
         escalateBlueTeam(targetIPArg, 85);
         setHeat(h => Math.min(h + 30, 100));
         setTrace(Math.min(startTrace + 25, 100));
@@ -1118,7 +1127,6 @@ const completeContractAndRemove = (id) => {
       setTrace(Math.min(startTrace, 100));
       return `[*] Exploiting ${toolName} against ${orgName}...\n[+] Payload delivered. Reverse shell caught.\n[+] LOW PRIVILEGE SHELL (www-data) on ${targetIPArg}`;
     };
-
     if (activeContract && activeContract.active) {
         if (activeContract.forbidden_tools && activeContract.forbidden_tools.includes(cmd)) {
             setTerminal(prev => [...prev, { type: 'out', text: `[-] CONTRACT BREACH IMMINENT.\n[-] Fixer expressly forbade using '${cmd}' on this op. Access denied.`, isNew: true }]);

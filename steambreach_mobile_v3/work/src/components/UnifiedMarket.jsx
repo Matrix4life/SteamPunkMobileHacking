@@ -376,28 +376,19 @@ export default function UnifiedMarket({
         )}
 
         {/* RIGHT: RIG + BAG — Overflow fix applied below */}
-        {(!isMobile || mobileView==='rig') && (
         <div style={{
-          width:isMobile?'100%':'250px',
-          borderLeft:isMobile?'none':`1px solid ${C.bdr}`,
-          display:'flex',
-          flexDirection:'column',
-          height:'100%', // Fixed height container
-          overflow:'hidden'
-        }}>
-          {/* Top half: Installed rig (Scrollable) */}
-          <div style={{
-            flex: '0 1 auto', 
-            maxHeight: '60%', 
-            padding:'8px',
-            borderBottom:`1px solid ${C.bdr}`,
-            overflowY:'auto',
-            scrollbarWidth:'thin',
-            scrollbarColor:`${C.bdr} transparent`
-          }}>
-            <SynergyPanel rig={rig}/>
-            {HW_SLOTS.map(s=><RigSlot key={s} slot={s} partId={rig[s]} onRemove={onUninstall} onSell={onSellHW}/>)}
-          </div>
+  width: isMobile ? '100%' : '250px',
+  borderLeft: isMobile ? 'none' : `1px solid ${C.bdr}`,
+  display: 'flex',
+  flexDirection: 'column',
+  height: '100vh', // Keep it locked to the screen height
+  overflow: 'hidden'
+}}>
+          {/* Top Section: Synergy & Installed Slots (Independent Scroll) */}
+  <div style={{ flex: '0 1 auto', maxHeight: '60%', overflowY: 'auto', padding: '8px', borderBottom: `1px solid ${C.bdr}` }}>
+    <SynergyPanel rig={rig}/>
+    {HW_SLOTS.map(s => <RigSlot key={s} slot={s} partId={rig[s]} onRemove={onUninstall} onSell={onSellHW}/>)}
+  </div>
           
           {/* Bottom half: Inventory Bag (Independent Scroll) */}
           <div style={{
@@ -407,8 +398,9 @@ export default function UnifiedMarket({
             scrollbarWidth:'thin',
             scrollbarColor:`${C.bdr} transparent`
           }}>
-            <div style={{fontSize:'13px',letterSpacing:'1.5px',color:C.dim,marginBottom:'4px'}}>
-              INVENTORY ({partsBag.length+softwareOwned.length})
+            {/* Bottom Section: Inventory Bag (Independent Scroll) */}
+  <div style={{ flex: 1, overflowY: 'auto', padding: '6px' }}>
+    <div style={{fontSize:'13px', color:C.dim, marginBottom:'4px'}}>INVENTORY ({partsBag.length})</div>
             </div>
             {partsBag.length===0&&softwareOwned.length===0&&
               <div style={{color:'#2a3545',fontSize:'12px',textAlign:'center',padding:'12px'}}>Empty</div>}

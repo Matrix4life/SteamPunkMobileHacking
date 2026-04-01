@@ -1493,9 +1493,24 @@ const completeContractAndRemove = (id) => {
           out += `\n[*] EMPLOYEES: ${newNode.data.org.employees.length} found via OSINT\n`;
           
           if ((isFirstScan || Math.random() < 0.3) && contracts.length < 8) {
-            out += `\n[FIXER] Signal intercepted. Negotiating custom darknet contract for ${newNode.data.org.orgName}...`;
+            out += `\n[FIXER] Signal intercepted. Negotiating custom darknet contract...`;
+            
             generateAIContract(newNode.ip, newNode.data, reputation, apiKey).then(aiContract => {
               if (aiContract) {
+                // --- BEGINNER ECONOMY BRAKE ---
+                let adjustedRep = aiContract.repReward;
+                let adjustedMoney = aiContract.reward;
+                const completedCount = director.metrics.contractsCompleted || 0;
+                
+                // If the player has completed 0-5 contracts:
+                if (completedCount <= 5) {
+                    // 1. Cap Reputation to 5 per mission (Slows path to 15-rep danger zone)
+                    adjustedRep = Math.min(aiContract.repReward, 5);
+                    
+                    // 2. Cap Cash to 1000 per mission (Forces early-game resource management)
+                    adjustedMoney = Math.min(aiContract.reward, 1000);
+                }
+
                 const newContract = { 
                   id: `CTR-${Date.now().toString(36).toUpperCase()}`, 
                   targetIP: newNode.ip, 
@@ -1503,8 +1518,11 @@ const completeContractAndRemove = (id) => {
                   startTime: null, 
                   active: false, 
                   completed: false, 
-                  ...aiContract 
+                  ...aiContract,
+                  repReward: adjustedRep, // Apply capped Rep
+                  reward: adjustedMoney    // Apply capped Cash
                 };
+                
                 setContracts(prev => [...prev, newContract]);
                 setTerminal(prev => [...prev, { type: 'out', text: `\n[FIXER] Contract ${newContract.id} ready. Type 'contracts' to view.`, isNew: true }]);
               }

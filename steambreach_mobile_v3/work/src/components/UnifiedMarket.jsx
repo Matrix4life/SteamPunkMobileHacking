@@ -32,15 +32,11 @@ function Trend({trend,ratio}){
 // ─── SYNERGY PANEL ────────────────────────────────────────────
 function SynergyPanel({rig}){
   const syn=calculateSynergy(rig),pow=calculatePowerBudget(rig),fx=getRigEffects(rig);
-  const installed=HW_SLOTS.filter(s=>rig[s]).length;
   return(
     <div style={{border:`1px solid ${syn.color}44`,borderRadius:'4px',padding:'8px',marginBottom:'6px',background:`${syn.color}06`}}>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'6px'}}>
         <span style={{fontSize:'13px',letterSpacing:'1.5px',color:C.dim}}>SYNERGY</span>
-        <div style={{display:'flex',alignItems:'center',gap:'6px'}}>
-          <span style={{fontSize:'18px',fontWeight:700,color:syn.color}}>{syn.rating}</span>
-          <span style={{fontSize:'12px',color:syn.color}}>{syn.multiplier}x</span>
-        </div>
+        <span style={{fontSize:'18px',fontWeight:700,color:syn.color}}>{syn.rating}</span>
       </div>
       <div style={{marginBottom:'5px'}}>
         <div style={{display:'flex',justifyContent:'space-between',fontSize:'13px',marginBottom:'2px'}}>
@@ -48,14 +44,12 @@ function SynergyPanel({rig}){
           <span style={{color:pow.stable?C.sec:C.dan}}>{pow.totalDraw}W/{pow.psuWattage||'—'}W</span>
         </div>
         <div style={{height:'3px',background:'rgba(255,255,255,0.06)',borderRadius:'2px',overflow:'hidden'}}>
-          <div style={{height:'100%',borderRadius:'2px',width:`${Math.min(100,pow.utilPct)}%`,
-            background:pow.utilPct>100?C.dan:pow.utilPct>85?C.warn:C.sec,transition:'width .3s'}}/>
+          <div style={{height:'100%',width:`${Math.min(100,pow.utilPct)}%`,background:pow.utilPct>100?C.dan:C.sec}}/>
         </div>
-        {!pow.stable&&<div style={{color:C.dan,fontSize:'13px',marginTop:'2px',letterSpacing:'1px'}}>⚠ OVERLOADED</div>}
       </div>
-      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'2px 10px',fontSize:'13px'}}>
-        <div style={{color:C.dim}}>Hash: <span style={{color:C.pri}}>{fx.hashSpeed}x</span></div>
-        <div style={{color:C.dim}}>Proxy: <span style={{color:C.pri}}>{fx.maxProxies}</span></div>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'2px',fontSize:'12px',color:C.dim}}>
+        <span>Hash: <span style={{color:C.pri}}>{fx.hashSpeed}x</span></span>
+        <span>Proxy: <span style={{color:C.pri}}>{fx.maxProxies}</span></span>
       </div>
     </div>
   );
@@ -66,24 +60,12 @@ function RigSlot({slot,partId,onRemove,onSell}){
   const part=partId?PARTS_BY_ID[partId]:null;
   const sellP=part?getSellPrice(partId,[]):0;
   return(
-    <div style={{padding:'10px 12px',borderRadius:'4px',fontSize:'13px',
-      background:part?'rgba(120,220,232,0.04)':'rgba(255,255,255,0.02)',
-      border:`1px solid ${part?C.bdr:'rgba(255,255,255,0.04)'}`,marginBottom:'4px'}}>
-      <div style={{display:'flex',alignItems:'center',gap:'6px'}}>
-        <span style={{color:C.dim,width:'30px',fontSize:'13px',fontWeight:'bold'}}>{TAB_LABELS[slot]}</span>
-        {part?(
-          <div style={{display:'flex',alignItems:'center',gap:'5px',flex:1,minWidth:0}}>
-            <GenBadge gen={part.gen}/>
-            <span style={{color:C.text,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',flex:1}}>{part.name}</span>
-          </div>
-        ):<span style={{color:'#2a3545',flex:1}}>— empty</span>}
+    <div style={{padding:'8px 10px',borderRadius:'4px',background:part?'rgba(120,220,232,0.04)':'transparent',border:`1px solid ${C.bdr}`,marginBottom:'4px'}}>
+      <div style={{display:'flex',alignItems:'center',gap:'6px',fontSize:'12px'}}>
+        <span style={{color:C.dim,fontWeight:'bold',width:'30px'}}>{TAB_LABELS[slot]}</span>
+        <span style={{color:part?C.text:C.bdr,flex:1}}>{part?part.name:'— empty'}</span>
       </div>
-      {part&&(
-        <div style={{display:'flex',gap:'6px',marginTop:'8px'}}>
-          <button onClick={()=>onRemove(slot)} style={{flex:1,background:'none',border:`1px solid ${C.pri}44`,color:C.pri,fontSize:'11px',padding:'8px',cursor:'pointer',borderRadius:'3px'}}>REMOVE</button>
-          <button onClick={()=>onSell(partId)} style={{flex:1,background:'none',border:`1px solid ${C.warn}44`,color:C.warn,fontSize:'11px',padding:'8px',cursor:'pointer',borderRadius:'3px'}}>SELL {formatBTC(sellP)}</button>
-        </div>
-      )}
+      {part && <button onClick={()=>onRemove(slot)} style={{width:'100%',marginTop:'5px',background:'none',border:`1px solid ${C.pri}44`,color:C.pri,fontSize:'10px',cursor:'pointer'}}>REMOVE</button>}
     </div>
   );
 }
@@ -95,22 +77,16 @@ function MarketRow({partId,price,qty,trend,ratio,onBuy,onBuyAndInstall,canAfford
   const canBuy=canAfford&&qty>0&&(part.repeatable||!owned);
   return(
     <div style={{padding:'10px',marginBottom:'6px',borderRadius:'4px',background:C.bgP,border:`1px solid ${owned?`${C.sec}30`:C.bdr}`}}>
-      <div style={{display:'flex',alignItems:'center',gap:'6px'}}>
-        <div style={{flex:1,minWidth:0}}>
-          <div style={{display:'flex',alignItems:'center',gap:'5px',marginBottom:'2px'}}>
-            <RarityDot rarity={part.rarity}/>
-            {isHW&&<GenBadge gen={part.gen}/>}
-            <span style={{color:owned?C.sec:C.text,fontSize:'13px',fontWeight:600}}>{owned?'✓ ':''}{part.name}</span>
-          </div>
+      <div style={{display:'flex',justifyContent:'space-between'}}>
+        <div style={{display:'flex',alignItems:'center',gap:8}}>
+           <RarityDot rarity={part.rarity}/>
+           <span style={{color:owned?C.sec:C.text,fontSize:'13px'}}>{owned?'✓ ':''}{part.name}</span>
         </div>
-        <div style={{textAlign:'right',flexShrink:0}}>
-          <Trend trend={trend} ratio={ratio}/>
-          <span style={{color:C.warn,fontSize:'13px',fontWeight:600,marginLeft:'5px'}}>{formatBTC(price)}</span>
-        </div>
+        <span style={{color:C.warn,fontSize:'13px'}}>{formatBTC(price)}</span>
       </div>
       <div style={{display:'flex',gap:'6px',marginTop:'8px'}}>
-        <button onClick={()=>onBuy(partId,price)} disabled={!canBuy} style={{flex:1,background:canBuy?`${C.sec}20`:'transparent',border:`1px solid ${canBuy?C.sec:C.bdr}`,color:canBuy?C.sec:C.dim,fontSize:'12px',padding:'8px',cursor:canBuy?'pointer':'default',borderRadius:'4px'}}>BUY</button>
-        {isHW&&<button onClick={()=>onBuyAndInstall(partId,price)} disabled={!canBuy} style={{flex:1,background:canBuy?`${C.pri}20`:'transparent',border:`1px solid ${canBuy?C.pri:C.bdr}`,color:canBuy?C.pri:C.dim,fontSize:'12px',padding:'8px',cursor:canBuy?'pointer':'default',borderRadius:'4px'}}>BUY+INSTALL</button>}
+        <button onClick={()=>onBuy(partId,price)} disabled={!canBuy} style={{flex:1,background:canBuy?`${C.sec}20`:'transparent',border:`1px solid ${canBuy?C.sec:C.bdr}`,color:canBuy?C.sec:C.dim,fontSize:'12px',padding:'6px',cursor:'pointer'}}>BUY</button>
+        {isHW && <button onClick={()=>onBuyAndInstall(partId,price)} disabled={!canBuy} style={{flex:1,background:canBuy?`${C.pri}20`:'transparent',border:`1px solid ${canBuy?C.pri:C.bdr}`,color:canBuy?C.pri:C.dim,fontSize:'12px',padding:'6px',cursor:'pointer'}}>BUY+INSTALL</button>}
       </div>
     </div>
   );
@@ -119,19 +95,13 @@ function MarketRow({partId,price,qty,trend,ratio,onBuy,onBuyAndInstall,canAfford
 // ─── BAG ROW ──────────────────────────────────────────────────
 function BagRow({partId,onInstall,onSell,sellPrice,rig}){
   const part=PARTS_BY_ID[partId]; if(!part)return null;
-  const isHW=part.type==='hardware';
-  const slotKey = part.slot.toLowerCase();
-  const isInstalled=isHW&&rig[slotKey]===partId;
+  const isInstalled = rig[part.slot.toLowerCase()] === partId;
   return(
-    <div style={{padding:'10px 12px',marginBottom:'6px',borderRadius:'4px',fontSize:'13px',background:isInstalled?`${C.sec}08`:C.bgP,border:`1px solid ${isInstalled?`${C.sec}30`:C.bdr}`}}>
-      <div style={{display:'flex',alignItems:'center',gap:'6px'}}>
-        <span style={{color:C.dim,width:'28px',fontSize:'13px',fontWeight:'bold'}}>{TAB_LABELS[part.slot]?.slice(0,3)||'SW'}</span>
-        <span style={{color:C.text,flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{part.name}</span>
-        {isInstalled&&<span style={{color:C.sec,fontSize:'12px',fontWeight:'bold'}}>INSTALLED</span>}
-      </div>
-      <div style={{display:'flex',gap:'6px',marginTop:'8px'}}>
-        {isHW&&!isInstalled&&<button onClick={()=>onInstall(partId)} style={{flex:1,background:`${C.pri}20`,border:`1px solid ${C.pri}`,color:C.pri,fontSize:'12px',padding:'8px',cursor:'pointer',borderRadius:'4px'}}>INSTALL</button>}
-        <button onClick={()=>onSell(partId)} style={{flex:isInstalled?1:0,background:`${C.warn}15`,border:`1px solid ${C.warn}55`,color:C.warn,fontSize:'12px',padding:'8px',cursor:'pointer',borderRadius:'4px'}}>SELL {formatBTC(sellPrice)}</button>
+    <div style={{padding:'8px',marginBottom:'4px',borderRadius:'4px',background:C.bgP,border:`1px solid ${isInstalled?C.sec:C.bdr}`}}>
+      <div style={{fontSize:'12px',color:C.text,marginBottom:4}}>{part.name}</div>
+      <div style={{display:'flex',gap:4}}>
+        {!isInstalled && <button onClick={()=>onInstall(partId)} style={{flex:1,fontSize:'10px',background:C.pri+'22',border:`1px solid ${C.pri}`,color:C.pri}}>INSTALL</button>}
+        <button onClick={()=>onSell(partId)} style={{flex:1,fontSize:'10px',background:C.warn+'22',border:`1px solid ${C.warn}`,color:C.warn}}>SELL</button>
       </div>
     </div>
   );
@@ -145,22 +115,19 @@ export default function UnifiedMarket({
   returnToGame,
 }){
   const [tab,setTab]=useState('cpu');
-  const [sort,setSort]=useState('price');
   const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
-  const [mobileView, setMobileView] = useState('shop');
 
-  const btc=marketData?.btcIndex||1;
-  const trend=btcTrend(btc);
-
-  const filtered=useMemo(()=>{
-    let items=marketData?.stock||[];
-    if(tab!=='commodities'){
-      items=items.filter(s=>{const p=PARTS_BY_ID[s.partId]; return p&&(tab==='software'?p.type==='software':p.slot===tab);});
-    }
-    return[...items].sort((a,b)=>a.price-b.price);
+  const filtered = useMemo(()=>{
+    let items = marketData?.stock||[];
+    if(tab==='commodities') return [];
+    items = items.filter(s=>{
+      const p=PARTS_BY_ID[s.partId]; 
+      return p && (tab==='software' ? p.type==='software' : p.slot.toLowerCase()===tab);
+    });
+    return [...items].sort((a,b)=>a.price-b.price);
   },[marketData,tab]);
 
-  const ownedIds=useMemo(()=>{
+  const ownedIds = useMemo(()=>{
     const s=new Set([...partsBag,...softwareOwned]);
     Object.values(rig).forEach(id=>{if(id)s.add(id);});
     return s;
@@ -168,34 +135,52 @@ export default function UnifiedMarket({
 
   return(
     <div style={{background:C.bg,color:C.text,position:'absolute',inset:0,zIndex:20,display:'flex',flexDirection:'column',overflow:'hidden',fontFamily:"monospace"}}>
+      {/* HEADER */}
       <div style={{padding:'8px 14px',borderBottom:`1px solid ${C.bdr}`,display:'flex',justifyContent:'space-between',alignItems:'center',background:'rgba(0,0,0,.3)'}}>
-        <div style={{display:'flex',alignItems:'center',gap:'12px'}}>
-          <span style={{color:C.warn,letterSpacing:'2px'}}>BLACK MARKET</span>
-          <span style={{color:C.dim}}>{currentRegion?.toUpperCase()}</span>
-        </div>
-        <div style={{display:'flex',alignItems:'center',gap:'14px'}}>
-          <span style={{color:C.warn}}>BAL: {formatBTC(money)}</span>
-          <button onClick={returnToGame} style={{background:'transparent',color:C.warn,border:`1px solid ${C.warn}55`,padding:'8px 14px',cursor:'pointer'}}>[ESC]</button>
-        </div>
+        <span style={{color:C.warn}}>BAL: {formatBTC(money)}</span>
+        <button onClick={returnToGame} style={{background:'transparent',color:C.warn,border:`1px solid ${C.warn}55`,padding:'4px 10px',cursor:'pointer'}}>[ESC] EXIT</button>
+      </div>
+
+      {/* TABS */}
+      <div style={{display:'flex',gap:'2px',padding:'4px 10px',background:C.bgD,borderBottom:`1px solid ${C.bdr}`,overflowX:'auto'}}>
+        {ALL_TABS.map(t => (
+          <button key={t} onClick={()=>setTab(t)} style={{
+            background: tab===t ? C.pri+'22' : 'transparent',
+            color: tab===t ? C.pri : C.dim,
+            border: 'none', padding: '8px 12px', cursor: 'pointer', whiteSpace:'nowrap'
+          }}>{TAB_LABELS[t]}</button>
+        ))}
       </div>
 
       <div style={{display:'flex',flex:1,overflow:'hidden'}}>
-        {/* LEFT LISTINGS */}
+        {/* LEFT: LISTINGS */}
         <div style={{flex:1,overflowY:'auto',padding:'10px'}}>
-           {filtered.map(item=>(
-             <MarketRow key={item.partId} {...item} onBuy={item.partId.startsWith('sw_')?onBuySW:onBuyHW} onBuyAndInstall={onBuyAndInstall} canAfford={money>=item.price} owned={ownedIds.has(item.partId)}/>
-           ))}
+          {tab === 'commodities' ? (
+             Object.entries(COMMODITIES).map(([id, data]) => (
+               <div key={id} style={{padding:10, marginBottom:6, background:C.bgP, border:`1px solid ${C.bdr}`, display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+                 <div>
+                   <div style={{color:C.text}}>{data.name}</div>
+                   <div style={{color:C.dim, fontSize:10}}>STASH: {commodityStash[id] || 0}</div>
+                 </div>
+                 <div style={{display:'flex', gap:6}}>
+                    <button onClick={()=>onBuyCommodity(id, 1)} style={{color:C.sec, border:`1px solid ${C.sec}`, background:'none', padding:'4px 8px', cursor:'pointer'}}>BUY</button>
+                    <button onClick={()=>onSellCommodity(id, 1)} style={{color:C.warn, border:`1px solid ${C.warn}`, background:'none', padding:'4px 8px', cursor:'pointer'}}>SELL</button>
+                 </div>
+               </div>
+             ))
+          ) : (
+            filtered.map(item=>(
+              <MarketRow key={item.partId} {...item} onBuy={item.partId.startsWith('sw_')?onBuySW:onBuyHW} onBuyAndInstall={onBuyAndInstall} canAfford={money>=item.price} owned={ownedIds.has(item.partId)}/>
+            ))
+          )}
         </div>
 
-        {/* RIGHT SIDEBAR (Fixed overflow) */}
-        <div style={{ width: isMobile ? '100%' : '300px', borderLeft: `1px solid ${C.bdr}`, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-          {/* RIG SECTION */}
+        {/* RIGHT SIDEBAR - Fixed height & overflow */}
+        <div style={{ width: '300px', borderLeft: `1px solid ${C.bdr}`, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
           <div style={{ flex: '0 1 auto', maxHeight: '50%', overflowY: 'auto', padding: '10px', borderBottom: `1px solid ${C.bdr}` }}>
             <SynergyPanel rig={rig}/>
             {HW_SLOTS.map(s => <RigSlot key={s} slot={s} partId={rig[s.toLowerCase()]} onRemove={onUninstall} onSell={onSellHW}/>)}
           </div>
-          
-          {/* INVENTORY SECTION */}
           <div style={{ flex: 1, overflowY: 'auto', padding: '10px' }}>
             <div style={{color:C.dim, marginBottom:'10px', fontSize:'12px'}}>INVENTORY ({partsBag.length})</div>
             {partsBag.map((pid,i)=><BagRow key={`${pid}-${i}`} partId={pid} onInstall={onInstall} onSell={onSellHW} sellPrice={getSellPrice(pid,[])} rig={rig}/>)}

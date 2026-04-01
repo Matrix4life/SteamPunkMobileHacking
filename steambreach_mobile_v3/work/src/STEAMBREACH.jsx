@@ -802,18 +802,29 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
   const handleHwInstall = (partId) => {
     const part = PARTS_BY_ID[partId];
     if (!part) return;
-    const slot = part.slot;
-    const currentPart = rig[slot];
-    // Swap: move current part to bag if slot occupied
-    if (currentPart) {
-      setPartsBag(bag => [...bag, currentPart]);
+
+    // 1. Normalize the slot name to lowercase to match the 'rig' state keys
+    const slotKey = part.slot.toLowerCase();
+    const currentPartId = rig[slotKey];
+
+    // 2. If the slot is occupied, move the old part back to your inventory (partsBag)
+    if (currentPartId) {
+      setPartsBag(bag => [...bag, currentPartId]);
     }
-    // Remove from bag and install
-    const bagIdx = partsBag.indexOf(partId);
-    if (bagIdx >= 0) {
-      setPartsBag(bag => { const n = [...bag]; n.splice(bagIdx, 1); return n; });
-    }
-    setRig(r => ({ ...r, [slot]: partId }));
+
+    // 3. Remove the NEW part from your inventory bag
+    setPartsBag(bag => {
+      const newBag = [...bag];
+      const idx = newBag.indexOf(partId);
+      if (idx >= 0) newBag.splice(idx, 1);
+      return newBag;
+    });
+
+    // 4. Update the 'rig' state (This is what the motherboard visual watches)
+    setRig(prevRig => ({
+      ...prevRig,
+      [slotKey]: partId
+    }));
   };
 
   const handleHwUninstall = (slot) => {

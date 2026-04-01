@@ -240,35 +240,73 @@ export const generateAIContract = async (targetIP, nodeData, currentRep, arg4, a
 
   const prob = Math.floor(Math.random() * (100 - minProb + 1)) + minProb;
 
-  let timeLimit, heatCap, minReward, maxReward, minRep, maxRep, numTargets, riskLabel;
+  let timeLimit, heatCap, minRep, maxRep, numTargets, riskLabel;
+  let rewardScalar, timePressureMult, heatRestrictionMult;
 
   if (prob <= 9) {
     numTargets = Math.floor(Math.random() * 2) + 3;
-    timeLimit = 180; heatCap = 35; minReward = 50000; maxReward = 150000;
-    minRep = 100; maxRep = 250; riskLabel = 'EXTREME';
+    timeLimit = 180;
+    heatCap = 35;
+    minRep = 100;
+    maxRep = 250;
+    riskLabel = 'EXTREME';
+    rewardScalar = 1.12;
+    timePressureMult = 1.35;
+    heatRestrictionMult = 1.28;
   } else if (prob <= 49) {
     numTargets = Math.floor(Math.random() * 2) + 2;
-    timeLimit = 240; heatCap = 45; minReward = 15000; maxReward = 55000;
-    minRep = 50; maxRep = 120; riskLabel = 'HIGH';
+    timeLimit = 240;
+    heatCap = 45;
+    minRep = 50;
+    maxRep = 120;
+    riskLabel = 'HIGH';
+    rewardScalar = 0.95;
+    timePressureMult = 1.22;
+    heatRestrictionMult = 1.18;
   } else if (prob <= 74) {
     numTargets = Math.floor(Math.random() * 2) + 1;
-    timeLimit = 300; heatCap = 75; minReward = 4000; maxReward = 18000;
-    minRep = 20; maxRep = 55; riskLabel = 'MODERATE';
+    timeLimit = 300;
+    heatCap = 75;
+    minRep = 20;
+    maxRep = 55;
+    riskLabel = 'MODERATE';
+    rewardScalar = 0.82;
+    timePressureMult = 1.08;
+    heatRestrictionMult = 1.05;
   } else {
-    numTargets = 1; timeLimit = 600; heatCap = 90; minReward = 1000; maxReward = 4500;
-    minRep = 10; maxRep = 25; riskLabel = 'LOW';
+    numTargets = 1;
+    timeLimit = 600;
+    heatCap = 90;
+    minRep = 10;
+    maxRep = 25;
+    riskLabel = 'LOW';
+    rewardScalar = 0.72;
+    timePressureMult = 0.95;
+    heatRestrictionMult = 0.98;
   }
 
-  const reward = Math.floor(Math.random() * (maxReward - minReward + 1)) + minReward;
-  const repReward = Math.floor(Math.random() * (maxRep - minRep + 1)) + minRep;
+  const getNodeValue = (node) => {
+    if (node && typeof node.val === 'number' && node.val > 0) return node.val;
+    const secBase = { low: 2500, mid: 9000, high: 30000, elite: 90000 };
+    return secBase[node?.sec] || 2500;
+  };
 
-  const availableIPs = Object.keys(world).filter(ip => ip !== 'local' && ip !== targetIP && world[ip] && !world[ip].isHidden);
+  const availableIPs = Object.keys(world).filter(
+    (ip) => ip !== 'local' && ip !== targetIP && world[ip] && !world[ip].isHidden
+  );
   const shuffledIPs = [...availableIPs].sort(() => 0.5 - Math.random());
   const actualNumTargets = Math.min(numTargets, 1 + shuffledIPs.length);
   const selectedIPs = [targetIP, ...shuffledIPs].slice(0, actualNumTargets);
 
   const actionTypes = ['exfil', 'destroy', 'ransom'];
+  const actionValueMult = {
+    exfil: 1.0,
+    destroy: 1.18,
+    ransom: 1.32,
+  };
+
   const objectives = [];
+  let totalObjectiveValue = 0;
 
   for (let i = 0; i < selectedIPs.length; i++) {
     const ip = selectedIPs[i];
@@ -285,14 +323,21 @@ export const generateAIContract = async (targetIP, nodeData, currentRep, arg4, a
           const dirFiles = node.files[dir];
           if (Array.isArray(dirFiles)) {
             dirFiles.forEach((f) => {
-              if (!f.endsWith('/') && f !== '.bash_history' && !f.endsWith('.tmp') && !f.endsWith('.eml')) {
+              if (
+                !f.endsWith('/') &&
+                f !== '.bash_history' &&
+                !f.endsWith('.tmp') &&
+                !f.endsWith('.eml')
+              ) {
                 allFiles.push(f);
               }
             });
           }
         });
       }
-      targetFile = allFiles.length > 0 ? allFiles[Math.floor(Math.random() * allFiles.length)] : 'proprietary_data.zip';
+      targetFile = allFiles.length > 0
+        ? allFiles[Math.floor(Math.random() * allFiles.length)]
+        : 'proprietary_data.zip';
     }
 
     let label = '';
@@ -300,21 +345,59 @@ export const generateAIContract = async (targetIP, nodeData, currentRep, arg4, a
     else if (type === 'destroy') label = `Destroy the target environment at ${node?.org?.orgName || 'target node'}`;
     else if (type === 'ransom') label = `Deploy ransomware against ${node?.org?.orgName || 'target node'}`;
 
+    const nodeValue = getNodeValue(node);
+    const objectiveValue = Math.floor(nodeValue * (actionValueMult[type] || 1));
+
     objectives.push({
       ip,
       name: node?.org?.orgName || 'Unknown Node',
       type,
       targetFile,
-      label
+      label,
+      sec: node?.sec || 'mid',
+      nodeValue,
+      objectiveValue,
     });
+
+    totalObjectiveValue += objectiveValue;
   }
+
+  const objectiveCountMult = 0.92 + (objectives.length * 0.14);
+  const rewardBase =
+    totalObjectiveValue *
+    rewardScalar *
+    timePressureMult *
+    heatRestrictionMult *
+    objectiveCountMult;
+  const rewardJitter = 0.92 + (Math.random() * 0.16);
+  const reward = Math.max(1200, Math.floor(rewardBase * rewardJitter));
+
+  const repBase = Math.max(
+    minRep,
+    Math.floor(
+      (reward / 1200) *
+      (prob <= 9 ? 1.5 : prob <= 49 ? 1.2 : prob <= 74 ? 0.9 : 0.6)
+    )
+  );
+  const repReward = Math.min(maxRep, Math.max(minRep, repBase));
 
   const primaryOrg = nodeData?.org?.orgName || 'Unknown Target';
   const primaryType = nodeData?.org?.type || 'unknown';
-  
-  const clientPool = ['disgruntled insider', 'rival contractor', 'silent broker', 'burned former employee', 'fixer representing an unnamed buyer'];
-  const motivePool = ['wants pressure applied without public attribution', 'needs the target disrupted before an internal review', 'is trying to erase leverage held by the target', 'is paying for damage, not spectacle'];
-  
+
+  const clientPool = [
+    'disgruntled insider',
+    'rival contractor',
+    'silent broker',
+    'burned former employee',
+    'fixer representing an unnamed buyer'
+  ];
+  const motivePool = [
+    'wants pressure applied without public attribution',
+    'needs the target disrupted before an internal review',
+    'is trying to erase leverage held by the target',
+    'is paying for damage, not spectacle'
+  ];
+
   const client = clientPool[Math.floor(Math.random() * clientPool.length)];
   const motive = motivePool[Math.floor(Math.random() * motivePool.length)];
 
@@ -326,7 +409,9 @@ export const generateAIContract = async (targetIP, nodeData, currentRep, arg4, a
     client,
     motive,
     targetProfile: `${primaryOrg} • ${primaryType.toUpperCase()} • ${nodeData?.sec?.toUpperCase() || 'MID'} SECURITY`,
-    knownConditions: ["Target perimeter looks ordinary, but internal exposure may be easier than it appears."],
+    knownConditions: [
+      "Target perimeter looks ordinary, but internal exposure may be easier than it appears."
+    ],
     complication: "Blue Team may respond aggressively if you get loud.",
     riskLabel,
     timeLimit,
@@ -370,8 +455,8 @@ Return ONLY raw JSON:
 
     if (jsonMatch) {
       const parsedData = JSON.parse(jsonMatch[0]);
-      return { 
-        ...fallbackContract, 
+      return {
+        ...fallbackContract,
         desc: parsedData.desc || fallbackContract.desc,
         briefing: parsedData.briefing || fallbackContract.briefing,
         client: parsedData.client || fallbackContract.client,

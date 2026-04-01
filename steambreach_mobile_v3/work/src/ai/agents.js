@@ -372,23 +372,31 @@ const generateAIContract = async (targetIP, nodeData, currentRep, arg4, arg5) =>
   };
 
   // 5. Ask the AI Director to write the flavor text based on the objectives
-  const prompt = `You are a Darknet Fixer in a hacking simulator. Write a contract description.
-  The success probability is ${prob}%. (If low, make it sound dangerous/elite. If high, make it sound routine).
-  Objectives required:
-  ${objectives
-    .map(
-      (o, i) =>
-        `${i + 1}. ${o.type.toUpperCase()} on ${o.name} (${o.ip})${
-          o.type === 'exfil' ? ` -> Target File: ${o.targetFile}` : ''
-        }`
-    )
-    .join('\n')}
+ const prompt = `You are a high-stakes darknet fixer. Write a premium mission dossier.
 
-  Return ONLY raw JSON in this exact format. No markdown, no explanations:
-  {
-    "desc": "2 sentences of immersive darknet flavor text explaining WHO hired the player and WHY they want these specific actions done."
-  }`;
+Context:
+- Client Type: ${client}
+- Direct Motive: ${motive}
+- Primary Target: ${primaryOrg} (${primaryType})
+- Security Tier: ${nodeData?.sec || 'mid'}
+- Objectives: ${objectives.map((o, i) => `${i + 1}. ${o.label}`).join(', ')}
 
+Rules:
+1. Write with mystery and professional detachment.
+2. The 'desc' should be a punchy one-sentence hook for the UI card.
+3. The 'briefing' must be 2-4 sentences explaining the "why" without giving away the "how".
+4. Do NOT include tool names or step-by-step instructions.
+
+Return ONLY raw JSON:
+{
+  "desc": "string",
+  "briefing": "string",
+  "client": "${client}",
+  "motive": "${motive}",
+  "targetProfile": "string",
+  "knownConditions": ["condition 1", "condition 2"],
+  "complication": "string"
+}`;
   try {
     let aiText = await generateDirectorText(prompt, '');
     aiText = aiText.replace(/```json/gi, '').replace(/```/g, '').trim();

@@ -222,7 +222,7 @@ function CollapsedView({ tiers, heat, isProcessing }) {
 }
 
 export default function RigDisplay({
- rig={rig} 
+ rig={} 
   inventory = [], 
   heat = 0,
   isProcessing = false,

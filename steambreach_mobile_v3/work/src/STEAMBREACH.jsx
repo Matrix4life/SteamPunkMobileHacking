@@ -802,20 +802,20 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
   const handleHwInstall = (partId) => {
     const part = PARTS_BY_ID[partId];
     if (!part) return;
-    const slotKey = part.slot.toLowerCase();
-    const currentPart = rig[slotKey];
-
-    if (currentPart) setPartsBag(bag => [...bag, currentPart]);
-    
-    setPartsBag(bag => {
-      const n = [...bag];
-      const idx = n.indexOf(partId);
-      if (idx >= 0) n.splice(idx, 1);
-      return n;
-    });
-
-    setRig(prev => ({ ...prev, [slotKey]: partId })); // Update the state the motherboard watches
+    const slot = part.slot;
+    const currentPart = rig[slot];
+    // Swap: move current part to bag if slot occupied
+    if (currentPart) {
+      setPartsBag(bag => [...bag, currentPart]);
+    }
+    // Remove from bag and install
+    const bagIdx = partsBag.indexOf(partId);
+    if (bagIdx >= 0) {
+      setPartsBag(bag => { const n = [...bag]; n.splice(bagIdx, 1); return n; });
+    }
+    setRig(r => ({ ...r, [slot]: partId }));
   };
+
   const handleHwUninstall = (slot) => {
     const partId = rig[slot];
     if (!partId) return;
@@ -903,87 +903,17 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
         }
     }
   };
-  const denyContract = (id) => {
-  setContracts(prev => prev.filter(c => c.id !== id));
-  if (activeContract?.id === id) {
-    setActiveContract(null);
-  }
-};
-
-const completeContractAndRemove = (id) => {
-  setContracts(prev => prev.filter(c => c.id !== id));
-  if (activeContract?.id === id) {
-    setActiveContract(null);
-  }
-};
 
   const acceptContract = (id) => {
-  const contract = contracts.find(c => c.id === id);
-  if (!contract || contract.completed) return;
-
-  const activated = {
-    ...contract,
-    active: true,
-    completed: false,
-    startTime: Date.now(),
+    const contract = contracts.find(c => c.id === id);
+    if (!contract || contract.completed) return;
+    const activated = { ...contract, active: true, startTime: Date.now() };
+    setContracts(prev => prev.map(c => c.id === id ? activated : c));
+    setActiveContract(activated);
+    setScreen('game');
+    setTerminal(prev => [...prev, { type: 'out', text: `[FIXER] Contract ${id} accepted.\n[*] Target: ${activated.targetName} (${activated.targetIP})\n[*] Time limit: ${activated.timeLimit}s | Max heat: ${activated.heatCap}%\n[*] Reward: ₿${activated.reward.toLocaleString()} + ${activated.repReward} REP`, isNew: true }]);
   };
 
-  setContracts(prev =>
-    prev.map(c =>
-      c.id === id
-        ? activated
-        : { ...c, active: false }
-    )
-  );
-
-  setActiveContract(activated);
-  setScreen('game');
-
-  setTerminal(prev => [
-    ...prev,
-    {
-      type: 'out',
-      text:
-        `[FIXER] Contract ${id} accepted.\n` +
-        `[*] Target: ${activated.targetName} (${activated.targetIP})\n` +
-        `[*] Time limit: ${activated.timeLimit}s | Max heat: ${activated.heatCap}%\n` +
-        `[*] Reward: ₿${activated.reward.toLocaleString()} + ${activated.repReward} REP`,
-      isNew: true
-    }
-  ]);
-};
-  const objectiveLines = (activated.objectives || [])
-    .map((o, idx) => {
-      if (o.type === 'exfil') {
-        return `    ${idx + 1}. ${o.label}${o.targetFile ? ` [FILE: ${o.targetFile}]` : ''}`;
-      }
-      return `    ${idx + 1}. ${o.label}`;
-    })
-    .join('\n');
-
-  const intelLines = (activated.knownConditions || [])
-    .map((line) => `    - ${line}`)
-    .join('\n');
-
-  const contractText = [
-    `[FIXER] Contract ${id} accepted.`,
-    activated.briefing ? `\n${activated.briefing}` : '',
-    `\n[*] CLIENT: ${activated.client || 'unknown buyer'}`,
-    `[*] MOTIVE: ${activated.motive || 'undisclosed'}`,
-    `[*] TARGET PROFILE: ${activated.targetProfile || `${activated.targetName} (${activated.targetIP})`}`,
-    `[*] RISK: ${activated.riskLabel || 'STANDARD'}`,
-    intelLines ? `[*] KNOWN CONDITIONS:\n${intelLines}` : '',
-    activated.complication ? `[*] COMPLICATION: ${activated.complication}` : '',
-    `[*] TIME LIMIT: ${activated.timeLimit}s`,
-    `[*] MAX HEAT: ${activated.heatCap}%`,
-    `[*] PAYOUT: ₿${activated.reward.toLocaleString()} + ${activated.repReward} REP`,
-    objectiveLines ? `[*] OBJECTIVES:\n${objectiveLines}` : ''
-  ]
-    .filter(Boolean)
-    .join('\n');
-
-  setTerminal(prev => [...prev, { type: 'out', text: contractText, isNew: true }]);
-};
   const selectNodeFromMap = (ip) => {
     const node = world[ip]; if (!node) return;
     const port = node.port || 22; const svc = node.svc || 'ssh'; const exp = node.exp || 'hydra';
@@ -1476,11 +1406,7 @@ const completeContractAndRemove = (id) => {
               if (aiContract) {
                 const newContract = { id: `CTR-${Date.now().toString(36).toUpperCase()}`, targetIP: newNode.ip, targetName: newNode.data.org.orgName, startTime: null, active: false, completed: false, ...aiContract };
                 setContracts(prev => [...prev, newContract]);
-                setTerminal(prev => [...prev, {
-  type: 'out',
-  text: `\n[FIXER] Contract ${newContract.id} ready.\n[*] ${newContract.desc}\n[*] Risk: ${newContract.riskLabel} | Reward: ₿${newContract.reward.toLocaleString()} + ${newContract.repReward} REP\n[*] Type 'contracts' to review the dossier.`,
-  isNew: true
-}]);
+                setTerminal(prev => [...prev, { type: 'out', text: `\n[FIXER] Contract ${newContract.id} ready. Type 'contracts' to view.`, isNew: true }]);
               }
             });
           }
@@ -1649,7 +1575,8 @@ const completeContractAndRemove = (id) => {
           if (timeTaken <= activeContract.timeLimit && heat <= activeContract.heatCap) {
             setMoney(m => m + activeContract.reward);
             setReputation(r => r + activeContract.repReward);
-          completeContractAndRemove(activeContract.id); trackContract(true); setIsProcessing(false);
+            setContracts(prev => prev.map(c => c.id === activeContract.id ? { ...c, completed: true, active: false } : c));
+            setActiveContract(null); trackContract(true); setIsProcessing(false);
             return `[+] EXFIL COMPLETE. ₿${val.toLocaleString()} secured.\n\n[FIXER] CONTRACT ${activeContract.id} FULFILLED.\n[+] BONUS: ₿${activeContract.reward.toLocaleString()} + ${activeContract.repReward} REP`;
           }
         }
@@ -1848,7 +1775,8 @@ const completeContractAndRemove = (id) => {
           if (timeTaken <= activeContract.timeLimit && heat <= activeContract.heatCap) {
             setMoney(m => m + activeContract.reward);
             setReputation(r => r + activeContract.repReward);
-            completeContractAndRemove(activeContract.id); trackContract(true); setIsProcessing(false);
+            setContracts(prev => prev.map(c => c.id === activeContract.id ? { ...c, completed: true, active: false } : c));
+            setActiveContract(null); trackContract(true); setIsProcessing(false);
             return `[+] STASH EXFIL COMPLETE via ${stagingName}. ₿${val.toLocaleString()} secured.\n[+] Trace +8%, Heat +3% (staged routing).\n\n[FIXER] CONTRACT ${activeContract.id} FULFILLED.\n[+] BONUS: ₿${activeContract.reward.toLocaleString()} + ${activeContract.repReward} REP`;
           }
         }
@@ -3034,14 +2962,8 @@ ${wantedTier === 'MANHUNT' ? '[!!!] REDUCE HEAT IMMEDIATELY. Your entire network
   );
 
   if (screen === 'contracts') return (
-  <ContractBoard
-    contracts={contracts.filter(c => !c.completed)}
-    activeContract={activeContract}
-    acceptContract={acceptContract}
-    denyContract={denyContract}
-    returnToGame={() => setScreen('game')}
-  />
-);
+    <ContractBoard contracts={contracts} activeContract={activeContract} acceptContract={acceptContract} returnToGame={() => setScreen('game')} />
+  );
   
   if (screen === 'sounds') return (
     <SoundManager
@@ -3059,8 +2981,8 @@ if (screen === 'soundmanager') {
     );
   }
   if (screen === 'aisettings') {
-    return <AiSettings returnToGame={() => setScreen('intro')} />;
-  }
+  return <AiSettings returnToGame={() => setScreen('intro')} />;
+}
   
   return (
     <div onMouseDown={(e) => { if (e.target === e.currentTarget && inputRef.current && !isProcessing && screen === 'game') inputRef.current.focus(); }} style={{
@@ -3175,25 +3097,18 @@ if (screen === 'soundmanager') {
       )}
 
       {(!isMobile || showMobileKeyboard) && (
-        <div onClick={() => { if (inputRef.current) inputRef.current.focus(); }} style={{ flexShrink: 0, display: 'flex', alignItems: 'center', borderTop: `1px solid ${trace > 75 ? COLORS.danger + '60' : COLORS.border}`, paddingTop: '8px', background: trace > 75 ? `${COLORS.danger}08` : 'transparent', cursor: 'text' }}>
-          <span style={{ color: isChatting ? COLORS.chat : (isInside ? COLORS.primary : COLORS.textDim), opacity: isProcessing ? 0.4 : 1, whiteSpace: 'nowrap', fontSize: '12px' }}>
-            {isChatting ? `chat@${chatTarget} ` : `${currentDir} `} <span style={{ color: COLORS.secondary }}>$</span>
-          </span>
-          <input
-            ref={inputRef} 
-            disabled={isProcessing}
-            style={{ background: 'transparent', border: 'none', color: isChatting ? COLORS.chat : (isInside ? COLORS.primary : COLORS.text), outline: 'none', flex: 1, fontFamily: 'inherit', paddingLeft: '8px', fontSize: '13px', opacity: isProcessing ? 0.4 : 1 }}
-            value={isProcessing ? "PROCESSING..." : input} 
-            onChange={e => setInput(e.target.value)} 
-            onKeyDown={handleCommand} 
-            autoFocus={!isMobile} 
-            autoComplete="off" 
-            spellCheck="false"
-          />
-        </div>
+      <div onClick={() => { if (inputRef.current) inputRef.current.focus(); }} style={{ flexShrink: 0, display: 'flex', alignItems: 'center', borderTop: `1px solid ${trace > 75 ? COLORS.danger + '60' : COLORS.border}`, paddingTop: '8px', background: trace > 75 ? `${COLORS.danger}08` : 'transparent', cursor: 'text' }}>
+        <span style={{ color: isChatting ? COLORS.chat : (isInside ? COLORS.primary : COLORS.textDim), opacity: isProcessing ? 0.4 : 1, whiteSpace: 'nowrap', fontSize: '12px' }}>
+          {isChatting ? `chat@${chatTarget} ` : `${currentDir} `} <span style={{ color: COLORS.secondary }}>$</span>
+        </span>
+        <input
+          ref={inputRef} disabled={isProcessing}
+          style={{ background: 'transparent', border: 'none', color: isChatting ? COLORS.chat : (isInside ? COLORS.primary : COLORS.text), outline: 'none', flex: 1, fontFamily: 'inherit', paddingLeft: '8px', fontSize: '13px', opacity: isProcessing ? 0.4 : 1 }}
+          value={isProcessing ? "PROCESSING..." : input} onChange={e => setInput(e.target.value)} onKeyDown={handleCommand} autoFocus={!isMobile} autoComplete="off" spellCheck="false"
+        />
+      </div>
       )}
     </div>
   );
 };
-
 export default STEAMBREACH;

@@ -117,6 +117,8 @@ const STEAMBREACH = () => {
 
   const [wantedTier, setWantedTier] = useState('COLD');
   const [walletFrozen, setWalletFrozen] = useState(false);
+  const [morality, setMorality] = useState({ chaos: 0, signal: 0 });
+  const [pendingInteraction, setPendingInteraction] = useState(null);
 
   const rigFx = getRigEffects(rig);
   const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
@@ -280,6 +282,64 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
     return () => clearInterval(id);
   }, [isMobile, screen, trace]);
 
+
+  const isCivilianNode = (ip = targetIP) => world?.[ip]?.org?.type === 'personal';
+  const getMoralityRank = () => {
+    const diff = morality.signal - morality.chaos;
+    if (diff >= 25) return 'WHITE HAT';
+    if (diff >= 8) return 'GREY HAT+';
+    if (diff <= -25) return 'BLACK HAT';
+    if (diff <= -8) return 'GREY HAT-';
+    return 'NEUTRAL';
+  };
+
+  const buildCivilianInteraction = (filename, fileText = '', ip = targetIP) => {
+    const node = world?.[ip];
+    if (!node || node?.org?.type !== 'personal') return null;
+
+    const key = `${ip}:${filename}`;
+    const lower = `${filename} ${fileText}`.toLowerCase();
+
+    if (lower.includes('freez') || lower.includes('broken') || lower.includes('problem') || lower.includes('help') || lower.includes('not working')) {
+      return {
+        id: key,
+        kind: 'assist',
+        title: 'HOUSEHOLD SUPPORT ISSUE',
+        prompt: '[CHOICE] You found evidence the owner is struggling with a system issue. Type "assist" to quietly patch the problem and raise your SIGNAL rating.',
+        signal: 4,
+        chaos: 0,
+        heatDelta: -2,
+        rewardText: 'Signal +4 | Heat -2%',
+      };
+    }
+
+    if (lower.includes('bank') || lower.includes('wallet') || lower.includes('password') || lower.includes('seed') || lower.includes('vpn')) {
+      return {
+        id: key,
+        kind: 'salvage',
+        title: 'HIDDEN OPPORTUNITY',
+        prompt: '[CHOICE] This mailbox contains something useful. Type "salvage" to recover a small power-up or stash item.',
+        signal: 0,
+        chaos: 0,
+        heatDelta: 0,
+        rewardText: 'Potential power-up or bonus loot',
+      };
+    }
+
+    return {
+      id: key,
+      kind: 'crash',
+      title: 'UNPROTECTED CIVILIAN MACHINE',
+      prompt: '[CHOICE] This endpoint is soft and exposed. Type "crashpc" to brick the machine and raise your CHAOS rating.',
+      signal: 0,
+      chaos: 5,
+      heatDelta: 1,
+      rewardText: 'Chaos +5',
+    };
+  };
+
+  const clearPendingInteraction = () => setPendingInteraction(null);
+
   const getAllSaveSlots = () => {
     try { return JSON.parse(localStorage.getItem('breach_save_index') || '[]'); } catch { return []; }
   };
@@ -368,7 +428,7 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
 
   const collectCurrentState = () => ({
     operator, gameMode, money, reputation, heat, botnet, proxies, looted, wipedNodes,
-    inventory, rig, partsBag, softwareOwned, btcIndex, consumables, stash, currentRegion, marketPrices, world, unlockedFiles, contracts, director, timestamp: Date.now(),
+    inventory, rig, partsBag, softwareOwned, btcIndex, consumables, stash, currentRegion, marketPrices, world, unlockedFiles, contracts, director, morality, pendingInteraction, timestamp: Date.now(),
   });
 
   const applySaveData = (data) => {
@@ -394,6 +454,8 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
     setMoney(data.money || 0);
     setReputation(data.reputation || 0);
     setHeat(data.heat || 0);
+    setMorality(data.morality || { chaos: 0, signal: 0 });
+    setPendingInteraction(data.pendingInteraction || null);
   };
 
   const saveGame = (slotName) => {
@@ -454,6 +516,8 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
     setPrivilege('local'); setCurrentDir('~'); setMapExpanded(false);
     setActiveContract(null);
     setWantedTier('COLD'); setWalletFrozen(false); lastWantedTier.current = 'COLD';
+    setMorality({ chaos: 0, signal: 0 });
+    setPendingInteraction(null);
     setScreen('game');
   };
 
@@ -461,7 +525,7 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
     if (screen !== 'game' || !operator) return;
     const autoSaveTimer = setInterval(() => saveGame(`auto_${operator}`), 60000);
     return () => clearInterval(autoSaveTimer);
-  }, [screen, operator, money, botnet, proxies, looted, wipedNodes, inventory, consumables, stash, currentRegion, world, contracts, director, heat, reputation]);
+  }, [screen, operator, money, botnet, proxies, looted, wipedNodes, inventory, consumables, stash, currentRegion, world, contracts, director, heat, reputation, morality, pendingInteraction]);
 
   useEffect(() => { directorRef.current = director; }, [director]);
 
@@ -2422,6 +2486,68 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
             return `[*] Executing unknown Zero-Day payload...\n[+] Buffer overflow successful.\n[+] Root privileges granted. Bypassed all logging.`;
         }
         return `[-] Unknown consumable item: ${arg1}`;
+      },
+
+      assist: async () => {
+        if (!pendingInteraction || pendingInteraction.kind !== 'assist') return '[-] No civilian support issue is currently queued.';
+        if (!isInside || targetIP !== pendingInteraction.id.split(':')[0]) return '[-] You need to be on the affected civilian node to do that.';
+        const signalGain = pendingInteraction.signal || 0;
+        const heatDelta = pendingInteraction.heatDelta || 0;
+        setMorality(prev => ({ ...prev, signal: prev.signal + signalGain }));
+        if (heatDelta) setHeat(h => Math.max(0, Math.min(100, h + heatDelta)));
+        clearPendingInteraction();
+        playSuccess();
+        return `[+] Quiet maintenance complete. System stabilized without alerting the owner.
+[+] SIGNAL +${signalGain}${heatDelta ? ` | HEAT ${heatDelta}` : ''}`;
+      },
+
+      crashpc: async () => {
+        if (!pendingInteraction || pendingInteraction.kind !== 'crash') return '[-] No civilian crash opportunity is currently queued.';
+        if (!isInside || targetIP !== pendingInteraction.id.split(':')[0]) return '[-] You need to be on the exposed civilian machine to do that.';
+        const chaosGain = pendingInteraction.chaos || 0;
+        const heatDelta = pendingInteraction.heatDelta || 0;
+        const payout = Math.floor(Math.random() * 45) + 15;
+        setMorality(prev => ({ ...prev, chaos: prev.chaos + chaosGain }));
+        setMoney(m => m + payout);
+        if (heatDelta) setHeat(h => Math.max(0, Math.min(100, h + heatDelta)));
+        const doomedIP = targetIP;
+        const doomedName = world[doomedIP]?.org?.orgName || doomedIP;
+        clearPendingInteraction();
+        setBotnet(prev => prev.filter(ip => ip !== doomedIP));
+        setProxies(prev => prev.filter(ip => ip !== doomedIP));
+        setIsInside(false); setTargetIP(null); setCurrentDir('~'); setPrivilege('local');
+        setWorld(prev => { const nw = { ...prev }; delete nw[doomedIP]; return nw; });
+        playDestroy();
+        return `[+] Kernel panic induced on ${doomedName}. Endpoint crashed hard and dropped off the grid.
+[+] CHAOS +${chaosGain} | ₿${payout.toLocaleString()} scavenged.`;
+      },
+
+      salvage: async () => {
+        if (!pendingInteraction || pendingInteraction.kind !== 'salvage') return '[-] No hidden opportunity is currently queued.';
+        if (!isInside || targetIP !== pendingInteraction.id.split(':')[0]) return '[-] You need to be on the civilian node that holds the clue.';
+        const roll = Math.random();
+        let out = `[+] You quietly harvested something useful from the civilian system.`;
+        if (roll < 0.4) {
+          setConsumables(c => ({ ...c, decoy: c.decoy + 1 }));
+          out += `
+[+] Recovered: Trace Decoy x1`;
+        } else if (roll < 0.75) {
+          setConsumables(c => ({ ...c, burner: c.burner + 1 }));
+          out += `
+[+] Recovered: Burner VPN x1`;
+        } else if (roll < 0.92) {
+          const amt = Math.floor(Math.random() * 350) + 150;
+          setMoney(m => m + amt);
+          out += `
+[+] Liquidated hidden wallet data for ₿${amt.toLocaleString()}`;
+        } else {
+          setConsumables(c => ({ ...c, zeroday: c.zeroday + 1 }));
+          out += `
+[+] Recovered: Zero-Day Exploit x1`;
+        }
+        clearPendingInteraction();
+        playSuccess();
+        return out;
       },
 
       ls: async () => {

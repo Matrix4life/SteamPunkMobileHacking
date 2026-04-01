@@ -1449,7 +1449,7 @@ const completeContractAndRemove = (id) => {
         return `[+] Sold ${qty}x ${COMMODITIES[itemKey].name} for ₿${totalProfit.toLocaleString()}.`;
       },
 
-      nmap: async () => {
+      nnmap: async () => {
         setMapExpanded(true);
         if (arg1) { if (world[arg1]) { selectNodeFromMap(arg1); return null; } return `nmap: host down.`; }
         
@@ -1474,10 +1474,15 @@ const completeContractAndRemove = (id) => {
         for(let i = 0; i < scanCount; i++) {
           if (Object.keys(world || {}).filter(k => k !== 'local' && !world[k].isHidden).length + i >= 25) break;
           
-          const newNode = generateNewTarget(null, null, director.modifiers);
+          // --- FIX 1: FORCE LOW SECURITY FOR NEW PLAYERS ---
+          // This ensures the first contract isn't an "Elite" 15+ rep mission
+          const isFirstScan = (contracts.length === 0 && Object.keys(world).length <= 1); 
+          const targetSec = isFirstScan ? 'low' : null; 
           
-          // --- NEW: BEGINNER PROTECTION ---
-          // If reputation is under 15, silently disable honeypots so new players don't get instantly burned
+          const newNode = generateNewTarget(targetSec, null, director.modifiers);
+          
+          // --- FIX 2: HONEYPOT PROTECTION ---
+          // Prevents new players from hitting a trap on their first few scans
           if (reputation < 15) {
             newNode.data.isHoneypot = false;
           }
@@ -1487,12 +1492,19 @@ const completeContractAndRemove = (id) => {
           out += `\n[*] ORG: ${newNode.data.org.orgName} (${newNode.data.org.type})`;
           out += `\n[*] EMPLOYEES: ${newNode.data.org.employees.length} found via OSINT\n`;
           
-          const isFirstScan = contracts.length === 0;
           if ((isFirstScan || Math.random() < 0.3) && contracts.length < 8) {
             out += `\n[FIXER] Signal intercepted. Negotiating custom darknet contract for ${newNode.data.org.orgName}...`;
             generateAIContract(newNode.ip, newNode.data, reputation, apiKey).then(aiContract => {
               if (aiContract) {
-                const newContract = { id: `CTR-${Date.now().toString(36).toUpperCase()}`, targetIP: newNode.ip, targetName: newNode.data.org.orgName, startTime: null, active: false, completed: false, ...aiContract };
+                const newContract = { 
+                  id: `CTR-${Date.now().toString(36).toUpperCase()}`, 
+                  targetIP: newNode.ip, 
+                  targetName: newNode.data.org.orgName, 
+                  startTime: null, 
+                  active: false, 
+                  completed: false, 
+                  ...aiContract 
+                };
                 setContracts(prev => [...prev, newContract]);
                 setTerminal(prev => [...prev, { type: 'out', text: `\n[FIXER] Contract ${newContract.id} ready. Type 'contracts' to view.`, isNew: true }]);
               }

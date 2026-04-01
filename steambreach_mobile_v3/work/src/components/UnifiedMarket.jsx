@@ -175,12 +175,15 @@ export default function UnifiedMarket({
           )}
         </div>
 
-        {/* RIGHT SIDEBAR - Fixed height & overflow */}
-        <div style={{ width: '300px', borderLeft: `1px solid ${C.bdr}`, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+        {/* RIGHT SIDEBAR */}
+        <div style={{ width: isMobile ? '100%' : '300px', borderLeft: `1px solid ${C.bdr}`, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+          {/* Top: Rig Stats & Installed Slots */}
           <div style={{ flex: '0 1 auto', maxHeight: '50%', overflowY: 'auto', padding: '10px', borderBottom: `1px solid ${C.bdr}` }}>
             <SynergyPanel rig={rig}/>
             {HW_SLOTS.map(s => <RigSlot key={s} slot={s} partId={rig[s.toLowerCase()]} onRemove={onUninstall} onSell={onSellHW}/>)}
           </div>
+          
+          {/* Bottom: Uninstalled Inventory */}
           <div style={{ flex: 1, overflowY: 'auto', padding: '10px' }}>
             <div style={{color:C.dim, marginBottom:'10px', fontSize:'12px'}}>INVENTORY ({partsBag.length})</div>
             {partsBag.map((pid,i)=><BagRow key={`${pid}-${i}`} partId={pid} onInstall={onInstall} onSell={onSellHW} sellPrice={getSellPrice(pid,[])} rig={rig}/>)}

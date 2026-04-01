@@ -312,10 +312,19 @@ const generateAIContract = async (targetIP, nodeData, currentRep, arg4, arg5) =>
     }
 
     // --- CRITICAL FIX: Ensure 'label' exists for the AI prompt ---
+    // --- CRITICAL FIX: Ensure 'label' exists for the AI prompt ---
     let label = '';
-    if (type === 'exfil') label = `Extract sensitive data from ${node?.org?.orgName || 'target node'}`;
-    else if (type === 'destroy') label = `Destroy the target environment at ${node?.org?.orgName || 'target node'}`;
-    else if (type === 'ransom') label = `Deploy ransomware against ${node?.org?.orgName || 'target node'}`;
+    if (type === 'exfil') {
+      // Use the actual file name if we found one, otherwise fallback
+      const fileName = targetFile || 'proprietary_data.zip';
+      label = `Exfiltrate ${fileName} from ${node?.org?.orgName || 'target node'}`;
+    }
+    else if (type === 'destroy') {
+      label = `Destroy the target environment at ${node?.org?.orgName || 'target node'}`;
+    }
+    else if (type === 'ransom') {
+      label = `Deploy ransomware against ${node?.org?.orgName || 'target node'}`;
+    }
 
     objectives.push({
       ip,

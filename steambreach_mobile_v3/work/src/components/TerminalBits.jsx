@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { COLORS, COMMAND_REGISTRY, DEV_COMMANDS } from '../constants/gameConstants';
 
 const SyntaxText = ({ text }) => {
@@ -46,19 +46,57 @@ const HelpPanel = ({ onClose, devMode }) => {
     return acc;
   }, {});
 
+  // --- DRAGGING STATE & LOGIC ---
+  // Default position: Right side of the screen, vertically centered-ish
+  const [pos, setPos] = useState({
+    x: window.innerWidth > 800 ? window.innerWidth - 550 : 20,
+    y: window.innerHeight > 600 ? (window.innerHeight / 2) - 300 : 50
+  });
+  
+  const [isDragging, setIsDragging] = useState(false);
+  const dragOffset = useRef({ x: 0, y: 0 });
+
+  const handleMouseDown = (e) => {
+    setIsDragging(true);
+    dragOffset.current = {
+      x: e.clientX - pos.x,
+      y: e.clientY - pos.y
+    };
+  };
+
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      if (!isDragging) return;
+      setPos({
+        x: e.clientX - dragOffset.current.x,
+        y: e.clientY - dragOffset.current.y
+      });
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+    };
+
+    if (isDragging) {
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+    }
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging]);
+
   return (
     <div style={{
       position: 'absolute', 
-      right: '2%',                  // Pin it to the right edge
-      top: '50%',                   // Push it halfway down the screen
-      transform: 'translateY(-50%)',// ONLY center it vertically (up and down)
-      
-      /* Keep everything else exactly the same! */
+      left: `${pos.x}px`,     // Dynamic X based on drag
+      top: `${pos.y}px`,      // Dynamic Y based on drag
       width: '500px', 
+      minWidth: '350px',      // Prevent shrinking too small
       maxHeight: '80vh',
       background: 'rgba(8,12,18,0.98)', 
       border: `1px solid ${COLORS.primary}80`,
-      padding: '24px',
       fontSize: '11px',
       color: COLORS.text,
       zIndex: 9999, 
@@ -66,20 +104,37 @@ const HelpPanel = ({ onClose, devMode }) => {
       boxShadow: `0 0 50px rgba(0,0,0,0.9), 0 0 20px ${COLORS.primary}30`,
       borderRadius: '4px',
       display: 'flex',
-      flexDirection: 'column'
+      flexDirection: 'column',
+      
+      resize: 'both',         // Adds the CSS native resize handle (bottom right)
+      overflow: 'hidden'      // Required for resize to work
     }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: `1px solid ${COLORS.borderActive}`, paddingBottom: '12px', marginBottom: '16px' }}>
+      
+      {/* DRAG HANDLE (Header) */}
+      <div 
+        onMouseDown={handleMouseDown}
+        style={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          borderBottom: `1px solid ${COLORS.borderActive}`, 
+          padding: '16px 24px', 
+          background: `${COLORS.primary}10`,
+          cursor: isDragging ? 'grabbing' : 'grab', 
+          userSelect: 'none'
+        }}
+      >
         <span style={{ color: COLORS.primary, fontWeight: 'bold', letterSpacing: '2px', fontSize: '14px' }}>COMMAND REFERENCE MANUAL</span>
         <span onClick={onClose} style={{ color: COLORS.textDim, cursor: 'pointer', border: `1px solid ${COLORS.textDim}40`, padding: '2px 8px', borderRadius: '3px' }}>[TAB] CLOSE</span>
       </div>
       
+      {/* SCROLLABLE CONTENT */}
       <div style={{ 
         flexGrow: 1, 
         overflowY: 'auto', 
         display: 'flex', 
         flexDirection: 'column', 
         gap: '4px', 
-        paddingRight: '12px',
+        padding: '16px 24px',
         scrollbarWidth: 'thin', 
         scrollbarColor: `${COLORS.primaryDim} transparent`
       }}>
@@ -121,10 +176,10 @@ const HelpPanel = ({ onClose, devMode }) => {
             ))}
           </div>
         )}
-      </div>
-      
-      <div style={{ marginTop: '16px', paddingTop: '12px', borderTop: `1px solid ${COLORS.borderActive}`, color: COLORS.textDim, textAlign: 'center', fontSize: '10px', letterSpacing: '1px' }}>
-        OPERATOR VERSION 3.0.4 // CORE SYSTEM STABLE
+        
+        <div style={{ marginTop: '16px', paddingTop: '12px', borderTop: `1px solid ${COLORS.borderActive}`, color: COLORS.textDim, textAlign: 'center', fontSize: '10px', letterSpacing: '1px' }}>
+          OPERATOR VERSION 3.0.4 // CORE SYSTEM STABLE
+        </div>
       </div>
     </div>
   );

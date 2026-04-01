@@ -1449,7 +1449,7 @@ const completeContractAndRemove = (id) => {
         return `[+] Sold ${qty}x ${COMMODITIES[itemKey].name} for ₿${totalProfit.toLocaleString()}.`;
       },
 
-      nnmap: async () => {
+      nmap: async () => {
         setMapExpanded(true);
         if (arg1) { if (world[arg1]) { selectNodeFromMap(arg1); return null; } return `nmap: host down.`; }
         

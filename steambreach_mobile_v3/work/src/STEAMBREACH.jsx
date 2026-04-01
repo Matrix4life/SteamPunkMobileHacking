@@ -1,3 +1,4 @@
+import HelpMenu from './components/HelpMenu';
 import AiSettings from './components/AiSettings';
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import SoundManager from './components/SoundManager';
@@ -3235,7 +3236,7 @@ if (screen === 'soundmanager') {
         </div>
       )}
 
-      {showHelpMenu && <HelpPanel onClose={() => setShowHelpMenu(false)} devMode={devMode} />}
+      {showHelpMenu && <HelpPanel onClose={() => setShowHelpMenu(false)} devMode={devMode} COLORS={COLORS} />}
 
       {!(isMobile && isKeyboardOpen) && (
       <div style={{ display: 'flex', gap: '8px', margin: '6px 0', flexDirection: isMobile ? 'column' : 'row' }}>

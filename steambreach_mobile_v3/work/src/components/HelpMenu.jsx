@@ -2,7 +2,7 @@ import React from 'react';
 
 export default function HelpMenu({ onClose, COLORS }) {
   return (
-    <div style={{ position: 'absolute', inset: 0, zIndex: 60, display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(4px)', padding: '20px' }}>
+    <div style={{ position: 'absolute', inset: 0, zIndex: 60, display: 'flex', justifyContent:'flex-end', alignItems: 'center', background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(4px)', padding: '20px 5% 20px 20px'}}>
       <div style={{ width: '100%', maxWidth: '800px', maxHeight: '90vh', background: COLORS.bg, border: `1px solid ${COLORS.primary}`, display: 'flex', flexDirection: 'column', boxShadow: `0 0 30px ${COLORS.primary}40` }}>
         
         {/* Header */}

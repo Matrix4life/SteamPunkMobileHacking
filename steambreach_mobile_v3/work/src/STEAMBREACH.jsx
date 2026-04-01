@@ -1621,7 +1621,7 @@ const completeContractAndRemove = (id) => {
         return `${mzData}\n\nmimikatz # exit\n[+] ${org?.employees?.length || 2} credential sets extracted from LSASS.\n[+] Plaintext passwords + NTLM hashes sold for ₿${intelValue.toLocaleString()}.`;
       },
 
-      exfil: async () => {
+     exfil: async () => {
         try {
           if (!isInside) return "[-] Must be on a remote host.";
           if (!arg1) return "[-] Usage: exfil <filename>";
@@ -1645,10 +1645,9 @@ const completeContractAndRemove = (id) => {
           trackLoot(val);
           playExfil();
 
-          // --- BULLETPROOF CONTRACT CHECK ---
+          // --- BULLETPROOF CONTRACT CHECK (MOVED TO END) ---
           let contractMsg = '';
           const currentContract = contracts.find(c => c.active && !c.completed);
-          
           if (currentContract) {
             const isExfil = currentContract.objectives?.some(o => o.ip === targetIP && o.type === 'exfil');
             if (isExfil) {
@@ -1900,28 +1899,30 @@ const completeContractAndRemove = (id) => {
         try {
           const mult = getRewardMult(gameMode);
           
-          // --- BULLETPROOF CONTRACT CHECK ---
-          let contractMsg = '';
-          const currentContract = contracts.find(c => c.active && !c.completed);
-          
-          if (currentContract) {
-            const isDest = currentContract.objectives?.some(o => o.ip === targetIP && o.type === 'destroy');
-            if (isDest) {
-              const timeTaken = (Date.now() - currentContract.startTime) / 1000;
-              const rewardVal = currentContract.reward || 0;
-              const repVal = currentContract.repReward || 0;
-              
-              if (timeTaken <= (currentContract.timeLimit || 9999) && heat <= (currentContract.heatCap || 100)) {
-                setMoney(m => m + rewardVal);
-                setReputation(r => r + repVal);
-                completeContractAndRemove(currentContract.id); trackContract(true);
-                contractMsg = `\n\n[FIXER] CONTRACT FULFILLED.\n[+] BONUS: ₿${rewardVal.toLocaleString()} + ${repVal} REP`;
-              } else {
-                completeContractAndRemove(currentContract.id); trackContract(false);
-                contractMsg = `\n\n[FIXER] CONTRACT FAILED. Time Limit or Heat Cap exceeded.`;
+          // Helper function for contract check to avoid repeating code
+          const processContractDestruction = () => {
+            let msg = '';
+            const currentContract = contracts.find(c => c.active && !c.completed);
+            if (currentContract) {
+              const isDest = currentContract.objectives?.some(o => o.ip === targetIP && o.type === 'destroy');
+              if (isDest) {
+                const timeTaken = (Date.now() - currentContract.startTime) / 1000;
+                const rewardVal = currentContract.reward || 0;
+                const repVal = currentContract.repReward || 0;
+                
+                if (timeTaken <= (currentContract.timeLimit || 9999) && heat <= (currentContract.heatCap || 100)) {
+                  setMoney(m => m + rewardVal);
+                  setReputation(r => r + repVal);
+                  completeContractAndRemove(currentContract.id); trackContract(true);
+                  msg = `\n\n[FIXER] CONTRACT FULFILLED.\n[+] BONUS: ₿${rewardVal.toLocaleString()} + ${repVal} REP`;
+                } else {
+                  completeContractAndRemove(currentContract.id); trackContract(false);
+                  msg = `\n\n[FIXER] CONTRACT FAILED. Time Limit or Heat Cap exceeded.`;
+                }
               }
             }
-          }
+            return msg;
+          };
           
           if (gameMode === 'operator') {
             const hasFlags = args.includes('-vfz') || (args.includes('-v') && args.includes('-f') && args.includes('-z'));
@@ -1944,6 +1945,9 @@ const completeContractAndRemove = (id) => {
             setHeat(h => Math.min(h + 25, 100));
             setBotnet(prev => prev.filter(ip => ip !== targetIP));
             setProxies(prev => prev.filter(ip => ip !== targetIP));
+            
+            const contractMsg = processContractDestruction(); // Call check AFTER destruction
+            
             setIsInside(false); setTargetIP(null); setCurrentDir('~'); setPrivilege('local');
             setWorld(prev => { const nw = { ...prev }; delete nw[targetIP]; return nw; });
             playDestroy();
@@ -1968,6 +1972,9 @@ const completeContractAndRemove = (id) => {
             setHeat(h => Math.min(h + depth.heatAdd, 100));
             setBotnet(prev => prev.filter(ip => ip !== targetIP));
             setProxies(prev => prev.filter(ip => ip !== targetIP));
+            
+            const contractMsg = processContractDestruction(); // Call check AFTER destruction
+
             setIsInside(false); setTargetIP(null); setCurrentDir('~'); setPrivilege('local');
             setWorld(prev => { const nw = { ...prev }; delete nw[targetIP]; return nw; });
             playDestroy();
@@ -1988,6 +1995,9 @@ const completeContractAndRemove = (id) => {
           setBotnet(prev => prev.filter(ip => ip !== targetIP));
           setProxies(prev => prev.filter(ip => ip !== targetIP));
           const destroyedName = world[targetIP]?.org?.orgName || targetIP;
+          
+          const contractMsg = processContractDestruction(); // Call check AFTER destruction
+
           setIsInside(false); setTargetIP(null); setCurrentDir('~'); setPrivilege('local');
           setWorld(prev => { const nw = { ...prev }; delete nw[targetIP]; return nw; });
           playDestroy();
@@ -2003,28 +2013,30 @@ const completeContractAndRemove = (id) => {
         try {
           const mult = getRewardMult(gameMode);
           
-          // --- BULLETPROOF CONTRACT CHECK ---
-          let contractMsg = '';
-          const currentContract = contracts.find(c => c.active && !c.completed);
-          
-          if (currentContract) {
-            const isRansom = currentContract.objectives?.some(o => o.ip === targetIP && o.type === 'ransom');
-            if (isRansom) {
-              const timeTaken = (Date.now() - currentContract.startTime) / 1000;
-              const rewardVal = currentContract.reward || 0;
-              const repVal = currentContract.repReward || 0;
-              
-              if (timeTaken <= (currentContract.timeLimit || 9999) && heat <= (currentContract.heatCap || 100)) {
-                setMoney(m => m + rewardVal);
-                setReputation(r => r + repVal);
-                completeContractAndRemove(currentContract.id); trackContract(true);
-                contractMsg = `\n\n[FIXER] CONTRACT FULFILLED.\n[+] BONUS: ₿${rewardVal.toLocaleString()} + ${repVal} REP`;
-              } else {
-                completeContractAndRemove(currentContract.id); trackContract(false);
-                contractMsg = `\n\n[FIXER] CONTRACT FAILED. Time Limit or Heat Cap exceeded.`;
+          // Helper function for contract check
+          const processContractRansom = () => {
+            let msg = '';
+            const currentContract = contracts.find(c => c.active && !c.completed);
+            if (currentContract) {
+              const isRansom = currentContract.objectives?.some(o => o.ip === targetIP && o.type === 'ransom');
+              if (isRansom) {
+                const timeTaken = (Date.now() - currentContract.startTime) / 1000;
+                const rewardVal = currentContract.reward || 0;
+                const repVal = currentContract.repReward || 0;
+                
+                if (timeTaken <= (currentContract.timeLimit || 9999) && heat <= (currentContract.heatCap || 100)) {
+                  setMoney(m => m + rewardVal);
+                  setReputation(r => r + repVal);
+                  completeContractAndRemove(currentContract.id); trackContract(true);
+                  msg = `\n\n[FIXER] CONTRACT FULFILLED.\n[+] BONUS: ₿${rewardVal.toLocaleString()} + ${repVal} REP`;
+                } else {
+                  completeContractAndRemove(currentContract.id); trackContract(false);
+                  msg = `\n\n[FIXER] CONTRACT FAILED. Time Limit or Heat Cap exceeded.`;
+                }
               }
             }
-          }
+            return msg;
+          };
 
           if (gameMode === 'operator') {
             if (!isInside) return "[-] openssl: Must be on remote host.";
@@ -2046,6 +2058,8 @@ const completeContractAndRemove = (id) => {
             
             setHeat(h => Math.min(h + 30, 100));
             escalateBlueTeam(targetIP, 40);
+            
+            const contractMsg = processContractRansom(); // Check contract AFTER deploying payload
             
             if (paid) {
               setMoney(m => m + ransomAsk); playSuccess(); setIsProcessing(false);
@@ -2080,6 +2094,8 @@ const completeContractAndRemove = (id) => {
             setHeat(h => Math.min(h + 25, 100));
             escalateBlueTeam(targetIP, 35);
             
+            const contractMsg = processContractRansom(); // Check contract AFTER deploying payload
+
             if (paid) { setMoney(m => m + ransomAsk); playSuccess(); } else { playFailure(); }
             setIsProcessing(false);
             
@@ -2101,6 +2117,8 @@ const completeContractAndRemove = (id) => {
           setHeat(h => Math.min(h + 20, 100));
           escalateBlueTeam(targetIP, 30);
           
+          const contractMsg = processContractRansom(); // Check contract AFTER deploying payload
+
           if (paid) { setMoney(m => m + ransomAsk); playSuccess(); } else { playFailure(); }
           setIsProcessing(false);
           
@@ -2114,7 +2132,6 @@ const completeContractAndRemove = (id) => {
           return `[-] CRITICAL ERROR in openssl module: ${err.message}`;
         }
       },
-
       crontab: async () => {
         if (!isInside) return "[-] crontab: Must be on remote host.";
         if (privilege !== 'root') return "[-] crontab: Root required to schedule jobs.";

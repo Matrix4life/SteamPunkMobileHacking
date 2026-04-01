@@ -48,18 +48,20 @@ const HelpPanel = ({ onClose, devMode }) => {
 
   return (
     <div style={{
-      position: 'fixed', // Center in viewport
-      top: '50%',
-      left: '50%',
-      transform: 'translate(-50%, -50%)',
-      width: '500px', // Slightly wider for readability
+      position: 'absolute', 
+      right: '2%',                  // Pin it to the right edge
+      top: '50%',                   // Push it halfway down the screen
+      transform: 'translateY(-50%)',// ONLY center it vertically (up and down)
+      
+      /* Keep everything else exactly the same! */
+      width: '500px', 
       maxHeight: '80vh',
-      background: 'rgba(8,12,18,0.98)', // Highly opaque to hide background
+      background: 'rgba(8,12,18,0.98)', 
       border: `1px solid ${COLORS.primary}80`,
       padding: '24px',
       fontSize: '11px',
       color: COLORS.text,
-      zIndex: 9999, // Guarantee front-of-screen priority
+      zIndex: 9999, 
       backdropFilter: 'blur(15px)',
       boxShadow: `0 0 50px rgba(0,0,0,0.9), 0 0 20px ${COLORS.primary}30`,
       borderRadius: '4px',

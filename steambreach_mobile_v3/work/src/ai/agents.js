@@ -246,77 +246,45 @@ const generateInterceptedComms = async (targetIP, nodeData, apiKey) => {
 };
 
 const generateAIContract = async (targetIP, nodeData, currentRep, arg4, arg5) => {
-  // Safely handle arguments
   const world = typeof arg4 === 'object' && arg4 !== null ? arg4 : {};
   const apiKey = typeof arg4 === 'string' ? arg4 : arg5;
 
-  // 1. Roll the Sandbox Probability based on strict Reputation milestones
-  let minProb = 1; // Default allows everything (1-100%)
+  let minProb = 1;
+  if (currentRep < 25) minProb = 75;
+  else if (currentRep < 80) minProb = 50;
+  else if (currentRep < 200) minProb = 10;
 
-  if (currentRep < 25) {
-    minProb = 75; // 0 to 24 REP: ONLY Easy / Tier 1 (75-100%)
-  } else if (currentRep < 80) {
-    minProb = 50; // 25 to 79 REP: Unlocks Medium / Tier 2 (50-100%)
-  } else if (currentRep < 200) {
-    minProb = 10; // 80 to 199 REP: Unlocks Hard / Tier 3 (10-100%)
-  }
-  // 200+ REP: Unlocks Insane / Tier 4 (1-100%)
-
-  // Roll the die using the calculated minimum probability
   const prob = Math.floor(Math.random() * (100 - minProb + 1)) + minProb;
 
-  // 2. Set Difficulty Parameters based on Probability
-  let timeLimit, heatCap, minReward, maxReward, minRep, maxRep, numTargets;
+  let timeLimit, heatCap, minReward, maxReward, minRep, maxRep, numTargets, riskLabel;
 
-  if (prob <= 9) { // 💀 Insane (Tier 4)
-    numTargets = Math.floor(Math.random() * 2) + 3; // 3 to 4 objectives
-    timeLimit = 180;
-    heatCap = 35;
-    minReward = 50000;
-    maxReward = 150000;
-    minRep = 100;
-    maxRep = 250;
-  } else if (prob <= 49) { // 🔴 Hard (Tier 3)
-    numTargets = Math.floor(Math.random() * 2) + 2; // 2 to 3 objectives
-    timeLimit = 240;
-    heatCap = 45;
-    minReward = 15000;
-    maxReward = 55000;
-    minRep = 50;
-    maxRep = 120;
-  } else if (prob <= 74) { // 🟡 Medium (Tier 2)
-    numTargets = Math.floor(Math.random() * 2) + 1; // 1 to 2 objectives
-    timeLimit = 300;
-    heatCap = 75;
-    minReward = 4000;
-    maxReward = 18000;
-    minRep = 20;
-    maxRep = 55;
-  } else { // 🟢 Easy (Tier 1)
-    numTargets = 1;
-    timeLimit = 600;
-    heatCap = 90;
-    minReward = 1000;
-    maxReward = 4500;
-    minRep = 10;
-    maxRep = 25;
+  if (prob <= 9) {
+    numTargets = Math.floor(Math.random() * 2) + 3;
+    timeLimit = 180; heatCap = 35; minReward = 50000; maxReward = 150000;
+    minRep = 100; maxRep = 250; riskLabel = 'EXTREME';
+  } else if (prob <= 49) {
+    numTargets = Math.floor(Math.random() * 2) + 2;
+    timeLimit = 240; heatCap = 45; minReward = 15000; maxReward = 55000;
+    minRep = 50; maxRep = 120; riskLabel = 'HIGH';
+  } else if (prob <= 74) {
+    numTargets = Math.floor(Math.random() * 2) + 1;
+    timeLimit = 300; heatCap = 75; minReward = 4000; maxReward = 18000;
+    minRep = 20; maxRep = 55; riskLabel = 'MODERATE';
+  } else {
+    numTargets = 1; timeLimit = 600; heatCap = 90; minReward = 1000; maxReward = 4500;
+    minRep = 10; maxRep = 25; riskLabel = 'LOW';
   }
 
   const reward = Math.floor(Math.random() * (maxReward - minReward + 1)) + minReward;
   const repReward = Math.floor(Math.random() * (maxRep - minRep + 1)) + minRep;
 
-  // 3. Select Target Nodes from the World Map
-  const availableIPs = Object.keys(world).filter(
-    (ip) => ip !== 'local' && ip !== targetIP && world[ip] && !world[ip].isHidden
-  );
-
+  const availableIPs = Object.keys(world).filter(ip => ip !== 'local' && ip !== targetIP && world[ip] && !world[ip].isHidden);
   const shuffledIPs = [...availableIPs].sort(() => 0.5 - Math.random());
   const actualNumTargets = Math.min(numTargets, 1 + shuffledIPs.length);
   const selectedIPs = [targetIP, ...shuffledIPs].slice(0, actualNumTargets);
 
-  // 4. Generate the Objectives List
-  const objectives = [];
   const actionTypes = ['exfil', 'destroy', 'ransom'];
+  const objectives = [];
 
   for (let i = 0; i < selectedIPs.length; i++) {
     const ip = selectedIPs[i];
@@ -324,8 +292,8 @@ const generateAIContract = async (targetIP, nodeData, currentRep, arg4, arg5) =>
     if (!node) continue;
 
     const type = actionTypes[Math.floor(Math.random() * actionTypes.length)];
-
     let targetFile = null;
+
     if (type === 'exfil') {
       const allFiles = [];
       if (node.files && typeof node.files === 'object') {
@@ -333,46 +301,61 @@ const generateAIContract = async (targetIP, nodeData, currentRep, arg4, arg5) =>
           const dirFiles = node.files[dir];
           if (Array.isArray(dirFiles)) {
             dirFiles.forEach((f) => {
-              if (
-                !f.endsWith('/') &&
-                f !== '.bash_history' &&
-                !f.endsWith('.tmp') &&
-                !f.endsWith('.eml')
-              ) {
+              if (!f.endsWith('/') && f !== '.bash_history' && !f.endsWith('.tmp') && !f.endsWith('.eml')) {
                 allFiles.push(f);
               }
             });
           }
         });
       }
-      targetFile =
-        allFiles.length > 0
-          ? allFiles[Math.floor(Math.random() * allFiles.length)]
-          : 'proprietary_data.zip';
+      targetFile = allFiles.length > 0 ? allFiles[Math.floor(Math.random() * allFiles.length)] : 'proprietary_data.zip';
     }
+
+    // --- CRITICAL FIX: Ensure 'label' exists for the AI prompt ---
+    let label = '';
+    if (type === 'exfil') label = `Extract sensitive data from ${node?.org?.orgName || 'target node'}`;
+    else if (type === 'destroy') label = `Destroy the target environment at ${node?.org?.orgName || 'target node'}`;
+    else if (type === 'ransom') label = `Deploy ransomware against ${node?.org?.orgName || 'target node'}`;
 
     objectives.push({
       ip,
       name: node?.org?.orgName || 'Unknown Node',
       type,
       targetFile,
+      label
     });
   }
+
+  // --- CRITICAL FIX: Restore variables needed for the AI Prompt ---
+  const primaryOrg = nodeData?.org?.orgName || 'Unknown Target';
+  const primaryType = nodeData?.org?.type || 'unknown';
+  
+  const clientPool = ['disgruntled insider', 'rival contractor', 'silent broker', 'burned former employee', 'fixer representing an unnamed buyer'];
+  const motivePool = ['wants pressure applied without public attribution', 'needs the target disrupted before an internal review', 'is trying to erase leverage held by the target', 'is paying for damage, not spectacle'];
+  
+  const client = clientPool[Math.floor(Math.random() * clientPool.length)];
+  const motive = motivePool[Math.floor(Math.random() * motivePool.length)];
 
   const fallbackContract = {
     probability: prob,
     objectives,
-    desc: `[ENCRYPTED REROUTE] Client requires a multi-stage operation. See objective checklist for details. Scrub your tracks.`,
+    desc: `[FIXER DOSSIER] ${client} says ${primaryOrg} is exposed.`,
+    briefing: `A ${client} has put ${primaryOrg} on the board. The buyer ${motive}. The target is not random, and the money says the damage needs to feel deliberate.`,
+    client,
+    motive,
+    targetProfile: `${primaryOrg} • ${primaryType.toUpperCase()} • ${nodeData?.sec?.toUpperCase() || 'MID'} SECURITY`,
+    knownConditions: ["Target perimeter looks ordinary, but internal exposure may be easier than it appears."],
+    complication: "Blue Team may respond aggressively if you get loud.",
+    riskLabel,
     timeLimit,
     reward,
     repReward,
     heatCap,
     forbidden_tools: [],
-    isAmbush: prob <= 20 && Math.random() < 0.2, // Ambush more likely on Hard/Insane
+    isAmbush: prob <= 20 && Math.random() < 0.2
   };
 
-  // 5. Ask the AI Director to write the flavor text based on the objectives
- const prompt = `You are a high-stakes darknet fixer. Write a premium mission dossier.
+  const prompt = `You are a high-stakes darknet fixer. Write a premium mission dossier.
 
 Context:
 - Client Type: ${client}
@@ -397,6 +380,7 @@ Return ONLY raw JSON:
   "knownConditions": ["condition 1", "condition 2"],
   "complication": "string"
 }`;
+
   try {
     let aiText = await generateDirectorText(prompt, '');
     aiText = aiText.replace(/```json/gi, '').replace(/```/g, '').trim();
@@ -404,7 +388,17 @@ Return ONLY raw JSON:
 
     if (jsonMatch) {
       const parsedData = JSON.parse(jsonMatch[0]);
-      return { ...fallbackContract, desc: parsedData.desc || fallbackContract.desc };
+      // --- CRITICAL FIX: Merge ALL the AI generated fields, not just 'desc' ---
+      return { 
+        ...fallbackContract, 
+        desc: parsedData.desc || fallbackContract.desc,
+        briefing: parsedData.briefing || fallbackContract.briefing,
+        client: parsedData.client || fallbackContract.client,
+        motive: parsedData.motive || fallbackContract.motive,
+        targetProfile: parsedData.targetProfile || fallbackContract.targetProfile,
+        knownConditions: parsedData.knownConditions || fallbackContract.knownConditions,
+        complication: parsedData.complication || fallbackContract.complication
+      };
     } else {
       return fallbackContract;
     }

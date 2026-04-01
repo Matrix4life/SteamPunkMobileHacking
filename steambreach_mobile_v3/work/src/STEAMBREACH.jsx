@@ -805,9 +805,7 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
     const slotKey = part.slot.toLowerCase();
     const currentPart = rig[slotKey];
 
-    if (currentPart) {
-      setPartsBag(bag => [...bag, currentPart]);
-    }
+    if (currentPart) setPartsBag(bag => [...bag, currentPart]);
     
     setPartsBag(bag => {
       const n = [...bag];
@@ -816,7 +814,7 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
       return n;
     });
 
-    setRig(r => ({ ...r, [slotKey]: partId }));
+    setRig(prev => ({ ...prev, [slotKey]: partId })); // Update the state the motherboard watches
   };
   const handleHwUninstall = (slot) => {
     const partId = rig[slot];

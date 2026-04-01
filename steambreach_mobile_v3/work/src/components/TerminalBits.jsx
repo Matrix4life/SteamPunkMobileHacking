@@ -38,17 +38,22 @@ const Typewriter = ({ text, scrollRef, onComplete, customColor }) => {
   return <span style={{ color: customColor || COLORS.text }}><SyntaxText text={displayed} /></span>;
 };
 
+// --- SESSION MEMORY CACHE ---
+// These variables live outside the component so they don't get erased when you close the menu
+let cachedHelpPos = null;
+let cachedHelpSize = null;
+
 const HelpPanel = ({ onClose, devMode }) => {
-  // Group the commands by their category tag
   const groupedCommands = COMMAND_REGISTRY.reduce((acc, curr) => {
     if (!acc[curr.category]) acc[curr.category] = [];
     acc[curr.category].push(curr);
     return acc;
   }, {});
 
-  // --- DRAGGING STATE & LOGIC ---
-  // Default position: Right side of the screen, vertically centered-ish
-  const [pos, setPos] = useState({
+  const panelRef = useRef(null);
+
+  // Load from cache, or use defaults
+  const [pos, setPos] = useState(cachedHelpPos || {
     x: window.innerWidth > 800 ? window.innerWidth - 550 : 20,
     y: window.innerHeight > 600 ? (window.innerHeight / 2) - 300 : 50
   });
@@ -73,9 +78,7 @@ const HelpPanel = ({ onClose, devMode }) => {
       });
     };
 
-    const handleMouseUp = () => {
-      setIsDragging(false);
-    };
+    const handleMouseUp = () => setIsDragging(false);
 
     if (isDragging) {
       window.addEventListener('mousemove', handleMouseMove);
@@ -87,30 +90,48 @@ const HelpPanel = ({ onClose, devMode }) => {
     };
   }, [isDragging]);
 
+  // Save Position to memory whenever it changes
+  useEffect(() => {
+    cachedHelpPos = pos;
+  }, [pos]);
+
+  // Custom Close function to capture custom sizing before it disappears
+  const handleCloseClick = () => {
+    if (panelRef.current) {
+      cachedHelpSize = {
+        width: panelRef.current.style.width,
+        height: panelRef.current.style.height
+      };
+    }
+    onClose();
+  };
+
   return (
-    <div style={{
-      position: 'absolute', 
-      left: `${pos.x}px`,     // Dynamic X based on drag
-      top: `${pos.y}px`,      // Dynamic Y based on drag
-      width: '500px', 
-      minWidth: '350px',      // Prevent shrinking too small
-      maxHeight: '80vh',
-      background: 'rgba(8,12,18,0.98)', 
-      border: `1px solid ${COLORS.primary}80`,
-      fontSize: '11px',
-      color: COLORS.text,
-      zIndex: 9999, 
-      backdropFilter: 'blur(15px)',
-      boxShadow: `0 0 50px rgba(0,0,0,0.9), 0 0 20px ${COLORS.primary}30`,
-      borderRadius: '4px',
-      display: 'flex',
-      flexDirection: 'column',
+    <div 
+      ref={panelRef}
+      style={{
+        position: 'absolute', 
+        left: `${pos.x}px`,     
+        top: `${pos.y}px`,      
+        width: cachedHelpSize?.width || '500px',   // Load cached width
+        height: cachedHelpSize?.height || 'auto',  // Load cached height
+        minWidth: '350px',      
+        maxHeight: '80vh',
+        background: 'rgba(8,12,18,0.98)', 
+        border: `1px solid ${COLORS.primary}80`,
+        fontSize: '11px',
+        color: COLORS.text,
+        zIndex: 9999, 
+        backdropFilter: 'blur(15px)',
+        boxShadow: `0 0 50px rgba(0,0,0,0.9), 0 0 20px ${COLORS.primary}30`,
+        borderRadius: '4px',
+        display: 'flex',
+        flexDirection: 'column',
+        resize: 'both',         
+        overflow: 'hidden'      
+      }}>
       
-      resize: 'both',         // Adds the CSS native resize handle (bottom right)
-      overflow: 'hidden'      // Required for resize to work
-    }}>
-      
-      {/* DRAG HANDLE (Header) */}
+      {/* DRAG HANDLE */}
       <div 
         onMouseDown={handleMouseDown}
         style={{ 
@@ -124,7 +145,7 @@ const HelpPanel = ({ onClose, devMode }) => {
         }}
       >
         <span style={{ color: COLORS.primary, fontWeight: 'bold', letterSpacing: '2px', fontSize: '14px' }}>COMMAND REFERENCE MANUAL</span>
-        <span onClick={onClose} style={{ color: COLORS.textDim, cursor: 'pointer', border: `1px solid ${COLORS.textDim}40`, padding: '2px 8px', borderRadius: '3px' }}>[TAB] CLOSE</span>
+        <span onClick={handleCloseClick} style={{ color: COLORS.textDim, cursor: 'pointer', border: `1px solid ${COLORS.textDim}40`, padding: '2px 8px', borderRadius: '3px' }}>[TAB] CLOSE</span>
       </div>
       
       {/* SCROLLABLE CONTENT */}
@@ -139,7 +160,6 @@ const HelpPanel = ({ onClose, devMode }) => {
         scrollbarColor: `${COLORS.primaryDim} transparent`
       }}>
         
-        {/* Map through the generated categories */}
         {Object.keys(groupedCommands).map((categoryName) => (
           <div key={categoryName} style={{ marginBottom: '12px' }}>
             <div style={{ 

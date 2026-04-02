@@ -3300,7 +3300,7 @@ if (screen === 'soundmanager') {
       <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'radial-gradient(ellipse at center, transparent 60%, rgba(0,0,0,0.4) 100%)', pointerEvents: 'none', zIndex: 99 }} />
 
       <Header
-        operator={operator} privilege={privilege} money={money} heat={heat} reputation={reputation} isInside={isInside} targetIP={targetIP} trace={trace} isChatting={isChatting} activeContract={activeContract} world={world} gameMode={gameMode}
+        operator={operator} currentRegion={currentRegion} privilege={privilege} money={money} heat={heat} reputation={reputation} isInside={isInside} targetIP={targetIP} trace={trace} isChatting={isChatting} activeContract={activeContract} world={world} gameMode={gameMode}
         wantedTier={wantedTier} walletFrozen={walletFrozen}
         onSave={() => { saveGame(operator); setTerminal(prev => [...prev, { type: 'out', text: `[+] Game saved: "${operator}"`, isNew: true }]); }}
         onMenu={() => { if (!isInside) { saveGame(`auto_${operator}`); setScreen('intro'); setMenuMode('main'); setDeleteTarget(null); setMenuIndex(0); } }}

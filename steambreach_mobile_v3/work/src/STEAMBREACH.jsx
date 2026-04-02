@@ -1489,7 +1489,7 @@ const completeContractAndRemove = (id) => {
         return `[+] Sold ${qty}x ${COMMODITIES[itemKey].name} for ₿${totalProfit.toLocaleString()}.`;
       },
 
-      nmap: async () => {
+     nmap: async () => {
         setMapExpanded(true);
         if (arg1) { if (world[arg1]) { selectNodeFromMap(arg1); return null; } return `nmap: host down.`; }
         
@@ -1497,37 +1497,46 @@ const completeContractAndRemove = (id) => {
         if (isInside) {
           if (!proxies.includes(targetIP)) return `[-] Nmap failed. Establish a SOCKS5 tunnel first with 'chisel'.`;
           out += `\n[*] Routing through ${targetIP} proxy...\n[*] Scanning internal subnet...\n`;
+          
           const newNode = generateNewTarget('elite', targetIP);
+          
+          // --- PERSISTENCE FIX: TAG HIDDEN NODE WITH CURRENT REGION ---
+          newNode.data.region = currentRegion;
+
           setWorld(prev => ({ ...prev, [newNode.ip]: newNode.data }));
           out += `\n[+] HIDDEN NODE: ${newNode.data.port}/tcp on ${newNode.ip}\n[+] ORG: ${newNode.data.org.orgName}`;
           return out;
         }
 
-        const activeNodes = Object.keys(world || {}).filter(k => k !== 'local' && !world[k].isHidden).length;
-        if (activeNodes >= 25) {
-            out += `\nSubnet scan capacity reached. Type 'travel <region>' to find new targets.`;
+        // --- PERSISTENCE FIX: FILTER CAPACITY BY CURRENT REGION ONLY ---
+        // This lets you have 25 nodes PER region instead of 25 total.
+        const regionalNodes = Object.keys(world || {}).filter(k => world[k].region === currentRegion && !world[k].isHidden).length;
+        if (regionalNodes >= 25) {
+            out += `\nSubnet scan capacity reached for ${currentRegion.toUpperCase()}. Type 'travel <region>' to find new targets.`;
             return out;
         }
 
         const scanCount = inventory.includes('NetCard') ? 2 : 1;
         
         for(let i = 0; i < scanCount; i++) {
-          if (Object.keys(world || {}).filter(k => k !== 'local' && !world[k].isHidden).length + i >= 25) break;
+          const currentTotal = Object.keys(world || {}).filter(k => world[k].region === currentRegion && !world[k].isHidden).length;
+          if (currentTotal + i >= 25) break;
           
-          // --- FIX 1: FORCE LOW SECURITY FOR NEW PLAYERS ---
-          // This ensures the first contract isn't an "Elite" 15+ rep mission
           const isFirstScan = (contracts.length === 0 && Object.keys(world).length <= 1); 
           const targetSec = isFirstScan ? 'low' : null; 
           
           const newNode = generateNewTarget(targetSec, null, director.modifiers);
           
-          // --- FIX 2: HONEYPOT PROTECTION ---
-          // Prevents new players from hitting a trap on their first few scans
+          // --- PERSISTENCE FIX: TAG NEW NODE WITH CURRENT REGION ---
+          newNode.data.region = currentRegion;
+
           if (reputation < 15) {
             newNode.data.isHoneypot = false;
           }
 
+          // Use functional update to ensure we don't overwrite nodes from other regions
           setWorld(prev => ({ ...prev, [newNode.ip]: newNode.data }));
+
           out += `\nDiscovered ${newNode.data.port}/tcp on ${newNode.ip}`;
           out += `\n[*] ORG: ${newNode.data.org.orgName} (${newNode.data.org.type})`;
           out += `\n[*] EMPLOYEES: ${newNode.data.org.employees.length} found via OSINT\n`;
@@ -1537,17 +1546,12 @@ const completeContractAndRemove = (id) => {
             
             generateAIContract(newNode.ip, newNode.data, reputation, apiKey).then(aiContract => {
               if (aiContract) {
-                // --- BEGINNER ECONOMY BRAKE ---
                 let adjustedRep = aiContract.repReward;
                 let adjustedMoney = aiContract.reward;
                 const completedCount = director.metrics.contractsCompleted || 0;
                 
-                // If the player has completed 0-5 contracts:
                 if (completedCount <= 5) {
-                    // 1. Cap Reputation to 5 per mission (Slows path to 15-rep danger zone)
                     adjustedRep = Math.min(aiContract.repReward, 5);
-                    
-                    // 2. Cap Cash to 1000 per mission (Forces early-game resource management)
                     adjustedMoney = Math.min(aiContract.reward, 1000);
                 }
 
@@ -1559,8 +1563,8 @@ const completeContractAndRemove = (id) => {
                   active: false, 
                   completed: false, 
                   ...aiContract,
-                  repReward: adjustedRep, // Apply capped Rep
-                  reward: adjustedMoney    // Apply capped Cash
+                  repReward: adjustedRep,
+                  reward: adjustedMoney 
                 };
                 
                 setContracts(prev => [...prev, newContract]);
@@ -1571,7 +1575,6 @@ const completeContractAndRemove = (id) => {
         }
         return out;
       },
-
       ettercap: async () => {
         if (!isInside) return "[-] ettercap: Must be inside a target network to poison ARP tables.";
         if (!inventory.includes('Wireshark')) return "[-] ettercap: Deep Packet Inspector module required. Purchase from 'shop'.";

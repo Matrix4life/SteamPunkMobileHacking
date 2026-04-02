@@ -3379,6 +3379,7 @@ if (screen === 'soundmanager') {
       {isMobile && (
         <MobileTouchUI
           world={world}
+          currentRegion={currentRegion}
           isInside={isInside}
           privilege={privilege}
           targetIP={targetIP}

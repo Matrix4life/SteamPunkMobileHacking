@@ -68,14 +68,11 @@ const STEAMBREACH = () => {
   const [terminal, setTerminal] = useState([]);
   const [input, setInput] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
-
   const { isMobile, isKeyboardOpen } = useMobile();
   const [showMobileKeyboard, setShowMobileKeyboard] = useState(false);
   const [mobileSelectedTarget, setMobileSelectedTarget] = useState(null);
-
   const [devMode, setDevMode] = useState(false);
   const [showHelpMenu, setShowHelpMenu] = useState(false);
-
   const [money, setMoney] = useState(0);
   const [reputation, setReputation] = useState(0);
   const [heat, setHeat] = useState(0);
@@ -119,6 +116,8 @@ const STEAMBREACH = () => {
   const [wantedTier, setWantedTier] = useState('COLD');
   const [walletFrozen, setWalletFrozen] = useState(false);
   const [morality, setMorality] = useState({ chaos: 0, signal: 0 });
+  const [activeStory, setActiveStory] = useState(null);
+  const alignment = Math.max(-100, Math.min(100, morality.signal - morality.chaos));
   const [pendingInteraction, setPendingInteraction] = useState(null);
 
   const rigFx = getRigEffects(rig);
@@ -136,6 +135,41 @@ const STEAMBREACH = () => {
   const getExfilRigMult = () => clamp(0.9 + (rigFx.exfilMultiplier / 10), 0.9, 1.7);
   const getMineRigMult = () => clamp(0.75 + (rigFx.mineMultiplier / 3000), 0.75, 2.5);
   const getHeatRiskMult = (baseHeat = heat) => clamp(1 + ((100 - baseHeat) / 200), 1, 1.5);
+ const generateStory = (ip, alignment) => {
+  const stories = [
+    {
+      good_action: 'Patch the system and notify the employee',
+      evil_action: 'Deploy ransomware and lock all files',
+      good_payout: 5000,
+      evil_payout: 25000,
+      good_align: 10,
+      evil_align: -15,
+    },
+    {
+      good_action: 'Expose company corruption to the public',
+      evil_action: 'Sell the data on the darknet',
+      good_payout: 8000,
+      evil_payout: 30000,
+      good_align: 15,
+      evil_align: -20,
+    },
+    {
+      good_action: 'Help recover stolen credentials',
+      evil_action: 'Hijack accounts and drain funds',
+      good_payout: 4000,
+      evil_payout: 20000,
+      good_align: 8,
+      evil_align: -12,
+    }
+  ];
+
+  const pick = stories[Math.floor(Math.random() * stories.length)];
+
+  return {
+    ip,
+    ...pick
+  };
+}; 
   const getEconomyPayout = ({
     ip = targetIP,
     action = 'generic',
@@ -1918,7 +1952,33 @@ const completeContractAndRemove = (id) => {
         }
         return out;
       },
+resolve: async (args) => {
+  if (!activeStory) return 'No active story';
 
+  if (args[0] === '1') {
+    setMorality(prev => ({
+      signal: prev.signal + 10,
+      chaos: prev.chaos
+    }));
+
+    setMoney(m => m + (activeStory.good_payout || 5000));
+    setActiveStory(null);
+
+    return 'You chose the GOOD path';
+  }
+
+  if (args[0] === '2') {
+    setMorality(prev => ({
+      signal: prev.signal,
+      chaos: prev.chaos + 10
+    }));
+
+    setMoney(m => m + (activeStory.evil_payout || 25000));
+    setActiveStory(null);
+
+    return 'You chose the EVIL path';
+  }
+}
       stash: async () => {
         if (!isInside) return "[-] Must be on a remote host to stage data.";
         if (!arg1) return "[-] Usage: stash <filename>\n[*] Routes exfiltrated data through a botnet node instead of direct to gateway.\n[*] Reduces heat from exfil but requires an active botnet node.";
@@ -2754,7 +2814,11 @@ const completeContractAndRemove = (id) => {
             nw[targetNode].files[currentDir] = nw[targetNode].files[currentDir].filter(f => f !== arg1);
             return nw;
           });
-
+if (args === 'intercept.log') {
+  if (!activeStory) {
+    setActiveStory(generateStory(targetIP));
+  }
+}
           if (arg1 === 'wallet.dat') {
             const amt = Math.floor(Math.random() * 800 + 200);
             setMoney(m => m + amt);

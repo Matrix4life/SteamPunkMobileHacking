@@ -97,6 +97,7 @@ export default function MobileTouchUI({
   world, isInside, privilege, targetIP, currentDir,
   isChatting, chatTarget, botnet, proxies, inventory,
   heat, trace, mapExpanded, consumables, gameMode,
+  currentRegion, 
   onCommand, onToggleKeyboard, onToggleMap,
   onFillInput, // fills input + opens keyboard (for operator mode)
   externalSelectedIP, clearExternalSelection,

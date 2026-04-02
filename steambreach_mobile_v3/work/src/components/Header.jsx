@@ -9,7 +9,12 @@ const WANTED_COLORS = {
   MANHUNT: '#ff0040',
 };
 
-const Header = ({ operator, privilege, money, heat, reputation, isInside, targetIP, trace, isChatting, activeContract, world, gameMode, wantedTier, walletFrozen, onSave, onMenu, onHelp, isMobile, alignment = 0, activeStory }) => {
+const Header = ({ 
+  operator, privilege, money, heat, reputation, isInside, targetIP, trace, 
+  isChatting, activeContract, world, gameMode, wantedTier, walletFrozen, 
+  currentRegion, // <--- ADDED PROP HERE
+  onSave, onMenu, onHelp, isMobile, alignment = 0, activeStory 
+}) => {
   const traceColor = trace > 75 ? COLORS.danger : trace > 40 ? COLORS.warning : COLORS.primary;
   const heatColor = heat > 70 ? COLORS.danger : heat > 40 ? COLORS.warning : COLORS.textDim;
   const orgName = isInside && targetIP && world[targetIP]?.org?.orgName;
@@ -101,13 +106,21 @@ const Header = ({ operator, privilege, money, heat, reputation, isInside, target
       paddingBottom: '8px', fontSize: '12px', gap: '12px', flexWrap: 'wrap',
       background: wantedTier === 'MANHUNT' ? `${COLORS.danger}08` : 'transparent',
     }}>
-      <span>
-        <span style={{ color: COLORS.textDim }}>
-          {isChatting ? 'SPEARPHISH' : (isInside ? privilege.toUpperCase() : 'OP')}
+      <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <span>
+          <span style={{ color: COLORS.textDim }}>
+            {isChatting ? 'SPEARPHISH' : (isInside ? privilege.toUpperCase() : 'OP')}
+          </span>
+          <span style={{ color: COLORS.textDim }}>@</span>
+          {isInside ? <span style={{ color: COLORS.ip }}>{targetIP}</span> : <span style={{ color: COLORS.textDim }}>kali</span>}
+          {orgName && <span style={{ color: COLORS.textDim }}> [{orgName}]</span>}
         </span>
-        <span style={{ color: COLORS.textDim }}>@</span>
-        {isInside ? <span style={{ color: COLORS.ip }}>{targetIP}</span> : <span style={{ color: COLORS.textDim }}>kali</span>}
-        {orgName && <span style={{ color: COLORS.textDim }}> [{orgName}]</span>}
+        
+        {/* --- NEW DESKTOP REGION BADGE --- */}
+        <span style={{ color: COLORS.primaryDim, fontSize: '11px', fontWeight: 'bold', marginLeft: '6px' }}>
+          🌐 {currentRegion ? currentRegion.toUpperCase() : 'UNKNOWN'}
+        </span>
+        {/* -------------------------------- */}
       </span>
 
       <span style={{ color: walletFrozen ? COLORS.danger : COLORS.warning }}>

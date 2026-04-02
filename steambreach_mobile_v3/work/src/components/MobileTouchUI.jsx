@@ -255,6 +255,25 @@ export default function MobileTouchUI({
   if (isInside) {
     return (
       <div style={S.wrap}>
+        
+        {/* --- NODE CONNECTION HEADER --- */}
+        <div style={{ 
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
+          padding: '0 4px 8px 4px', marginBottom: '8px', 
+          borderBottom: `1px dashed ${COLORS.danger}50` 
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ fontSize: '14px' }}>💻</span>
+            <span style={{ color: COLORS.danger, fontSize: '11px', fontWeight: 'bold', letterSpacing: '1px' }}>
+              CONNECTED: {targetIP}
+            </span>
+          </div>
+          <div style={{ color: COLORS.primaryDim, fontSize: '10px', fontWeight: 'bold' }}>
+            🌐 {currentRegion ? currentRegion.toUpperCase() : 'UNKNOWN'}
+          </div>
+        </div>
+        {/* ---------------------------------- */}
+
         <TabBar
           tabs={[['actions', 'ACTIONS', COLORS.primary], ['files', `FILES (${currentFiles.length})`, COLORS.file]]}
           right={<button onClick={() => tap('exit')} style={btn(COLORS.danger, true, false)}>✕ EXIT</button>}

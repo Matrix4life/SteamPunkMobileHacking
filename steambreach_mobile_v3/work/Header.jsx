@@ -9,7 +9,7 @@ const WANTED_COLORS = {
   MANHUNT: '#ff0040',
 };
 
-const Header = ({ operator, privilege, money, heat, reputation, isInside, targetIP, trace, isChatting, activeContract, world, gameMode, wantedTier, walletFrozen, onSave, onMenu, onHelp, isMobile }) => {
+const Header = ({ operator, privilege, money, heat, reputation, isInside, targetIP, trace, isChatting, activeContract, world, gameMode, wantedTier, walletFrozen, onSave, onMenu, onHelp, isMobile, alignment, activeStory }) => {
   const traceColor = trace > 75 ? COLORS.danger : trace > 40 ? COLORS.warning : COLORS.primary;
   const heatColor = heat > 70 ? COLORS.danger : heat > 40 ? COLORS.warning : COLORS.textDim;
   const orgName = isInside && targetIP && world[targetIP]?.org?.orgName;

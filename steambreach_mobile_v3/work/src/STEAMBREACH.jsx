@@ -2029,7 +2029,7 @@ const completeContractAndRemove = (id) => {
             setTerminal(prev => [...prev, { type: 'out', text: `shred: /dev/sda: pass ${passes + 1}/${passes + 1} (000000)...`, isNew: false }]);
             await new Promise(r => setTimeout(r, 1000));
             
-            const bounty = Math.floor((world[targetIP]?.val || 2000) * 1.5 * mult);
+            const bounty = 0;
             setMoney(m => m + bounty);
             setHeat(h => Math.min(h + 25, 100));
             setBotnet(prev => prev.filter(ip => ip !== targetIP));
@@ -2041,7 +2041,7 @@ const completeContractAndRemove = (id) => {
             setWorld(prev => { const nw = { ...prev }; delete nw[targetIP]; return nw; });
             playDestroy();
             setIsProcessing(false);
-            return `[+] shred: /dev/sda — ${passes + 1} passes complete. Disk destroyed.\n[+] Destruction bounty: ₿${bounty.toLocaleString()}\n[!] Node permanently removed. Heat +25%.${contractMsg}`;
+            return `[+] DISK DESTROYED: ${destroyedName}\n[!] Node permanently wiped from the grid. Heat +20%.`;
           }
           
           if (gameMode === 'field') {
@@ -2056,7 +2056,7 @@ const completeContractAndRemove = (id) => {
             setTerminal(prev => [...prev, { type: 'out', text: `shred: /dev/sda — ${arg1.toUpperCase()} destruction in progress...`, isNew: false }]);
             await new Promise(r => setTimeout(r, depth.time));
             
-            const bounty = Math.floor((world[targetIP]?.val || 2000) * depth.mult * mult);
+            const bounty = 0;
             setMoney(m => m + bounty);
             setHeat(h => Math.min(h + depth.heatAdd, 100));
             setBotnet(prev => prev.filter(ip => ip !== targetIP));
@@ -2068,7 +2068,7 @@ const completeContractAndRemove = (id) => {
             setWorld(prev => { const nw = { ...prev }; delete nw[targetIP]; return nw; });
             playDestroy();
             setIsProcessing(false);
-            return `[+] ${depth.label}. Destruction bounty: ₿${bounty.toLocaleString()}\n[!] Node permanently removed. Heat +${depth.heatAdd}%.${contractMsg}`;
+            return `[+] DISK DESTROYED: ${destroyedName}\n[!] Node permanently wiped from the grid. Heat +20%.`;
           }
           
           if (!isInside) return "[-] shred: Must be executed on a remote host.";

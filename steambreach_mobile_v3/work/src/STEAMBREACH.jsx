@@ -1291,16 +1291,17 @@ const completeContractAndRemove = (id) => {
   if (isInside) return "[-] ssh: Disconnect from current session first.";
   if (!arg1 || !args[2]) return "[-] Usage: ssh <email@ip> <password>";
   
+  // 1. Prepare inputs (Trimming here handles the mobile space issue)
   const [userRaw, ipStr] = arg1.split('@');
-  // THE FIX: trim() prevents invisible spaces from failing the login
   const user = userRaw ? userRaw.trim() : '';
   const pass = args.slice(2).join(' ').trim(); 
   
   if (!user || !ipStr) return "[-] Invalid target format. Use: ssh <email>@<ip> <password>";
+  
   const node = world[ipStr];
   if (!node) return `[-] ssh: connect to host ${ipStr} port 22: Connection refused`;
   
-  // THE FIX: Trim stored employee emails/names for a robust comparison
+  // 2. Find employee (Robust matching for email or username)
   const emp = node.org?.employees?.find(e => 
     e.email.trim().toLowerCase() === user.toLowerCase() || 
     e.email.split('.')[0].trim().toLowerCase() === user.toLowerCase()
@@ -1308,11 +1309,17 @@ const completeContractAndRemove = (id) => {
 
   if (!emp) return `[-] Access denied. User '${user}' does not exist on this server.`;
   
+  // 3. Start Visual Feedback
   setIsProcessing(true);
-  setTerminal(prev => [...prev, { type: 'out', text: `[*] Initializing SSH client...\n[*] Connecting to ${ipStr}:22...\n${user}@${ipStr}'s password: ${'*'.repeat(pass.length)}`, isNew: false }]);
+  setTerminal(prev => [...prev, { 
+    type: 'out', 
+    text: `[*] Initializing SSH client...\n[*] Connecting to ${ipStr}:22...\n${user}@${ipStr}'s password: ${'*'.repeat(pass.length)}`, 
+    isNew: false 
+  }]);
+  
   await new Promise(r => setTimeout(r, 1500));
   
-  // THE FIX: Trim the stored password before comparing it to the player's input
+  // 4. Final Password Check (Trimming stored pass to match trimmed input)
   if (emp.password.trim() !== pass) {
     setHeat(h => Math.min(h + 5, 100));
     playFailure();
@@ -1320,14 +1327,18 @@ const completeContractAndRemove = (id) => {
     return `[-] Permission denied (publickey,password).\n[!] Failed login attempt logged by target IDS. Heat +5%`;
   }
   
+  // 5. Success Logic
   playSuccess();
   setIsInside(true);
   setTargetIP(ipStr);
   setCurrentDir('/');
   
-  const isAdmin = emp.role.toLowerCase().includes('admin') || emp.role.toLowerCase().includes('director') || emp.role.toLowerCase().includes('chief') || emp.role.toLowerCase().includes('dba');
+  // Privilege Check
+  const role = emp.role.toLowerCase();
+  const isAdmin = role.includes('admin') || role.includes('director') || role.includes('chief') || role.includes('dba');
+  
   setPrivilege(isAdmin ? 'root' : 'user');
-  setTrace(0);
+  setTrace(0); // Zero trace for valid credentials
   setIsProcessing(false);
   
   return `[+] Authentication successful.\n[+] Established secure shell as '${emp.name}' (${emp.role}).\n[*] WARNING: Valid credentials bypass initial trace, but actions are still logged.`;

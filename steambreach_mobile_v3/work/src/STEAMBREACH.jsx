@@ -2867,19 +2867,20 @@ const completeContractAndRemove = (id) => {
         return '';
       },
       status: async () => {
-        const d = director; const score = d.skillScore; const maxHops = getMaxProxySlots(inventory, d.modifiers);
-        let threatLevel = 'STANDARD';
-        if (score >= 40) threatLevel = 'CRITICAL'; else if (score >= 15) threatLevel = 'ELEVATED';
-        else if (score <= -40) threatLevel = 'DORMANT'; else if (score <= -15) threatLevel = 'REDUCED';
-        const priceMult = getHeatPriceMult(heat);
-        const priceStr = priceMult > 1 ? `+${Math.round((priceMult - 1) * 100)}%` : 'NORMAL';
-        let wantedInfo = '';
-        if (wantedTier === 'COLD') wantedInfo = '  No active law enforcement interest.';
-        else if (wantedTier === 'WARM') wantedInfo = '  Preliminary investigation opened. Market prices inflated.';
-        else if (wantedTier === 'HOT') wantedInfo = '  Active FBI investigation. Botnet nodes being raided. Prices inflated.';
-        else if (wantedTier === 'CRITICAL') wantedInfo = '  INTERPOL red notice. Proxy hops targeted. Wallet FROZEN. Prices inflated.';
-        else if (wantedTier === 'MANHUNT') wantedInfo = '  FULL MANHUNT. All infrastructure under coordinated attack. Wallet FROZEN.';
-        return `OPERATOR STATUS REPORT
+  const d = director; const score = d.skillScore; const maxHops = getMaxProxySlots(inventory, d.modifiers);
+  let threatLevel = 'STANDARD';
+  if (score >= 40) threatLevel = 'CRITICAL'; else if (score >= 15) threatLevel = 'ELEVATED';
+  else if (score <= -40) threatLevel = 'DORMANT'; else if (score <= -15) threatLevel = 'REDUCED';
+  const priceMult = getHeatPriceMult(heat);
+  const priceStr = priceMult > 1 ? `+${Math.round((priceMult - 1) * 100)}%` : 'NORMAL';
+  let wantedInfo = '';
+  if (wantedTier === 'COLD') wantedInfo = '  No active law enforcement interest.';
+  else if (wantedTier === 'WARM') wantedInfo = '  Preliminary investigation opened. Market prices inflated.';
+  else if (wantedTier === 'HOT') wantedInfo = '  Active FBI investigation. Botnet nodes being raided. Prices inflated.';
+  else if (wantedTier === 'CRITICAL') wantedInfo = '  INTERPOL red notice. Proxy hops targeted. Wallet FROZEN. Prices inflated.';
+  else if (wantedTier === 'MANHUNT') wantedInfo = '  FULL MANHUNT. All infrastructure under coordinated attack. Wallet FROZEN.';
+
+  return `OPERATOR STATUS REPORT
 ────────────────────────────────────
 WANTED LEVEL: ${wantedTier} (HEAT ${heat}%)
 ${wantedInfo}
@@ -2892,10 +2893,14 @@ BOTNET NODES: ${botnet.length} | ACTIVE MINERS: ${getMinerNodes()} (PASSIVE INCO
 CONTRACTS COMPLETED: ${d.metrics.contractsCompleted}
 NODES LOOTED: ${d.metrics.nodesLooted}
 
+MORALITY: ${getMoralityRank()}
+SIGNAL: ${morality.signal} | CHAOS: ${morality.chaos}
+
 INVENTORY:
   DECOYS: ${consumables.decoy} | BURNER VPNS: ${consumables.burner} | ZERO-DAYS: ${consumables.zeroday}
 ────────────────────────────────────
 ${wantedTier === 'MANHUNT' ? '[!!!] REDUCE HEAT IMMEDIATELY. Your entire network is being dismantled.' : ''}${wantedTier === 'CRITICAL' ? '[!] Wallet frozen. Use wipe on rooted nodes or Bribe SOC Insider to reduce heat.' : ''}${wantedTier === 'HOT' ? '[!] Botnet nodes are being raided. Consider wiping logs or bribing SOC.' : ''}${score >= 40 ? '[!] Blue Team response elevated due to your skill profile.' : ''}${score <= -15 ? '[*] Sector defenses weakened. Favorable conditions.' : ''}`;
+},
       },
       help: async () => {
         setShowHelpMenu(true);

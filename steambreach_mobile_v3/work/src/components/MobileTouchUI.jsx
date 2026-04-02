@@ -418,11 +418,32 @@ export default function MobileTouchUI({
   // ═══════════════════════════════════════════════════════════
   // OUTSIDE — MAIN HUB
   // ═══════════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════════════════════
+  // OUTSIDE — MAIN HUB
+  // ═══════════════════════════════════════════════════════════
   return (
     <div style={S.wrap}>
+      <div style={{ 
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
+        padding: '0 4px 8px 4px', marginBottom: '8px', borderBottom: `1px dashed ${COLORS.borderActive}` 
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <span style={{ fontSize: '14px' }}>🌐</span>
+          <span style={{ color: COLORS.primary, fontSize: '11px', fontWeight: 'bold', letterSpacing: '1px' }}>
+            SUBNET: {currentRegion ? currentRegion.toUpperCase() : 'UNKNOWN'}
+          </span>
+        </div>
+        <div style={{ color: COLORS.secondary, fontSize: '10px', fontWeight: 'bold' }}>
+          🤖 GLOBAL BOTS: {botnet?.length || 0}
+        </div>
+      </div>
+
       <TabBar tabs={[['actions', 'ACTIONS', COLORS.primary], ['targets', `TARGETS (${discoveredNodes.length})`, COLORS.ip]]} />
 
-      {panel === 'actions' && (
+      {/* --- MOVED SUBMENU HERE SO IT OVERLAYS --- */}
+      {subMenu && <SubMenu cmd={subMenu} />}
+
+      {panel === 'actions' && !subMenu && (
         <>
           <div style={S.row}>
             <button onClick={() => tap('nmap')} style={btn(COLORS.primary, true, true)}>📡 NMAP SCAN</button>
@@ -432,9 +453,20 @@ export default function MobileTouchUI({
           <div style={S.row}>
             <button onClick={() => tap('shop')} style={btn(COLORS.warning, true, true)}>🏪 SHOP</button>
             <button onClick={() => tap('contracts')} style={btn(COLORS.chat, true, true)}>📋 CONTRACTS</button>
-            <button onClick={() => tap('save')} style={btn(COLORS.textDim, false, true)}>SAVE</button>
+            
+            {/* THE TRAVEL BUTTON */}
+            <button 
+              onClick={() => { buzz(20); setSubMenu(subMenu === 'travel' ? null : 'travel'); }} 
+              style={btn(COLORS.ip, subMenu === 'travel', true)}
+            >
+              ✈️ TRAVEL ▾
+            </button>
           </div>
-          {botnet.length > 0 && (
+          <div style={S.row}>
+            <button onClick={() => tap('save')} style={btn(COLORS.textDim, false, false)}>💾 SAVE GAME</button>
+          </div>
+
+          {botnet?.length > 0 && (
             <>
               <div style={S.label}>BOTNET ({botnet.length})</div>
               <div style={S.scrollRow}>
@@ -506,7 +538,7 @@ export default function MobileTouchUI({
               </div>
             </>
           )}
-  {selectedNode.employees.length > 0 && (
+          {selectedNode.employees.length > 0 && (
             <div style={{ marginBottom: '8px' }}>
               <button 
                 onClick={() => { buzz(15); setShowEmployees(!showEmployees); }}

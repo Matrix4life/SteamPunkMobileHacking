@@ -40,7 +40,7 @@ const FIELD_OPTIONS = {
   ],
   travel: [
     { label: '🇺🇸 US-GOV', cmd: 'travel us-gov', desc: 'Tier 1' },
-    { label: '🇪🇺 EU-CORP', cmd: 'travel eu-corp', desc: 'Tier 2' },
+    { label: '🇪🇺 EU-CENTRAL', cmd: 'travel eu-central', desc: 'Tier 2' },
     { label: '🇨🇳 CN-FINANCIAL', cmd: 'travel cn-financial', desc: 'Tier 3' },
     { label: '🇷🇺 RU-DARKNET', cmd: 'travel ru-darknet', desc: 'Elite' },
   ]

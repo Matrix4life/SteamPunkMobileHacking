@@ -2819,6 +2819,22 @@ const completeContractAndRemove = (id) => {
         }
 
         setTerminal(prev => [...prev, { type: 'out', text: rawData, isNew: true }]);
+        if (isInside && isCivilianNode(targetIP)) {
+  const interaction = buildCivilianInteraction(arg1, rawData, targetIP);
+
+  if (interaction) {
+    setPendingInteraction(interaction);
+
+    setTerminal(prev => [
+      ...prev,
+      {
+        type: 'out',
+        text: `\n${interaction.prompt}\n[*] ${interaction.rewardText}`,
+        isNew: true
+      }
+    ]);
+  }
+}
         return null;
       },
 

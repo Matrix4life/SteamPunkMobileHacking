@@ -1288,42 +1288,50 @@ const completeContractAndRemove = (id) => {
         return `[*] Connecting to ${emp.name} (${emp.role} at ${node.org.orgName})...\n[+] Channel open. Type your pretext, or 'exit' to close.\n[*] HINT: This person is ${emp.personality}`;
       },
       ssh: async () => {
-        if (isInside) return "[-] ssh: Disconnect from current session first.";
-        if (!arg1 || !args[2]) return "[-] Usage: ssh <email@ip> <password>";
-        
-        const [user, ipStr] = arg1.split('@');
-        const pass = args.slice(2).join(' '); 
-        
-        if (!user || !ipStr) return "[-] Invalid target format. Use: ssh <email>@<ip> <password>";
-        const node = world[ipStr];
-        if (!node) return `[-] ssh: connect to host ${ipStr} port 22: Connection refused`;
-        
-        const emp = node.org?.employees?.find(e => e.email === user || e.email.split('.')[0] === user);
-        if (!emp) return `[-] Access denied. User '${user}' does not exist on this server.`;
-        
-        setIsProcessing(true);
-        setTerminal(prev => [...prev, { type: 'out', text: `[*] Initializing SSH client...\n[*] Connecting to ${ipStr}:22...\n${user}@${ipStr}'s password: ${'*'.repeat(pass.length)}`, isNew: false }]);
-        await new Promise(r => setTimeout(r, 1500));
-        
-        if (emp.password !== pass) {
-          setHeat(h => Math.min(h + 5, 100));
-          playFailure();
-          setIsProcessing(false);
-          return `[-] Permission denied (publickey,password).\n[!] Failed login attempt logged by target IDS. Heat +5%`;
-        }
-        
-        playSuccess();
-        setIsInside(true);
-        setTargetIP(ipStr);
-        setCurrentDir('/');
-        
-        const isAdmin = emp.role.toLowerCase().includes('admin') || emp.role.toLowerCase().includes('director') || emp.role.toLowerCase().includes('chief') || emp.role.toLowerCase().includes('dba');
-        setPrivilege(isAdmin ? 'root' : 'user');
-        setTrace(0);
-        setIsProcessing(false);
-        
-        return `[+] Authentication successful.\n[+] Established secure shell as '${emp.name}' (${emp.role}).\n[*] WARNING: Valid credentials bypass initial trace, but actions are still logged.`;
-      },
+  if (isInside) return "[-] ssh: Disconnect from current session first.";
+  if (!arg1 || !args[2]) return "[-] Usage: ssh <email@ip> <password>";
+  
+  const [userRaw, ipStr] = arg1.split('@');
+  // THE FIX: trim() prevents invisible spaces from failing the login
+  const user = userRaw ? userRaw.trim() : '';
+  const pass = args.slice(2).join(' ').trim(); 
+  
+  if (!user || !ipStr) return "[-] Invalid target format. Use: ssh <email>@<ip> <password>";
+  const node = world[ipStr];
+  if (!node) return `[-] ssh: connect to host ${ipStr} port 22: Connection refused`;
+  
+  // THE FIX: Trim stored employee emails/names for a robust comparison
+  const emp = node.org?.employees?.find(e => 
+    e.email.trim().toLowerCase() === user.toLowerCase() || 
+    e.email.split('.')[0].trim().toLowerCase() === user.toLowerCase()
+  );
+
+  if (!emp) return `[-] Access denied. User '${user}' does not exist on this server.`;
+  
+  setIsProcessing(true);
+  setTerminal(prev => [...prev, { type: 'out', text: `[*] Initializing SSH client...\n[*] Connecting to ${ipStr}:22...\n${user}@${ipStr}'s password: ${'*'.repeat(pass.length)}`, isNew: false }]);
+  await new Promise(r => setTimeout(r, 1500));
+  
+  // THE FIX: Trim the stored password before comparing it to the player's input
+  if (emp.password.trim() !== pass) {
+    setHeat(h => Math.min(h + 5, 100));
+    playFailure();
+    setIsProcessing(false);
+    return `[-] Permission denied (publickey,password).\n[!] Failed login attempt logged by target IDS. Heat +5%`;
+  }
+  
+  playSuccess();
+  setIsInside(true);
+  setTargetIP(ipStr);
+  setCurrentDir('/');
+  
+  const isAdmin = emp.role.toLowerCase().includes('admin') || emp.role.toLowerCase().includes('director') || emp.role.toLowerCase().includes('chief') || emp.role.toLowerCase().includes('dba');
+  setPrivilege(isAdmin ? 'root' : 'user');
+  setTrace(0);
+  setIsProcessing(false);
+  
+  return `[+] Authentication successful.\n[+] Established secure shell as '${emp.name}' (${emp.role}).\n[*] WARNING: Valid credentials bypass initial trace, but actions are still logged.`;
+},
 
       sendmail: async () => {
         if (!isInside) return "[-] sendmail: You must be inside a target network to spoof internal emails.";

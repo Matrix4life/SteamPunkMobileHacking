@@ -267,6 +267,23 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
     return () => clearInterval(focusKeeper);
   }, [screen, isProcessing, showHelpMenu, isMobile]);
 
+  useEffect(() => {
+  const handleHardwareBack = () => {
+    if (isChatting) {
+      onCommand('exit'); // Close spearphish
+    } else if (isInside) {
+      onCommand('exit'); // Disconnect from server
+    } else if (mapExpanded) {
+      setMapExpanded(false); // Close map
+    } else {
+      // If at home screen, maybe show "Press again to quit"
+    }
+  };
+
+  window.addEventListener('hardwareBack', handleHardwareBack);
+  return () => window.removeEventListener('hardwareBack', handleHardwareBack);
+}, [isChatting, isInside, mapExpanded]);
+
   const activeState = useRef({ heat, botnet, proxies, walletFrozen });
   useEffect(() => { activeState.current = { heat, botnet, proxies, walletFrozen }; }, [heat, botnet, proxies, walletFrozen]);
 

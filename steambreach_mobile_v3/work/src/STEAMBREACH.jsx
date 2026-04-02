@@ -1978,7 +1978,7 @@ resolve: async (args) => {
 
     return 'You chose the EVIL path';
   }
-}
+},
       stash: async () => {
         if (!isInside) return "[-] Must be on a remote host to stage data.";
         if (!arg1) return "[-] Usage: stash <filename>\n[*] Routes exfiltrated data through a botnet node instead of direct to gateway.\n[*] Reduces heat from exfil but requires an active botnet node.";

@@ -82,6 +82,8 @@ export default function HelpMenu({ onClose, COLORS }) {
             <span style={{ color: COLORS.primary }}>clear</span><span>Clear terminal output</span>
             <span style={{ color: COLORS.primary }}>save</span><span>Save current progress</span>
             <span style={{ color: COLORS.primary }}>menu</span><span>Return to main menu</span>
+            <span style={{ color: COLORS.primary }}>resolve 1</span><span>choose GOOD path (paragon)</span>
+            <span style={{ color: COLORS.primary }}>resolve 2</span><span>choose EVIL path (syndicate)</span>
           </div>
           
         </div>

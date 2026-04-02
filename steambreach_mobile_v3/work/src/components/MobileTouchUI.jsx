@@ -120,14 +120,19 @@ export default function MobileTouchUI({
   // ─── DERIVED STATE ────────────────────────────────────────
   const discoveredNodes = useMemo(() => {
     return Object.entries(world)
-      .filter(([k, v]) => k !== 'local' && !v.isHidden)
+      // THE FIX: Only include nodes if they belong to the current region
+      .filter(([k, v]) => k !== 'local' && !v.isHidden && v.region === currentRegion) 
       .map(([ip, node]) => ({
-        ip, name: node.org?.orgName || node.name || ip,
-        exp: node.exp || 'hydra', sec: node.sec || 'LOW',
-        hacked: node.hacked || false, hasSliver: botnet.includes(ip),
-        isProxy: proxies.includes(ip), employees: node.org?.employees || [],
+        ip, 
+        name: node.org?.orgName || node.name || ip,
+        exp: node.exp || 'hydra', 
+        sec: node.sec || 'LOW',
+        hacked: node.hacked || false, 
+        hasSliver: botnet.includes(ip),
+        isProxy: proxies.includes(ip), 
+        employees: node.org?.employees || [],
       }));
-  }, [world, botnet, proxies]);
+  }, [world, botnet, proxies, currentRegion]);
 
   const currentFiles = useMemo(() => {
     if (!isInside || !targetIP || !world[targetIP]) return [];

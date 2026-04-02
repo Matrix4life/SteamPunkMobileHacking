@@ -2078,8 +2078,7 @@ const completeContractAndRemove = (id) => {
           setTerminal(prev => [...prev, { type: 'out', text: `shred: /dev/sda — overwriting disk with 3-pass random data...`, isNew: false }]);
           await new Promise(r => setTimeout(r, 2000));
           
-          const bounty = Math.floor((world[targetIP]?.val || 2000) * 1.5 * mult);
-          setMoney(m => m + bounty);
+          const bounty = 0;
           setHeat(h => Math.min(h + 20, 100));
           setBotnet(prev => prev.filter(ip => ip !== targetIP));
           setProxies(prev => prev.filter(ip => ip !== targetIP));

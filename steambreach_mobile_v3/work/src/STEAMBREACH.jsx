@@ -1411,16 +1411,20 @@ const completeContractAndRemove = (id) => {
       travel: async () => {
         if (isInside) return `[-] Cannot travel while connected to a remote host.`;
         if (!arg1) return `[-] Usage: travel <region>\n[*] Regions: ${REGIONS.join(', ')}`;
-        if (!REGIONS.includes(arg1.toLowerCase())) return `[-] Unknown region. Use: ${REGIONS.join(', ')}`;
-        if (arg1.toLowerCase() === currentRegion) return `[-] You are already in the ${currentRegion} subnet.`;
+        
+        const targetRegion = arg1.toLowerCase();
+        if (!REGIONS.includes(targetRegion)) return `[-] Unknown region. Use: ${REGIONS.join(', ')}`;
+        if (targetRegion === currentRegion) return `[-] You are already in the ${currentRegion} subnet.`;
         
         setIsProcessing(true);
-        setTerminal(prev => [...prev, { type: 'out', text: `[*] Bouncing Tor nodes... routing gateway to ${arg1.toUpperCase()}...`, isNew: false }]);
+        setTerminal(prev => [...prev, { type: 'out', text: `[*] Bouncing Tor nodes... routing gateway to ${targetRegion.toUpperCase()}...`, isNew: false }]);
         await new Promise(r => setTimeout(r, 1500));
         
-        setCurrentRegion(arg1.toLowerCase());
+        // --- THE FIX ---
+        // 1. We stop calling setWorld(DEFAULT_WORLD) here so the nodes stay in state.
+        // 2. We just change the active region view.
+        setCurrentRegion(targetRegion);
         setMarketPrices(generateMarketPrices());
-        setWorld(DEFAULT_WORLD); 
         
         let encounterText = '';
         if (Math.random() < 0.15) {
@@ -1429,9 +1433,9 @@ const completeContractAndRemove = (id) => {
             playHeatSpike();
             encounterText = `\n[!!!] INTERCEPTED: Interpol sniffing traffic on border gateway. Heat +${heatAdd}%`;
         }
-        
+
         setIsProcessing(false);
-        return `[+] Gateway established in ${arg1.toUpperCase()}.\n[+] Local Black Market prices have fluctuated.${encounterText}`;
+        return `[+] Gateway rerouted to ${targetRegion.toUpperCase()}.${encounterText}\n[*] Connection stable. Global subnets persistent.`;
       },
       
       market: async () => {

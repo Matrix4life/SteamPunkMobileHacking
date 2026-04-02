@@ -323,8 +323,8 @@ export default function MobileTouchUI({
         )}
 
         {panel === 'actions' && !subMenu && (
-          <>
-            <div style={S.row}>
+        <>
+          <div style={S.row}>
             <button onClick={() => tap('nmap')} style={btn(COLORS.primary, true, true)}>📡 NMAP SCAN</button>
             <button onClick={() => { buzz(25); onToggleMap(); }} style={btn(COLORS.secondary, mapExpanded, true)}>🗺 MAP</button>
             <button onClick={() => tap('status')} style={btn(COLORS.textDim, true, true)}>STATUS</button>
@@ -333,14 +333,13 @@ export default function MobileTouchUI({
             <button onClick={() => tap('shop')} style={btn(COLORS.warning, true, true)}>🏪 SHOP</button>
             <button onClick={() => tap('contracts')} style={btn(COLORS.chat, true, true)}>📋 CONTRACTS</button>
             
-            {/* --- NEW TRAVEL BUTTON --- */}
+            {/* THE UPDATED ONE-TOUCH TRAVEL BUTTON */}
             <button 
-              onClick={() => { buzz(20); onFillInput?.('travel '); }} 
-              style={btn(COLORS.ip, true, true)}
+              onClick={() => { buzz(20); setSubMenu(subMenu === 'travel' ? null : 'travel'); }} 
+              style={btn(COLORS.ip, subMenu === 'travel', true)}
             >
-              ✈️ TRAVEL
+              ✈️ TRAVEL {subMenu === 'travel' ? '▾' : ''}
             </button>
-            {/* ------------------------- */}
           </div>
           <div style={S.row}>
             <button onClick={() => tap('save')} style={btn(COLORS.textDim, false, false)}>💾 SAVE GAME</button>

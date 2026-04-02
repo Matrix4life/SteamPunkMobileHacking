@@ -38,6 +38,12 @@ const FIELD_OPTIONS = {
     { label: 'MED 50%', cmd: 'xmrig medium', desc: 'Balanced' },
     { label: 'HIGH 75%', cmd: 'xmrig high', desc: 'Loud' },
   ],
+  travel: [
+    { label: '🇺🇸 US-GOV', cmd: 'travel us-gov', desc: 'Tier 1' },
+    { label: '🇪🇺 EU-CORP', cmd: 'travel eu-corp', desc: 'Tier 2' },
+    { label: '🇨🇳 CN-FINANCIAL', cmd: 'travel cn-financial', desc: 'Tier 3' },
+    { label: '🇷🇺 RU-DARKNET', cmd: 'travel ru-darknet', desc: 'Elite' },
+  ]
 };
 
 // ─── OPERATOR MODE SYNTAX HINTS ──────────────────────────────

@@ -1185,7 +1185,30 @@ const completeContractAndRemove = (id) => {
             return;
         }
     }
+const verifyContract = (ip, objectiveType) => {
+    let msg = '';
+    const currentContract = contracts.find(c => c.active && !c.completed);
+    if (currentContract) {
+      const isMatch = currentContract.objectives?.some(o => o.ip === ip && o.type === objectiveType);
+      if (isMatch) {
+        const timeTaken = (Date.now() - currentContract.startTime) / 1000;
+        const rewardVal = currentContract.reward || 0;
+        const repVal = currentContract.repReward || 0;
+        if (timeTaken <= (currentContract.timeLimit || 9999) && heat <= (currentContract.heatCap || 100)) {
+          setMoney(m => m + rewardVal);
+          setReputation(r => r + repVal);
+          completeContractAndRemove(currentContract.id); trackContract(true);
+          msg = `\n\n[FIXER] CONTRACT FULFILLED.\n[+] BONUS: ₿${rewardVal.toLocaleString()} + ${repVal} REP`;
+        } else {
+          completeContractAndRemove(currentContract.id); trackContract(false);
+          msg = `\n\n[FIXER] CONTRACT FAILED. Time Limit or Heat Cap exceeded.`;
+        }
+      }
+    }
+    return msg;
+  };
 
+  const COMMANDS = { // <--- Your existing commands object starts here
     const COMMANDS = {
       rclone: async () => {
         if (!isInside) return "[-] rclone: Must be executed on a remote host.";
@@ -1626,6 +1649,7 @@ const completeContractAndRemove = (id) => {
         setWorld(prev => { const nw = { ...prev }; if (nw[targetIP]) nw[targetIP] = { ...nw[targetIP], commsGenerated: true }; return nw; });
         playSuccess();
         setIsProcessing(false);
+        const contractMsg = verifyContract(targetIP, 'sniff');
         return `[+] ettercap: MITM active. Sniffed ${node.org.employees?.length || 3} hosts.\n────────────────────────────────────\n${comms}\n────────────────────────────────────\n[!] Trace +10%. ARP anomalies may trigger IDS.`;
       },
 
@@ -2696,6 +2720,7 @@ resolve: async (args) => {
         setHeat(h => Math.min(h + heatAdd, 100));
         playSuccess();
         setIsProcessing(false);
+        const contractMsg = verifyContract(targetIP, 'mine');
         return `[+]IG DEPLOYED. Mining Monero at +₿${hourlyIncome.toLocaleString()}/hr.\n[!] Heat +${heatAdd}%.`;
       },
 

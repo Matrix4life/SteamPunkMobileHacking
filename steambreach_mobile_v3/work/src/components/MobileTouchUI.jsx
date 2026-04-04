@@ -400,21 +400,52 @@ export default function MobileTouchUI({
             </div>
             {currentDataFiles.length > 0 && (
               <>
-                <div style={S.label}>{privilege === 'root' ? 'TAP TO EXFIL / COLLECT' : 'TAP TO READ'}</div>
-                <div style={S.row}>
+                <div style={{ ...S.label, marginTop: '8px' }}>TARGET FILES</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   {currentDataFiles.map((file, i) => {
                     const isCon = CONSUMABLES.includes(file);
-                    return <button key={`f${i}`} onClick={() => fileAction(file)} style={btn(isCon ? COLORS.secondary : COLORS.warning, true, true)}>{isCon ? '🔧' : '💰'} {file}</button>;
+                    return (
+                      <div key={`f${i}`} style={{ 
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
+                        background: `${COLORS.bg}50`, border: `1px solid ${COLORS.border}`, 
+                        padding: '6px 8px', borderRadius: '4px' 
+                      }}>
+                        <span style={{ color: isCon ? COLORS.secondary : COLORS.text, fontWeight: 'bold', fontSize: '12px', wordBreak: 'break-all', paddingRight: '4px' }}>
+                          {isCon ? '🔧 ' : '📄 '}{file}
+                        </span>
+                        <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
+                          <button 
+                            onClick={() => { buzz(20); onCommand(`cat ${file}`); }} 
+                            style={{ ...btn(COLORS.primary, false, false), padding: '6px 8px', fontSize: '10px' }}
+                          >
+                            {isCon ? 'COLLECT' : 'READ'}
+                          </button>
+                          
+                          {!isCon && (
+                            <>
+                              <button 
+                                onClick={() => { buzz(30); onCommand(`exfil ${file}`); }} 
+                                style={{ ...btn(COLORS.warning, true, false), padding: '6px 8px', fontSize: '10px' }}
+                              >
+                                EXFIL
+                              </button>
+                              {botnet && botnet.length > 0 && (
+                                <button 
+                                  onClick={() => { buzz(30); onCommand(`stash ${file}`); }} 
+                                  style={{ ...btn(COLORS.file, true, false), padding: '6px 8px', fontSize: '10px' }}
+                                >
+                                  STASH
+                                </button>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    );
                   })}
                 </div>
               </>
             )}
-          </>
-        )}
-      </div>
-    );
-  }
-
   // ═══════════════════════════════════════════════════════════
   // OUTSIDE — MAIN HUB
   // ═══════════════════════════════════════════════════════════
@@ -532,8 +563,7 @@ export default function MobileTouchUI({
                 {!selectedNode.hasSliver && <button onClick={() => tap('sliver')} style={btn(COLORS.secondary, true, true)}>SLIVER</button>}
                 {!selectedNode.isProxy && <button onClick={() => tap('chisel')} style={btn(COLORS.primary, true, true)}>CHISEL</button>}
                 {selectedNode.hasSliver && <button onClick={() => tap(`mimikatz ${selectedNode.ip}`)} style={btn(COLORS.warning, true, true)}>MIMIKATZ</button>}
-                {selectedNode.hasSliver && <button onClick={() => tap(`stash ${selectedNode.ip}`)} style={btn(COLORS.file, true, true)}>STASH</button>}
-                <button onClick={() => tap(`hping3 ${selectedNode.ip}`)} style={btn(COLORS.danger, true, false)}>HPING3</button>
+                              <button onClick={() => tap(`hping3 ${selectedNode.ip}`)} style={btn(COLORS.danger, true, false)}>HPING3</button>
                 <button onClick={() => tap(`disconnect ${selectedNode.ip}`)} style={btn(COLORS.textDim, false, false)}>DISCONNECT</button>
               </div>
             </>

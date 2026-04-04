@@ -105,13 +105,13 @@ export default function MobileTouchUI({
   heat, trace, mapExpanded, consumables, gameMode,
   currentRegion, 
   onCommand, onToggleKeyboard, onToggleMap,
-  onFillInput, // fills input + opens keyboard (for operator mode)
+  onFillInput,
   externalSelectedIP, clearExternalSelection,
   activeStory, alignment,
 }) {
   const [panel, setPanel] = useState('actions');
   const [selectedIP, setSelectedIP] = useState(null);
-  const [subMenu, setSubMenu] = useState(null); // e.g. 'shred' | 'openssl' | null
+  const [subMenu, setSubMenu] = useState(null);
   const [showEmployees, setShowEmployees] = useState(false); 
   const isField = gameMode === 'field';
   const isOperator = gameMode === 'operator';
@@ -127,7 +127,6 @@ export default function MobileTouchUI({
   // ─── DERIVED STATE ────────────────────────────────────────
   const discoveredNodes = useMemo(() => {
     return Object.entries(world)
-      // THE FIX: Only include nodes if they belong to the current region
       .filter(([k, v]) => k !== 'local' && !v.isHidden && v.region === currentRegion) 
       .map(([ip, node]) => ({
         ip, 
@@ -156,31 +155,22 @@ export default function MobileTouchUI({
     if (panel === 'target_detail') setPanel('targets');
   };
 
-  // Smart command — handles mode differences
   const smartCmd = (cmd) => {
     if (isOperator && OP_HINTS[cmd]) {
-      // Operator: show hint, fill input, open keyboard
       buzz(40);
       onFillInput?.(OP_HINTS[cmd]);
       return;
     }
-    if (isField && FIELD_OPTIONS[cmd]) {
-      // Field: show sub-menu
+    if (FIELD_OPTIONS[cmd] && (isField || cmd === 'travel')) {
       buzz(20);
       setSubMenu(subMenu === cmd ? null : cmd);
       return;
     }
-    // Arcade or no special options
     tap(cmd);
   };
 
   const selectIP = (ip) => { buzz(40); setSelectedIP(ip); setPanel('target_detail'); setShowEmployees(false); };
   const switchPanel = (id) => { buzz(15); setPanel(id); setSubMenu(null); if (id === 'targets') { setSelectedIP(null); setShowEmployees(false); } };
-
-  const fileAction = (file) => {
-    buzz(30);
-    onCommand(CONSUMABLES.includes(file) ? `cat ${file}` : (privilege === 'root' ? `exfil ${file}` : `cat ${file}`));
-  };
 
   const expLabel = (exp) => ({ hydra: 'HYDRA', sqlmap: 'SQLMAP', msfconsole: 'MSFCONSOLE', curl: 'CURL' }[exp] || exp.toUpperCase());
   const expColor = (exp) => ({ hydra: COLORS.danger, sqlmap: COLORS.warning, msfconsole: '#ff6633', curl: COLORS.file }[exp] || COLORS.primary);
@@ -204,13 +194,6 @@ export default function MobileTouchUI({
       </div>
     );
   };
-
-  // ─── MODE BADGE ────────────────────────────────────────────
-  const modeBadge = isOperator
-    ? { label: 'OPERATOR', color: COLORS.danger, hint: 'FULL SYNTAX REQUIRED' }
-    : isField
-    ? { label: 'FIELD', color: COLORS.warning, hint: 'SELECT OPTIONS' }
-    : null;
 
   // ─── TAB BAR ──────────────────────────────────────────────
   const TabBar = ({ tabs, right }) => (
@@ -262,12 +245,9 @@ export default function MobileTouchUI({
   if (isInside) {
     return (
       <div style={S.wrap}>
-        
-        {/* --- NODE CONNECTION HEADER --- */}
         <div style={{ 
           display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
-          padding: '0 4px 8px 4px', marginBottom: '8px', 
-          borderBottom: `1px dashed ${COLORS.danger}50` 
+          padding: '0 4px 8px 4px', marginBottom: '8px', borderBottom: `1px dashed ${COLORS.danger}50` 
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <span style={{ fontSize: '14px' }}>💻</span>
@@ -279,7 +259,6 @@ export default function MobileTouchUI({
             🌐 {currentRegion ? currentRegion.toUpperCase() : 'UNKNOWN'}
           </div>
         </div>
-        {/* ---------------------------------- */}
 
         <TabBar
           tabs={[['actions', 'ACTIONS', COLORS.primary], ['files', `FILES (${currentFiles.length})`, COLORS.file]]}
@@ -288,7 +267,6 @@ export default function MobileTouchUI({
 
         {subMenu && <SubMenu cmd={subMenu} />}
 
-        {/* STORY CHOICE — appears when intercept.log has been read */}
         {activeStory && isInside && targetIP === activeStory.ip && (
           <div style={{
             background: `${COLORS.chat}10`, border: `1px solid ${COLORS.chat}40`,
@@ -323,27 +301,7 @@ export default function MobileTouchUI({
         )}
 
         {panel === 'actions' && !subMenu && (
-        <>
-          <div style={S.row}>
-            <button onClick={() => tap('nmap')} style={btn(COLORS.primary, true, true)}>📡 NMAP SCAN</button>
-            <button onClick={() => { buzz(25); onToggleMap(); }} style={btn(COLORS.secondary, mapExpanded, true)}>🗺 MAP</button>
-            <button onClick={() => tap('status')} style={btn(COLORS.textDim, true, true)}>STATUS</button>
-          </div>
-          <div style={S.row}>
-            <button onClick={() => tap('shop')} style={btn(COLORS.warning, true, true)}>🏪 SHOP</button>
-            <button onClick={() => tap('contracts')} style={btn(COLORS.chat, true, true)}>📋 CONTRACTS</button>
-            
-            {/* THE UPDATED ONE-TOUCH TRAVEL BUTTON */}
-            <button 
-              onClick={() => { buzz(20); setSubMenu(subMenu === 'travel' ? null : 'travel'); }} 
-              style={btn(COLORS.ip, subMenu === 'travel', true)}
-            >
-              ✈️ TRAVEL {subMenu === 'travel' ? '▾' : ''}
-            </button>
-          </div>
-          <div style={S.row}>
-            <button onClick={() => tap('save')} style={btn(COLORS.textDim, false, false)}>💾 SAVE GAME</button>
-          </div>
+          <>
             {privilege !== 'root' && (
               <div style={S.row}>
                 <button onClick={() => smartCmd('pwnkit')} style={btn('#ff4444', true, true)}>⚡ PWNKIT → ROOT</button>
@@ -446,9 +404,12 @@ export default function MobileTouchUI({
                 </div>
               </>
             )}
-  // ═══════════════════════════════════════════════════════════
-  // OUTSIDE — MAIN HUB
-  // ═══════════════════════════════════════════════════════════
+          </>
+        )}
+      </div>
+    );
+  }
+
   // ═══════════════════════════════════════════════════════════
   // OUTSIDE — MAIN HUB
   // ═══════════════════════════════════════════════════════════
@@ -471,7 +432,6 @@ export default function MobileTouchUI({
 
       <TabBar tabs={[['actions', 'ACTIONS', COLORS.primary], ['targets', `TARGETS (${discoveredNodes.length})`, COLORS.ip]]} />
 
-      {/* --- MOVED SUBMENU HERE SO IT OVERLAYS --- */}
       {subMenu && <SubMenu cmd={subMenu} />}
 
       {panel === 'actions' && !subMenu && (
@@ -485,9 +445,8 @@ export default function MobileTouchUI({
             <button onClick={() => tap('shop')} style={btn(COLORS.warning, true, true)}>🏪 SHOP</button>
             <button onClick={() => tap('contracts')} style={btn(COLORS.chat, true, true)}>📋 CONTRACTS</button>
             
-            {/* THE TRAVEL BUTTON */}
             <button 
-              onClick={() => { buzz(20); setSubMenu(subMenu === 'travel' ? null : 'travel'); }} 
+              onClick={() => smartCmd('travel')} 
               style={btn(COLORS.ip, subMenu === 'travel', true)}
             >
               ✈️ TRAVEL ▾
@@ -563,7 +522,7 @@ export default function MobileTouchUI({
                 {!selectedNode.hasSliver && <button onClick={() => tap('sliver')} style={btn(COLORS.secondary, true, true)}>SLIVER</button>}
                 {!selectedNode.isProxy && <button onClick={() => tap('chisel')} style={btn(COLORS.primary, true, true)}>CHISEL</button>}
                 {selectedNode.hasSliver && <button onClick={() => tap(`mimikatz ${selectedNode.ip}`)} style={btn(COLORS.warning, true, true)}>MIMIKATZ</button>}
-                              <button onClick={() => tap(`hping3 ${selectedNode.ip}`)} style={btn(COLORS.danger, true, false)}>HPING3</button>
+                <button onClick={() => tap(`hping3 ${selectedNode.ip}`)} style={btn(COLORS.danger, true, false)}>HPING3</button>
                 <button onClick={() => tap(`disconnect ${selectedNode.ip}`)} style={btn(COLORS.textDim, false, false)}>DISCONNECT</button>
               </div>
             </>

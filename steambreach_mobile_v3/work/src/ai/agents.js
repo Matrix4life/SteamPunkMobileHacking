@@ -298,11 +298,17 @@ export const generateAIContract = async (targetIP, nodeData, currentRep, arg4, a
   const actualNumTargets = Math.min(numTargets, 1 + shuffledIPs.length);
   const selectedIPs = [targetIP, ...shuffledIPs].slice(0, actualNumTargets);
 
-  const actionTypes = ['exfil', 'destroy', 'ransom'];
+  // 1. Add the new types to the pool
+  const actionTypes = ['exfil', 'destroy', 'ransom', 'mine', 'sniff', 'breach'];
+  
+  // 2. Set the payout multipliers for the new jobs
   const actionValueMult = {
     exfil: 1.0,
     destroy: 1.18,
     ransom: 1.32,
+    mine: 0.85,    // Mining is passive income, so upfront bounty is slightly lower
+    sniff: 1.10,   // Espionage/Wiretapping pays well
+    breach: 1.40,  // Mass rclone extraction is highly lucrative
   };
 
   const objectives = [];
@@ -340,10 +346,14 @@ export const generateAIContract = async (targetIP, nodeData, currentRep, arg4, a
         : 'proprietary_data.zip';
     }
 
+    // 3. Add the UI labels for the new jobs
     let label = '';
     if (type === 'exfil') label = `Exfiltrate ${targetFile || 'proprietary_data.zip'} from ${node?.org?.orgName || 'target node'}`;
     else if (type === 'destroy') label = `Destroy the target environment at ${node?.org?.orgName || 'target node'}`;
     else if (type === 'ransom') label = `Deploy ransomware against ${node?.org?.orgName || 'target node'}`;
+    else if (type === 'mine') label = `Deploy xmrig cryptominer on ${node?.org?.orgName || 'target node'}`;
+    else if (type === 'sniff') label = `Intercept internal comms (ettercap) at ${node?.org?.orgName || 'target node'}`;
+    else if (type === 'breach') label = `Execute mass data breach (rclone) on ${node?.org?.orgName || 'target node'}`;
 
     const nodeValue = getNodeValue(node);
     const objectiveValue = Math.floor(nodeValue * (actionValueMult[type] || 1));

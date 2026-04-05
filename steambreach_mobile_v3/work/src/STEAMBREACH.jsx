@@ -1209,7 +1209,7 @@ const verifyContract = (ip, objectiveType) => {
   };
 
   const COMMANDS = { // <--- Your existing commands object starts here
-    const COMMANDS = {
+  
       rclone: async () => {
         if (!isInside) return "[-] rclone: Must be executed on a remote host.";
         if (privilege !== 'root') return "[-] rclone: Root access required to bypass DLP (Data Loss Prevention) sensors.";

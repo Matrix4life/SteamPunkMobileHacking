@@ -83,15 +83,15 @@ export default function HelpMenu({ onClose, COLORS }) {
             <span style={{ color: COLORS.primary }}>assist</span><span>When prompted: quietly help a civilian — raises SIGNAL score</span>
             <span style={{ color: COLORS.primary }}>crashpc</span><span>When prompted: brick a civilian machine — raises CHAOS score</span>
           </div>
-          
+
           <h3 style={{ color: COLORS.secondary }}>[ STORY EVENTS ]</h3>
           <div style={{ display: 'grid', gridTemplateColumns: '185px 1fr', gap: '10px', marginBottom: '20px' }}>
-          <span style={{ color: COLORS.primary }}>cat intercept.log</span><span>Trigger an AI-generated moral dilemma on the current node</span>
-          <span style={{ color: COLORS.primary }}>resolve 1</span><span>Take the heroic path — lower payout, raises SIGNAL</span>
-          <span style={{ color: COLORS.primary }}>resolve 2</span><span>Take the ruthless path — higher payout, raises CHAOS</span>
-          <span style={{ color: COLORS.primary }}>salvage</span><span>When prompted: recover a hidden power-up from a civilian node</span>
-        </div>
-          
+            <span style={{ color: COLORS.primary }}>cat intercept.log</span><span>Trigger an AI-generated moral dilemma on the current node</span>
+            <span style={{ color: COLORS.primary }}>resolve 1</span><span>Take the heroic path — lower payout, raises SIGNAL</span>
+            <span style={{ color: COLORS.primary }}>resolve 2</span><span>Take the ruthless path — higher payout, raises CHAOS</span>
+            <span style={{ color: COLORS.primary }}>salvage</span><span>When prompted: recover a hidden power-up from a civilian node</span>
+          </div>
+
           <h3 style={{ color: COLORS.secondary }}>[ SYSTEM & NAV ]</h3>
           <div style={{ display: 'grid', gridTemplateColumns: '185px 1fr', gap: '10px' }}>
             <span style={{ color: COLORS.primary }}>travel &lt;region&gt;</span><span>Reroute gateway to a new subnet — us-gov, ru-darknet, cn-financial, eu-central</span>

@@ -221,14 +221,28 @@ export const generateOrgFileSystem = (org, tier, layout) => {
   let filesObj = { '/': [] };
   let contents = {};
 
-  // Helper: Build folders safely
+  // Helper: Build folders safely (Recursive parent linking)
   const buildDirs = (dirList) => {
     if(!dirList) return;
     dirList.forEach(dir => {
-      filesObj[`/${dir}`] = [];
-      const topLevel = dir.split('/')[0];
-      if (!filesObj['/'].includes(`${topLevel}/`)) {
-        filesObj['/'].push(`${topLevel}/`);
+      const parts = dir.split('/');
+      let currentPath = '';
+      
+      for (let i = 0; i < parts.length; i++) {
+        // Determine who the parent is, and what the current folder is called
+        const parentDir = currentPath === '' ? '/' : `/${currentPath}`;
+        currentPath = currentPath === '' ? parts[i] : `${currentPath}/${parts[i]}`;
+        
+        // 1. Ensure this exact directory level exists in memory
+        if (!filesObj[`/${currentPath}`]) {
+          filesObj[`/${currentPath}`] = [];
+        }
+        
+        // 2. Tell the parent directory that this child folder exists inside it
+        const folderName = `${parts[i]}/`;
+        if (!filesObj[parentDir].includes(folderName)) {
+          filesObj[parentDir].push(folderName);
+        }
       }
     });
   };

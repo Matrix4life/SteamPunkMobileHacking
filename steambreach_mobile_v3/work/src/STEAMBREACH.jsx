@@ -1498,7 +1498,6 @@ const verifyContract = (ip, objectiveType) => {
       market: async () => {
   if (isInside) return `[-] Cannot access market while inside a target.`;
   setScreen('market');
-        openHardwareMarket();
         if (walletFrozen) return `[!] WALLET FROZEN — limited trading. Reduce heat below 75%.`;
         return '';
       },
@@ -1988,7 +1987,7 @@ resolve: async () => {
     setMoney(m => m + (activeStory.good_payout || 5000));
     setActiveStory(null);
 
-    return 'You chose the GOOD path';
+   return `[+] ${activeStory.good_action}\n[+] SIGNAL +10 | ₿${(activeStory.good_payout || 5000).toLocaleString()} paid out.`;
   }
 
   if (args[1] === '2') {
@@ -2000,7 +1999,7 @@ resolve: async () => {
     setMoney(m => m + (activeStory.evil_payout || 25000));
     setActiveStory(null);
 
-    return 'You chose the EVIL path';
+   return `[+] ${activeStory.evil_action}\n[+] CHAOS +10 | ₿${(activeStory.evil_payout || 25000).toLocaleString()} paid out.`;
   }
 },
       stash: async () => {
@@ -2845,6 +2844,7 @@ resolve: async () => {
             return nw;
           });
 if (arg1 === 'intercept.log') {
+  if (!isInside) return '[-] Must be inside a target node to read intercepts.';
   const story = activeStory || generateStory(targetIP);
   if (!activeStory) setActiveStory(story);
   return `[INTERCEPT] ${story.story}\n\n[1] ${story.good_action}\n[2] ${story.evil_action}\n\n[*] Type 'resolve 1' or 'resolve 2' to choose.`;

@@ -336,25 +336,46 @@ export const generateOrgFileSystem = (org, tier, layout) => {
   return { files: filesObj, contents };
 };
 export const generateInterceptedComms = async (targetIP, nodeData, apiKey) => {
-  const orgName = nodeData?.org?.orgName || "Unknown Corp";
+  const orgName = nodeData?.org?.orgName || "Unknown Node";
   const employees = nodeData?.org?.employees || [];
   
+  // 1. Map the ACTUAL file system to prevent the AI from hallucinating fake paths
+  const realPaths = [];
+  if (nodeData?.files) {
+    Object.keys(nodeData.files).forEach(dir => {
+      if (dir !== '/') {
+        nodeData.files[dir].forEach(file => {
+          // Ignore directory pointers, just get actual files
+          if (!file.endsWith('/')) {
+            realPaths.push(`${dir}/${file}`.replace('//', '/'));
+          }
+        });
+      }
+    });
+  }
+  
+  // 2. Pick 1 or 2 random REAL files to serve as the clue
+  const leakedFiles = realPaths.sort(() => 0.5 - Math.random()).slice(0, 2).join(' or ');
+
   const prompt = `You are an automated packet sniffer (ettercap) intercepting unencrypted internal traffic at ${orgName} (${targetIP}).
   The following employees are active: ${employees.map(e => `${e.name} (${e.role})`).join(', ')}.
   
   Generate a snippet of 3-4 intercepted communications. 
   Include:
-  - One internal automated system log (e.g., backup started).
-  - One or two brief chat messages or emails between the employees listed above.
-  - One "leak" or "clue" (e.g., mentioning a password style, a sensitive file path, or a coworker's bad security habits).
+  - One internal automated system log.
+  - One or two brief chat messages or emails between the employees.
+  - One "leak" or "clue" where an employee mentions a specific file or password.
   
-  Format it like a raw terminal dump. Use timestamps like [HH:mm:ss]. 
+  CRITICAL RULE 1: If you mention a file path, you MUST use exactly this path: ${leakedFiles || '/tmp/.bash_history'}. DO NOT invent fake directories like /backup/ or /Confidential/.
+  CRITICAL RULE 2: Show the ACTUAL PLAIN-TEXT PAYLOADS of the messages. Do NOT generate raw HTTP headers (GET/POST requests). Format it as a high-level chat/email intercept log. 
+  
+  Use timestamps like [HH:mm:ss] followed by the sender and the message content.
   Do NOT use markdown. Do NOT explain the output.`;
 
   try {
     return await generateDirectorText(prompt, "");
   } catch (e) {
-    return `[14:02:11] SRC: ${targetIP} -> DST: 10.0.0.1 [TCP] PUSH, ACK\n[14:02:12] UNENCRYPTED SMTP TRAFFIC DETECTED\n[14:02:15] DATA: "Hey, did you change the root pass? I can't get into the vault."`;
+    return `[14:02:11] SYSTEM: Automated backup completed for /tmp\n[14:02:15] UNENCRYPTED TRAFFIC: "Did you leave the wallet.dat file unsecured again?"`;
   }
 };
 

@@ -202,6 +202,8 @@ export const generateOrgFileSystem = (org, tier, layout) => {
   if (tier === 'low' || tier === 'mid') {
     if (Math.random() < 0.25) filesObj[randomDir()].push('wallet.dat');
   }
+
+  
 // --- STORY TRIGGER FILES (contextual per org type) ---
 const STORY_FILES = {
   personal:    { file: 'deleted_messages.rec',     dir: '/private' },

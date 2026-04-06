@@ -47,12 +47,38 @@ export const ROLES = {
   elite: ['Station Chief', 'Signals Officer', 'Crypto Analyst', 'Black Ops Coordinator']
 };
 
-export const generateEmployee = (tier, index) => {
+export const generateEmployee = (tier, index, orgName = "Company") => {
   const first = FIRST_NAMES[Math.floor(Math.random() * FIRST_NAMES.length)];
   const last = LAST_NAMES[Math.floor(Math.random() * LAST_NAMES.length)];
   const roles = ROLES[tier] || ROLES.mid;
   const role = roles[index % roles.length];
-  const passStyles = ['Spring2026!', `${first.toLowerCase()}123`, 'P@ssw0rd', 'admin123', `${last.toLowerCase()}!${Math.floor(Math.random()*99)}`, 'Welcome1!', 'Changeme1'];
+  
+  // OSINT Context Variables for Passwords
+  const cleanOrg = orgName.split(' ')[0].toLowerCase();
+  const capOrg = cleanOrg.charAt(0).toUpperCase() + cleanOrg.slice(1);
+  const firstLow = first.toLowerCase();
+  const lastLow = last.toLowerCase();
+  const year = Math.random() > 0.5 ? '2025' : '2026';
+
+  // --- Password Generation Pools ---
+  const terrible = ['password123', 'qwerty', '12345678', 'welcome1', 'admin'];
+  const identity = [`${firstLow}123`, `${lastLow}${year}`, `${firstLow}${lastLow}`, `${firstLow[0]}${lastLow}1!`];
+  const corporate = [`${capOrg}${year}!`, `Summer${year}`, `${capOrg}Admin`, `Winter${year}!`, `Changeme1!`];
+  const complex = [`P@ssw0rd!`, `S3cur1ty$`, `${capOrg}!${year}#`, `!${lastLow}#${year}`, `${firstLow[0]}@${lastLow}$!`];
+  const elite = [
+    Math.random().toString(36).slice(-12),
+    `${Math.random().toString(36).slice(-8)}!@#`,
+    `$${Math.random().toString(36).slice(-10)}`
+  ];
+
+  // Distribute based on security tier
+  let pool = [];
+  if (tier === 'low') pool = [...terrible, ...identity, ...corporate];
+  else if (tier === 'mid') pool = [...identity, ...corporate, ...complex];
+  else if (tier === 'high') pool = [...corporate, ...complex, ...elite];
+  else if (tier === 'elite') pool = [...complex, ...elite];
+
+  const generatedPassword = pool[Math.floor(Math.random() * pool.length)];
   
   const personalities = [
     "paranoid and suspicious, assumes everyone is a threat",
@@ -74,9 +100,9 @@ export const generateEmployee = (tier, index) => {
   
   return {
     name: `${first} ${last}`,
-    email: `${first.toLowerCase()}.${last.toLowerCase()}`,
+    email: `${firstLow}.${lastLow}`,
     role,
-    password: passStyles[Math.floor(Math.random() * passStyles.length)],
+    password: generatedPassword,
     personality: personalities[Math.floor(Math.random() * personalities.length)]
   };
 };
@@ -90,7 +116,7 @@ export const generateOrgNarrative = (tier) => {
   if (template.type === 'personal') employeeCount = Math.floor(Math.random() * 2) + 1; 
   
   const employees = Array.from({ length: employeeCount }, (_, i) => {
-    const emp = generateEmployee(tier, i);
+    const emp = generateEmployee(tier, i, orgName);
     if (template.type === 'personal') emp.role = i === 0 ? 'Admin / Owner' : 'Guest User';
     return emp;
   });
@@ -349,6 +375,7 @@ export const generateOrgFileSystem = (org, tier, layout) => {
 
   return { files: filesObj, contents };
 };
+
 export const generateInterceptedComms = async (targetIP, nodeData, apiKey) => {
   const orgName = nodeData?.org?.orgName || "Unknown Node";
   const employees = nodeData?.org?.employees || [];

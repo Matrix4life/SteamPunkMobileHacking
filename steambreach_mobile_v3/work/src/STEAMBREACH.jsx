@@ -2868,12 +2868,19 @@ resolve: async () => {
       }
     }
 
-    // 2. Resolve the actual file contents (Bulletproof Pathing)
-    let rawData = contents[targetFile] || contents[arg1];
+    // 2. Resolve the actual file contents (Hardened Pathing)
+    // Create the absolute path: e.g., /mnt/intel/ + friendly_fire_coverup.pdf
+    const absolutePath = currentDir === '/' ? `/${arg1}` : `${currentDir}/${arg1}`;
+    
+    // Look for the file using the absolute path first, then fallback to the raw argument
+    let rawData = contents[absolutePath] || contents[arg1];
+
+    // Fallback: If still not found, search all keys for a filename match (last resort)
     if (!rawData && contents) {
       const fallbackKey = Object.keys(contents).find(k => k.endsWith('/' + arg1) || k === arg1);
       if (fallbackKey) rawData = contents[fallbackKey];
     }
+
     if (!rawData) return `cat: ${arg1}: No such file`;
 
     // 3. File-specific checks based on contents

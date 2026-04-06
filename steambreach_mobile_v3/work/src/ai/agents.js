@@ -118,15 +118,33 @@ export const generateOrgNarrative = (tier) => {
 
 // 1. The Base OS (Applies to ALL computers)
 const BASE_OS_SKELETON = {
-  dirs: ['etc', 'etc/ssh', 'var', 'var/log', 'home', 'home/user', 'home/user/.ssh', 'tmp', 'mnt', 'opt', 'root', 'mail'],
-  files: {
-    'etc': ['passwd', 'shadow', 'fstab'],
-    'etc/ssh': ['sshd_config'],
-    'var/log': ['syslog', 'auth.log', 'dmesg'],
-    'home/user': ['.bashrc', 'notes.txt'],
-    'home/user/.ssh': ['id_rsa', 'known_hosts'],
-    'tmp': ['.bash_history', 'syslog.tmp'],
-    'root': ['deploy.sh']
+  // 1. OS Profiles (Different roots for different machines)
+const OS_PROFILES = {
+  workstation: {
+    dirs: ['home', 'home/user', 'home/user/.ssh', 'Applications', 'tmp', 'Library'],
+    files: { 
+      'home/user': ['.bashrc', 'notes.txt'], 
+      'home/user/.ssh': ['id_rsa', 'known_hosts'], 
+      'tmp': ['.bash_history'] 
+    }
+  },
+  server: {
+    dirs: ['etc', 'etc/ssh', 'var', 'var/log', 'tmp', 'root', 'bin'],
+    files: { 
+      'etc': ['passwd', 'shadow', 'fstab'], 
+      'etc/ssh': ['sshd_config'], 
+      'var/log': ['syslog', 'auth.log'], 
+      'tmp': ['.bash_history', 'syslog.tmp'], 
+      'root': ['deploy.sh'] 
+    }
+  },
+  mainframe: {
+    dirs: ['SYS', 'SYS/CONFIG', 'SECURE_LOGS', 'tmp', 'root', 'bin'],
+    files: { 
+      'SYS/CONFIG': ['routing.conf', 'firewall.rules'], 
+      'SECURE_LOGS': ['access.log', 'auth_failures.log'], 
+      'tmp': ['.bash_history'] 
+    }
   }
 };
 
@@ -240,7 +258,16 @@ export const generateOrgFileSystem = (org, tier, layout) => {
       });
     });
   };
-
+  
+let osProfile;
+  if (org.type === 'personal') {
+    osProfile = OS_PROFILES.workstation;
+  } else if (['government', 'military', 'classified'].includes(org.type)) {
+    osProfile = OS_PROFILES.mainframe;
+  } else {
+    osProfile = OS_PROFILES.server;
+  }
+  
   // 1. Build the Base Linux OS
   buildDirs(BASE_OS_SKELETON.dirs);
   placeFiles(BASE_OS_SKELETON.files);

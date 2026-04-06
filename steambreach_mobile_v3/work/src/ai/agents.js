@@ -315,16 +315,26 @@ export const generateOrgFileSystem = (org, tier, layout) => {
   const triggerDir = storyTrigger.dir;
   const targetDir = filesObj[triggerDir] ? triggerDir : '/tmp';
   
-  if (!filesObj[targetDir]) filesObj[targetDir] = [];
-  
   if (!filesObj[targetDir].includes(storyTrigger.file)) {
     filesObj[targetDir].push(storyTrigger.file);
   }
   contents[`${targetDir}/${storyTrigger.file}`] = '[STORY_TRIGGER]';
 
+  // --- NEW: Prune Empty Directories ---
+  // 1. Find all folders (except root) that have 0 files inside them
+  const emptyDirs = Object.keys(filesObj).filter(dir => dir !== '/' && filesObj[dir].length === 0);
+  
+  // 2. Delete those empty folders from the file system
+  emptyDirs.forEach(dir => {
+    delete filesObj[dir];
+    
+    // 3. Remove the reference to that folder from the root directory
+    const topLevelName = dir.replace('/', '') + '/';
+    filesObj['/'] = filesObj['/'].filter(item => item !== topLevelName);
+  });
+
   return { files: filesObj, contents };
 };
-
 export const generateInterceptedComms = async (targetIP, nodeData, apiKey) => {
   const orgName = nodeData?.org?.orgName || "Unknown Corp";
   const employees = nodeData?.org?.employees || [];

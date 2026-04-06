@@ -116,68 +116,140 @@ export const generateOrgNarrative = (tier) => {
   return { orgName, type: template.type, employees, secrets };
 };
 
+// 1. The Base OS (Applies to ALL computers)
+const BASE_OS_SKELETON = {
+  dirs: ['etc', 'etc/ssh', 'var', 'var/log', 'home', 'home/user', 'home/user/.ssh', 'tmp', 'mnt', 'opt', 'root', 'mail'],
+  files: {
+    'etc': ['passwd', 'shadow', 'fstab'],
+    'etc/ssh': ['sshd_config'],
+    'var/log': ['syslog', 'auth.log', 'dmesg'],
+    'home/user': ['.bashrc', 'notes.txt'],
+    'home/user/.ssh': ['id_rsa', 'known_hosts'],
+    'tmp': ['.bash_history', 'syslog.tmp'],
+    'root': ['deploy.sh']
+  }
+};
+
+// 2. The Org Themes (Where the juicy stuff goes, NO duplicate keys)
 const FILE_SYSTEM_THEMES = {
   personal: {
-    dirs: ['documents', 'pictures', 'downloads', 'desktop', 'private'],
-    files: ['passwords.txt', 'tax_return_2025.pdf', 'browser_history.sqlite', 'seed_phrase.txt', 'bank_statements.pdf', 'blackmail_material.zip']
+    dirs: ['home/user/documents', 'home/user/pictures', 'home/user/downloads', 'home/user/desktop', 'home/user/private'],
+    files: {
+      'home/user/documents': ['tax_return_2025.pdf', 'bank_statements.pdf'],
+      'home/user/private': ['passwords.txt', 'seed_phrase.txt', 'blackmail_material.zip'],
+      'home/user/downloads': ['browser_history.sqlite']
+    }
   },
   startup: {
-    dirs: ['src', 'devops', 'investors', 'aws'],
-    files: ['api_keys.env', 'db_seed.sql', 'series_a_pitch.pdf', 'user_metrics.csv', 'docker-compose.yml', 'aws_billing.xlsx']
+    dirs: ['opt/app', 'var/www/html', 'opt/aws'],
+    files: {
+      'opt/app': ['server.js', '.env', 'docker-compose.yml', 'db_seed.sql'],
+      'var/www/html': ['index.html', 'user_metrics.csv'],
+      'opt/aws': ['api_keys.env', 'aws_billing.xlsx']
+    }
   },
   smallbiz: {
-    dirs: ['accounting', 'hr', 'clients', 'legal'],
-    files: ['payroll_2026.xlsx', 'tax_returns.pdf', 'client_list.csv', 'lawsuit_settlement.docx', 'vendor_contracts.zip']
+    dirs: ['mnt/accounting', 'mnt/hr', 'mnt/clients', 'mnt/legal'],
+    files: {
+      'mnt/accounting': ['payroll_2026.xlsx', 'tax_returns.pdf'],
+      'mnt/clients': ['client_list.csv'],
+      'mnt/legal': ['lawsuit_settlement.docx', 'vendor_contracts.zip']
+    }
   },
   corporation: {
-    dirs: ['rd', 'board', 'finance', 'patents'],
-    files: ['q4_earnings_unreleased.pdf', 'layoff_list.xlsx', 'patent_draft_994.docx', 'offshore_routing.csv', 'merger_ndas.zip', 'source_code_master.zip']
+    dirs: ['mnt/file-server', 'mnt/file-server/shared', 'mnt/rd', 'mnt/patents'],
+    files: {
+      'mnt/file-server': ['company_data.zip', 'offshore_routing.csv'],
+      'mnt/file-server/shared': ['q4_earnings_unreleased.pdf', 'layoff_list.xlsx'],
+      'mnt/patents': ['patent_draft_994.docx'],
+      'mnt/rd': ['source_code_master.zip']
+    }
   },
   government: {
-    dirs: ['public_works', 'internal_affairs', 'tax_records', 'surveillance'],
-    files: ['voter_registry.sql', 'subpoena_targets.docx', 'city_camera_feeds.mp4', 'budget_deficit.xlsx', 'informant_list.csv']
+    dirs: ['mnt/public_works', 'mnt/internal_affairs', 'mnt/surveillance'],
+    files: {
+      'mnt/public_works': ['voter_registry.sql', 'budget_deficit.xlsx'],
+      'mnt/internal_affairs': ['subpoena_targets.docx', 'informant_list.csv'],
+      'mnt/surveillance': ['city_camera_feeds.mp4']
+    }
   },
   military: {
-    dirs: ['intel', 'drone_ops', 'sigint', 'personnel'],
-    files: ['target_package_bravo.enc', 'sat_recon_raw.ts', 'troop_manifest.csv', 'roe_directives.pdf', 'black_budget.xlsx']
+    dirs: ['mnt/intel', 'mnt/drone_ops', 'mnt/sigint'],
+    files: {
+      'mnt/intel': ['target_package_bravo.enc', 'black_budget.xlsx'],
+      'mnt/sigint': ['sat_recon_raw.ts'],
+      'mnt/drone_ops': ['roe_directives.pdf', 'troop_manifest.csv']
+    }
   },
   financial: {
-    dirs: ['vault', 'swift_routing', 'audits', 'aml'],
-    files: ['swift_keys.pgp', 'vip_offshore_accounts.sql', 'wire_transfers_pending.csv', 'aml_flagged.xlsx', 'crypto_cold_wallet.dat']
+    dirs: ['mnt/db-server-backups', 'mnt/vault', 'mnt/aml'],
+    files: {
+      'mnt/db-server-backups': ['vip_offshore_accounts.sql', 'wire_transfers_pending.csv'],
+      'mnt/vault': ['crypto_cold_wallet.dat', 'swift_keys.pgp'],
+      'mnt/aml': ['aml_flagged.xlsx']
+    }
   },
   classified: {
-    dirs: ['umb_alpha', 'stellar', 'prism_nodes', 'zero_days'],
-    files: ['nsa_rootkit_src.zip', 'foreign_asset_list.enc', 'project_chimera.pdf', 'weaponized_payload_v2.bin', 'blackmail_cache.tar.gz']
+    dirs: ['opt/umb_alpha', 'opt/stellar', 'opt/zero_days'],
+    files: {
+      'opt/umb_alpha': ['nsa_rootkit_src.zip'],
+      'opt/stellar': ['project_chimera.pdf', 'foreign_asset_list.enc'],
+      'opt/zero_days': ['weaponized_payload_v2.bin', 'blackmail_cache.tar.gz']
+    }
   }
 };
 
 export const generateOrgFileSystem = (org, tier, layout) => {
   const theme = FILE_SYSTEM_THEMES[org.type] || FILE_SYSTEM_THEMES.corporation;
-  const shuffledDirs = theme.dirs.sort(() => 0.5 - Math.random()).slice(0, Math.floor(Math.random() * 2) + 2);
   
-  let filesObj = { '/': ['mail/', 'tmp/'] };
+  let filesObj = { '/': [] };
   let contents = {};
-  
-  shuffledDirs.forEach(d => filesObj['/'].push(`${d}/`));
 
-  shuffledDirs.forEach(dir => {
-    const dirPath = `/${dir}`;
-    filesObj[dirPath] = [];
-    const shuffledFiles = theme.files.sort(() => 0.5 - Math.random()).slice(0, Math.floor(Math.random() * 3) + 1);
-    
-    shuffledFiles.forEach(file => {
-      filesObj[dirPath].push(file);
-      const fullPath = `${dirPath}/${file}`;
-      const isLocked = (tier === 'high' || tier === 'elite') ? '[LOCKED] ' : '';
-      
-      if (file.endsWith('.sql') || file.endsWith('.env') || file.endsWith('.pgp') || file.endsWith('.sqlite')) {
-        contents[fullPath] = `${isLocked}[HASH] SHA-512 System Hashes: df98a2b1c...`;
-      } else {
-        contents[fullPath] = `${isLocked}[PENDING_GENERATION]`;
+  // Helper: Build folders safely
+  const buildDirs = (dirList) => {
+    dirList.forEach(dir => {
+      filesObj[`/${dir}`] = [];
+      // Also ensure root knows about the top-level folders
+      const topLevel = dir.split('/')[0];
+      if (!filesObj['/'].includes(`${topLevel}/`)) {
+        filesObj['/'].push(`${topLevel}/`);
       }
     });
-  });
+  };
 
+  // Helper: Place files & lock them if high tier
+  const placeFiles = (fileMap) => {
+    Object.keys(fileMap).forEach(folderName => {
+      const targetDir = `/${folderName}`;
+      const finalDir = filesObj[targetDir] ? targetDir : '/';
+      
+      // Pick 1 to 3 random files from the available list to keep it fresh
+      const count = Math.floor(Math.random() * 3) + 1;
+      const selectedFiles = [...fileMap[folderName]].sort(() => 0.5 - Math.random()).slice(0, count);
+      
+      selectedFiles.forEach(file => {
+        filesObj[finalDir].push(file);
+        const fullPath = `${finalDir}/${file}`;
+        const isLocked = (tier === 'high' || tier === 'elite') ? '[LOCKED] ' : '';
+        
+        if (file.endsWith('.sql') || file.endsWith('.env') || file.endsWith('.pgp') || file.endsWith('.sqlite')) {
+          contents[fullPath] = `${isLocked}[HASH] SHA-512 System Hashes: df98a2b1c...`;
+        } else {
+          contents[fullPath] = `${isLocked}[PENDING_GENERATION]`;
+        }
+      });
+    });
+  };
+
+  // 1. Build the Base Linux OS
+  buildDirs(BASE_OS_SKELETON.dirs);
+  placeFiles(BASE_OS_SKELETON.files);
+
+  // 2. Layer the unique Org Theme on top
+  buildDirs(theme.dirs);
+  placeFiles(theme.files);
+
+  // 3. Inject Employee Emails
   const mailFiles = [];
   org.employees.forEach((emp, idx) => {
     const filename = `msg_${String(idx + 1).padStart(3, '0')}.eml`;
@@ -186,16 +258,12 @@ export const generateOrgFileSystem = (org, tier, layout) => {
   });
   filesObj['/mail'] = mailFiles;
 
-  filesObj['/tmp'] = ['.bash_history', 'syslog.tmp'];
-  contents['/tmp/.bash_history'] = '[LORE_PENDING]';
-  contents['/tmp/syslog.tmp'] = '[LORE_PENDING]';
-
-  const allDirs = Object.keys(filesObj);
-  const randomDir = () => allDirs[Math.floor(Math.random() * allDirs.length)];
+  // 4. Random Consumable Drops (Decoys, Burners, Wallets)
+  const allDirs = Object.keys(filesObj).filter(d => d !== '/'); // Don't drop in root
+  const randomDir = () => allDirs[Math.floor(Math.random() * allDirs.length)] || '/tmp';
   
   if (Math.random() < 0.20) filesObj[randomDir()].push('decoy.bin');
   if (Math.random() < 0.15) filesObj[randomDir()].push('burner.ovpn');
-  
   if (tier === 'high' || tier === 'elite') {
     if (Math.random() < 0.15) filesObj[randomDir()].push('0day_poc.sh');
   }
@@ -203,22 +271,22 @@ export const generateOrgFileSystem = (org, tier, layout) => {
     if (Math.random() < 0.25) filesObj[randomDir()].push('wallet.dat');
   }
 
-  
-// --- STORY TRIGGER FILES (contextual per org type) ---
+  // 5. STORY TRIGGER FILES (Contextual per org type)
   const STORY_FILES = {
-    personal:    { file: 'deleted_messages.rec',       dir: '/private' },
-    startup:     { file: 'founder_emails_leaked.mbox', dir: '/investors' },
-    smallbiz:    { file: 'blackmail_draft.eml',        dir: '/legal' },
-    corporation: { file: 'whistleblower_report.enc',   dir: '/board' },
-    government:  { file: 'witness_relocation.db',      dir: '/internal_affairs' },
-    military:    { file: 'friendly_fire_coverup.pdf',  dir: '/intel' },
-    financial:   { file: 'cartel_routing_keys.pgp',    dir: '/aml' },
-    classified:  { file: 'asset_termination_order.enc',dir: '/umb_alpha' },
+    personal:    { file: 'deleted_messages.rec',       dir: '/home/user/private' },
+    startup:     { file: 'founder_emails_leaked.mbox', dir: '/opt/aws' },
+    smallbiz:    { file: 'blackmail_draft.eml',        dir: '/mnt/legal' },
+    corporation: { file: 'whistleblower_report.enc',   dir: '/mnt/file-server/shared' },
+    government:  { file: 'witness_relocation.db',      dir: '/mnt/internal_affairs' },
+    military:    { file: 'friendly_fire_coverup.pdf',  dir: '/mnt/intel' },
+    financial:   { file: 'cartel_routing_keys.pgp',    dir: '/mnt/aml' },
+    classified:  { file: 'asset_termination_order.enc',dir: '/opt/umb_alpha' },
   };
 
   const storyTrigger = STORY_FILES[org.type] || STORY_FILES.corporation;
   const triggerDir = storyTrigger.dir;
   const targetDir = filesObj[triggerDir] ? triggerDir : '/tmp';
+  
   if (!filesObj[targetDir].includes(storyTrigger.file)) {
     filesObj[targetDir].push(storyTrigger.file);
   }

@@ -2820,41 +2820,11 @@ resolve: async () => {
         return out;
       },
 
-     ls: async () => {
-  // 1. Determine the actual directory path we are looking at
-  const targetPath = arg1 ? (arg1.startsWith('/') ? arg1 : `${currentDir === '/' ? '' : currentDir}/${arg1}`) : currentDir;
-  
-  // 2. Clean up trailing slashes for consistency
-  const normalizedPath = targetPath.endsWith('/') && targetPath !== '/' ? targetPath.slice(0, -1) : targetPath;
-
-  // 3. Filter the files based on the directory
-  // Logic: Get files that start with the path but don't contain further slashes
-  const visibleFiles = Object.keys(contents).filter(path => {
-    if (normalizedPath === '/') {
-      // Root level: find files with only one slash at the start
-      return path.startsWith('/') && path.lastIndexOf('/') === 0;
-    } else {
-      // Subfolder: find files inside this specific directory
-      return path.startsWith(normalizedPath + '/') && 
-             path.split('/').length === (normalizedPath.split('/').length + 1);
-    }
-  }).map(path => path.split('/').pop()); // Show only the filename, not full path
-
-  // 4. Also find sub-directories to show them in the list
-  const subDirs = Object.keys(contents)
-    .filter(path => path.startsWith(normalizedPath + '/') && path.split('/').length > (normalizedPath.split('/').length + 1))
-    .map(path => path.split('/')[normalizedPath === '/' ? 1 : normalizedPath.split('/').length])
-    .filter((value, index, self) => self.indexOf(value) === index); // Unique values only
-
-  const allItems = [...subDirs, ...visibleFiles];
-
-  if (allItems.length === 0 && normalizedPath !== '/') {
-      // Check if the directory even exists in our file structure
-      const dirExists = Object.keys(contents).some(path => path.startsWith(normalizedPath + '/'));
-      if (!dirExists) return `ls: cannot access '${arg1 || currentDir}': No such file or directory`;
-  }
-
-  return allItems.sort().join('  ');
+    ls: async () => {
+  const target = resolvePath(arg1, currentDir);
+  const listing = fs[target]; // (If 'fs' throws an error, change it to activeNode.files[target])
+  if (!listing) return `ls: cannot access '${arg1 || currentDir}': No such file or directory`;
+  return listing.join('  ');
 },
       cd: async () => {
         const dest = arg1 === '..' ? (currentDir.split('/').slice(0, -1).join('/') || '/') : resolvePath(arg1, currentDir);
@@ -2864,14 +2834,7 @@ resolve: async () => {
       cat: async () => {
         const targetFile = resolvePath(arg1, currentDir);
         
-        // 1. Check for specific filenames first (Intercept logs)
-        if (arg1 === 'intercept.log') {
-          if (!isInside) return '[-] Must be inside a target node to read intercepts.';
-          const story = activeStory || generateStory(targetIP);
-          if (!activeStory) setActiveStory(story);
-          return `[INTERCEPT] ${story.story}\n\n[1] ${story.good_action}\n[2] ${story.evil_action}\n\n[*] Type 'resolve 1' or 'resolve 2' to choose.`;
-        }
-
+       
         // 2. Handle consumable items
         const isConsumable = ['decoy.bin', 'burner.ovpn', '0day_poc.sh', 'wallet.dat'].includes(arg1);
         if (isConsumable) {

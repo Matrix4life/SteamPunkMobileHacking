@@ -2853,35 +2853,36 @@ resolve: async (args) => {
       },
       cat: async () => {
   try {
-    const targetFile = currentDir === '/' ? `/${arg1}` : `${currentDir}/${arg1}`;
+    const fileName = arg1;
+    if (!fileName) return "usage: cat [file]";
 
     // 1. Handle consumable items
-    const isConsumable = ['decoy.bin', 'burner.ovpn', '0day_poc.sh', 'wallet.dat'].includes(arg1);
+    const isConsumable = ['decoy.bin', 'burner.ovpn', '0day_poc.sh', 'wallet.dat'].includes(fileName);
     if (isConsumable) {
       const currentDirFiles = fs[currentDir] || [];
-      if (!currentDirFiles.includes(arg1)) return `cat: ${arg1}: No such file`;
+      if (!currentDirFiles.includes(fileName)) return `cat: ${fileName}: No such file`;
       
       setWorld(prev => {
         const nw = { ...prev };
         const targetNode = isInside ? targetIP : 'local';
-        nw[targetNode].files[currentDir] = nw[targetNode].files[currentDir].filter(f => f !== arg1);
+        nw[targetNode].files[currentDir] = nw[targetNode].files[currentDir].filter(f => f !== fileName);
         return nw;
       });
 
-      if (arg1 === 'wallet.dat') {
+      if (fileName === 'wallet.dat') {
         const amt = Math.floor(Math.random() * 800 + 200);
         setMoney(m => m + amt);
         playSuccess();
         return `[+] SUCCESS: Decrypted slush fund wallet.\n[+] ₿${amt.toLocaleString()} added to your account.`;
-      } else if (arg1 === 'decoy.bin') {
+      } else if (fileName === 'decoy.bin') {
         setConsumables(c => ({ ...c, decoy: c.decoy + 1 }));
         playSuccess();
         return `[+] SUCCESS: Recovered Trace Decoy!\n[*] Type 'use decoy' during a hack to reduce Trace by 30%.`;
-      } else if (arg1 === 'burner.ovpn') {
+      } else if (fileName === 'burner.ovpn') {
         setConsumables(c => ({ ...c, burner: c.burner + 1 }));
         playSuccess();
         return `[+] SUCCESS: Recovered Burner VPN Cert!\n[*] Type 'use burner' to reduce global Heat by 25%.`;
-      } else if (arg1 === '0day_poc.sh') {
+      } else if (fileName === '0day_poc.sh') {
         setConsumables(c => ({ ...c, zeroday: c.zeroday + 1 }));
         playSuccess();
         return `[+] SUCCESS: Recovered Zero-Day Exploit!\n[*] Type 'use 0day' during a hack for instant root access.`;
@@ -2889,19 +2890,34 @@ resolve: async (args) => {
     }
 
     // 2. Resolve the actual file contents (Hardened Pathing)
-    // Create the absolute path: e.g., /mnt/intel/ + friendly_fire_coverup.pdf
-    const absolutePath = currentDir === '/' ? `/${arg1}` : `${currentDir}/${arg1}`;
-    
-    // Look for the file using the absolute path first, then fallback to the raw argument
-    let rawData = contents[absolutePath] || contents[arg1];
+    const absolutePath = currentDir === '/' ? `/${fileName}` : `${currentDir}/${fileName}`;
+    let rawData = contents[absolutePath] || contents[fileName];
 
-    // Fallback: If still not found, search all keys for a filename match (last resort)
     if (!rawData && contents) {
-      const fallbackKey = Object.keys(contents).find(k => k.endsWith('/' + arg1) || k === arg1);
+      const fallbackKey = Object.keys(contents).find(k => k.endsWith('/' + fileName) || k === fileName);
       if (fallbackKey) rawData = contents[fallbackKey];
     }
 
-    if (!rawData) return `cat: ${arg1}: No such file`;
+    if (!rawData) return `cat: ${fileName}: No such file`;
+
+    // --- NEW: THE SUDO TEASE (Block 2.5) ---
+    // Check if the user is touching restricted system areas without root
+    const restrictedDirs = ['/root', '/etc/shadow', '/var/log', '/SYS/CONFIG', '/SECURE_LOGS'];
+    const isRestricted = restrictedDirs.some(p => absolutePath.startsWith(p));
+
+    if (isRestricted && privilege !== 'root') {
+      // 1. Mechanical Penalty: Touching restricted files makes you "louder"
+      if (isInside) escalateBlueTeam(targetIP, 5); 
+
+      // 2. The Tease
+      setTerminal(prev => [...prev, { 
+        type: 'out', 
+        text: `[!] Permission denied. Current user '${isInside ? 'www-data' : 'guest'}' is not in the sudoers file.\n[!] This incident will be reported to the System Administrator.`, 
+        isNew: true 
+      }]);
+      
+      return null; // Stop execution here
+    }
 
     // 3. File-specific checks based on contents
     if (typeof rawData === 'string' && rawData.includes('[STORY_TRIGGER]')) {
@@ -2910,12 +2926,12 @@ resolve: async (args) => {
       const story = activeStory || generateStory(targetIP);
       if (!activeStory) setActiveStory(story);
       
-      return `[INTERCEPTED TRANSMISSION — ${arg1}]\n\n${story.story}\n\n[1] ${story.good_action}\n[2] ${story.evil_action}\n\n[*] Type 'resolve 1' or 'resolve 2' to choose.`;
+      return `[INTERCEPTED TRANSMISSION — ${fileName}]\n\n${story.story}\n\n[1] ${story.good_action}\n[2] ${story.evil_action}\n\n[*] Type 'resolve 1' or 'resolve 2' to choose.`;
     }
 
     // 4. Handle High-Tier Locks safely
     if (typeof rawData === 'string' && rawData.startsWith('[LOCKED]')) {
-      if (privilege !== 'root') return `cat: ${arg1}: Permission denied. Root required.`;
+      if (privilege !== 'root') return `cat: ${fileName}: Permission denied. Root required.`;
       rawData = rawData.replace('[LOCKED] ', '').replace('[LOCKED]', '');
     }
 
@@ -2924,12 +2940,12 @@ resolve: async (args) => {
       setIsProcessing(true);
       setTerminal(prev => [...prev, { type: 'out', text: `[*] Decoding data stream...`, isNew: false }]);
 
-      const contextHint = rawData.includes('[HASH]') ? 'password hashes file' : (arg1?.endsWith('.eml') ? 'internal email between employees' : 'standard server file');
+      const contextHint = rawData.includes('[HASH]') ? 'password hashes file' : (fileName?.endsWith('.eml') ? 'internal email between employees' : 'standard server file');
       
       let aiText = "";
       try {
         const system = `You are a backend file generator for a hacking simulator called STEAMBREACH. Generate realistic file contents for the organization "${world[targetIP]?.org?.orgName || 'Unknown'}". Write MAX 8 lines. Match the file extension exactly. Hide useful intel naturally. Never use markdown.`;
-        const prompt = `Generate realistic contents for: ${arg1}\nContext: ${contextHint}`;
+        const prompt = `Generate realistic contents for: ${fileName}\nContext: ${contextHint}`;
         
         aiText = await generateDirectorText(prompt, system);
       } catch (e) { 
@@ -2942,7 +2958,7 @@ resolve: async (args) => {
         const nw = { ...prev };
         const key = isInside ? targetIP : 'local';
         if (nw[key] && nw[key].contents) {
-          nw[key].contents[targetFile] = aiText;
+          nw[key].contents[absolutePath] = aiText;
         }
         return nw;
       });
@@ -2958,7 +2974,7 @@ resolve: async (args) => {
     
     // Civilian interaction hook
     if (isInside && isCivilianNode(targetIP)) {
-      const interaction = buildCivilianInteraction(arg1, rawData, targetIP);
+      const interaction = buildCivilianInteraction(fileName, rawData, targetIP);
       if (interaction) {
         setPendingInteraction(interaction);
         setTerminal(prev => [

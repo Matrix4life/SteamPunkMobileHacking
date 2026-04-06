@@ -2844,7 +2844,7 @@ if (arg1 === 'intercept.log') {
   if (!activeStory) setActiveStory(story);
   return `[INTERCEPT] ${story.story}\n\n[1] ${story.good_action}\n[2] ${story.evil_action}\n\n[*] Type 'resolve 1' or 'resolve 2' to choose.`;
 }
-}
+
           if (arg1 === 'wallet.dat') {
             const amt = Math.floor(Math.random() * 800 + 200);
             setMoney(m => m + amt);

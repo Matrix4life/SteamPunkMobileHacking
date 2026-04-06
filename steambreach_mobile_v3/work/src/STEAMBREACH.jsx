@@ -88,7 +88,7 @@ const STEAMBREACH = () => {
   const [btcIndex, setBtcIndex] = useState(1.0);
   
   const [currentRegion, setCurrentRegion] = useState('us-gov');
-  const [marketPrices, setMarketPrices] = useState(generateMarketPrices());
+  const [marketPrices, setMarketPrices] = useState(generateMarketPrices(currentRegion));
   const [stash, setStash] = useState({ cc_dumps: 0, botnets: 0, exploits: 0, zerodays: 0 });
   const [consumables, setConsumables] = useState({ decoy: 0, burner: 0, zeroday: 0 });
   
@@ -183,7 +183,7 @@ const STEAMBREACH = () => {
       john: 0.18,
       hashcat: 0.28,
       exfil: 0.28,
-      stash: 0.34,
+      stash: 0.28,
       shred: 0.42,
       ransom_fast: 0.4,
       ransom_strong: 0.58,
@@ -560,7 +560,7 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
     setPartsBag([]); setHwMarketData(null);
     setSoftwareOwned([]); setBtcIndex(1.0);
     setStash({ cc_dumps: 0, botnets: 0, exploits: 0, zerodays: 0 });
-    setCurrentRegion('us-gov'); setMarketPrices(generateMarketPrices());
+    setCurrentRegion('us-gov'); setMarketPrices(generateMarketPrices(currentRegion));
     setUnlockedFiles([]); setContracts([]);
     setWorld(DEFAULT_WORLD);
     setDirector(DEFAULT_DIRECTOR); directorRef.current = DEFAULT_DIRECTOR;
@@ -1481,7 +1481,7 @@ const verifyContract = (ip, objectiveType) => {
         // 1. We stop calling setWorld(DEFAULT_WORLD) here so the nodes stay in state.
         // 2. We just change the active region view.
         setCurrentRegion(targetRegion);
-        setMarketPrices(generateMarketPrices());
+        setMarketPrices(generateMarketPrices(currentRegion));
         
         let encounterText = '';
         if (Math.random() < 0.15) {
@@ -2843,12 +2843,7 @@ resolve: async () => {
             nw[targetNode].files[currentDir] = nw[targetNode].files[currentDir].filter(f => f !== arg1);
             return nw;
           });
-if (arg1 === 'intercept.log') {
-  if (!isInside) return '[-] Must be inside a target node to read intercepts.';
-  const story = activeStory || generateStory(targetIP);
-  if (!activeStory) setActiveStory(story);
-  return `[INTERCEPT] ${story.story}\n\n[1] ${story.good_action}\n[2] ${story.evil_action}\n\n[*] Type 'resolve 1' or 'resolve 2' to choose.`;
-}
+
 
           if (arg1 === 'wallet.dat') {
             const amt = Math.floor(Math.random() * 800 + 200);
@@ -2876,6 +2871,13 @@ if (arg1 === 'intercept.log') {
           if (fallbackKey) rawData = contents[fallbackKey];
         }
         if (!rawData) return `cat: ${arg1}: No such file`;
+
+        if (arg1 === 'intercept.log') {
+  if (!isInside) return '[-] Must be inside a target node to read intercepts.';
+  const story = activeStory || generateStory(targetIP);
+  if (!activeStory) setActiveStory(story);
+  return `[INTERCEPT] ${story.story}\n\n[1] ${story.good_action}\n[2] ${story.evil_action}\n\n[*] Type 'resolve 1' or 'resolve 2' to choose.`;
+}
 
         if (rawData.startsWith('[LOCKED]')) {
           if (privilege !== 'root') return `cat: ${arg1}: Permission denied. Root required.`;

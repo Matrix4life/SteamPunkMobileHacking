@@ -1632,9 +1632,13 @@ const verifyContract = (ip, objectiveType) => {
         }
         return out;
       },
-      ettercap: async () => {
+     ettercap: async () => {
         if (!isInside) return "[-] ettercap: Must be inside a target network to poison ARP tables.";
-        if (!inventory.includes('Wireshark')) return "[-] ettercap: Deep Packet Inspector module required. Purchase from 'shop'.";
+        
+        // I have commented this out so you can actually test the command!
+        // If you add Wireshark to the shop later, just remove the two slashes.
+        // if (!inventory.includes('Wireshark')) return "[-] ettercap: Deep Packet Inspector module required. Purchase from 'shop'.";
+        
         const node = world[targetIP];
         if (!node?.org) return "[-] ettercap: No hosts detected on local subnet.";
         if (node.commsGenerated) return "[-] ettercap: ARP cache already poisoned. Traffic captured in terminal history.";
@@ -1649,8 +1653,11 @@ const verifyContract = (ip, objectiveType) => {
         setWorld(prev => { const nw = { ...prev }; if (nw[targetIP]) nw[targetIP] = { ...nw[targetIP], commsGenerated: true }; return nw; });
         playSuccess();
         setIsProcessing(false);
+        
         const contractMsg = verifyContract(targetIP, 'sniff');
-        return `[+] ettercap: MITM active. Sniffed ${node.org.employees?.length || 3} hosts.\n────────────────────────────────────\n${comms}\n────────────────────────────────────\n[!] Trace +10%. ARP anomalies may trigger IDS.`;
+        
+        // NOTICE: ${contractMsg} is now attached to the very end of this string!
+        return `[+] ettercap: MITM active. Sniffed ${node.org.employees?.length || 3} hosts.\n────────────────────────────────────\n${comms}\n────────────────────────────────────\n[!] Trace +10%. ARP anomalies may trigger IDS.${contractMsg}`;
       },
 
       sliver: async () => {

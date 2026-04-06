@@ -2832,114 +2832,121 @@ resolve: async () => {
         return `bash: cd: ${arg1}: No such file or directory`;
       },
       cat: async () => {
-        const targetFile = resolvePath(arg1, currentDir);
+  try {
+    const targetFile = currentDir === '/' ? `/${arg1}` : `${currentDir}/${arg1}`;
+
+    // 1. Handle consumable items
+    const isConsumable = ['decoy.bin', 'burner.ovpn', '0day_poc.sh', 'wallet.dat'].includes(arg1);
+    if (isConsumable) {
+      const currentDirFiles = fs[currentDir] || [];
+      if (!currentDirFiles.includes(arg1)) return `cat: ${arg1}: No such file`;
+      
+      setWorld(prev => {
+        const nw = { ...prev };
+        const targetNode = isInside ? targetIP : 'local';
+        nw[targetNode].files[currentDir] = nw[targetNode].files[currentDir].filter(f => f !== arg1);
+        return nw;
+      });
+
+      if (arg1 === 'wallet.dat') {
+        const amt = Math.floor(Math.random() * 800 + 200);
+        setMoney(m => m + amt);
+        playSuccess();
+        return `[+] SUCCESS: Decrypted slush fund wallet.\n[+] ₿${amt.toLocaleString()} added to your account.`;
+      } else if (arg1 === 'decoy.bin') {
+        setConsumables(c => ({ ...c, decoy: c.decoy + 1 }));
+        playSuccess();
+        return `[+] SUCCESS: Recovered Trace Decoy!\n[*] Type 'use decoy' during a hack to reduce Trace by 30%.`;
+      } else if (arg1 === 'burner.ovpn') {
+        setConsumables(c => ({ ...c, burner: c.burner + 1 }));
+        playSuccess();
+        return `[+] SUCCESS: Recovered Burner VPN Cert!\n[*] Type 'use burner' to reduce global Heat by 25%.`;
+      } else if (arg1 === '0day_poc.sh') {
+        setConsumables(c => ({ ...c, zeroday: c.zeroday + 1 }));
+        playSuccess();
+        return `[+] SUCCESS: Recovered Zero-Day Exploit!\n[*] Type 'use 0day' during a hack for instant root access.`;
+      }
+    }
+
+    // 2. Resolve the actual file contents (Bulletproof Pathing)
+    let rawData = contents[targetFile] || contents[arg1];
+    if (!rawData && contents) {
+      const fallbackKey = Object.keys(contents).find(k => k.endsWith('/' + arg1) || k === arg1);
+      if (fallbackKey) rawData = contents[fallbackKey];
+    }
+    if (!rawData) return `cat: ${arg1}: No such file`;
+
+    // 3. File-specific checks based on contents
+    if (typeof rawData === 'string' && rawData.includes('[STORY_TRIGGER]')) {
+      if (!isInside) return '[-] Must be inside a target node to read intercepts.';
+      
+      const story = activeStory || generateStory(targetIP);
+      if (!activeStory) setActiveStory(story);
+      
+      return `[INTERCEPTED TRANSMISSION — ${arg1}]\n\n${story.story}\n\n[1] ${story.good_action}\n[2] ${story.evil_action}\n\n[*] Type 'resolve 1' or 'resolve 2' to choose.`;
+    }
+
+    // 4. Handle High-Tier Locks safely
+    if (typeof rawData === 'string' && rawData.startsWith('[LOCKED]')) {
+      if (privilege !== 'root') return `cat: ${arg1}: Permission denied. Root required.`;
+      rawData = rawData.replace('[LOCKED] ', '').replace('[LOCKED]', '');
+    }
+
+    // 5. AI Generation
+    if (typeof rawData === 'string' && (rawData.includes('[PENDING_GENERATION]') || rawData.includes('[LORE_PENDING]'))) {
+      setIsProcessing(true);
+      setTerminal(prev => [...prev, { type: 'out', text: `[*] Decoding data stream...`, isNew: false }]);
+
+      const contextHint = rawData.includes('[HASH]') ? 'password hashes file' : (arg1?.endsWith('.eml') ? 'internal email between employees' : 'standard server file');
+      
+      let aiText = "";
+      try {
+        const system = `You are a backend file generator for a hacking simulator called STEAMBREACH. Generate realistic file contents for the organization "${world[targetIP]?.org?.orgName || 'Unknown'}". Write MAX 8 lines. Match the file extension exactly. Hide useful intel naturally. Never use markdown.`;
+        const prompt = `Generate realistic contents for: ${arg1}\nContext: ${contextHint}`;
         
-       
-        // 2. Handle consumable items
-        const isConsumable = ['decoy.bin', 'burner.ovpn', '0day_poc.sh', 'wallet.dat'].includes(arg1);
-        if (isConsumable) {
-          const currentDirFiles = fs[currentDir] || [];
-          if (!currentDirFiles.includes(arg1)) return `cat: ${arg1}: No such file`;
-          
-          setWorld(prev => {
-            const nw = { ...prev };
-            const targetNode = isInside ? targetIP : 'local';
-            nw[targetNode].files[currentDir] = nw[targetNode].files[currentDir].filter(f => f !== arg1);
-            return nw;
-          });
+        aiText = await generateDirectorText(prompt, system);
+      } catch (e) { 
+        aiText = `[ERROR] Stream corrupted. Partial recovery logged.`; 
+      }
 
-          if (arg1 === 'wallet.dat') {
-            const amt = Math.floor(Math.random() * 800 + 200);
-            setMoney(m => m + amt);
-            playSuccess();
-            return `[+] SUCCESS: Decrypted slush fund wallet.\n[+] ₿${amt.toLocaleString()} added to your account.`;
-          } else if (arg1 === 'decoy.bin') {
-            setConsumables(c => ({ ...c, decoy: c.decoy + 1 }));
-            playSuccess();
-            return `[+] SUCCESS: Recovered Trace Decoy!\n[*] Type 'use decoy' during a hack to reduce Trace by 30%.`;
-          } else if (arg1 === 'burner.ovpn') {
-            setConsumables(c => ({ ...c, burner: c.burner + 1 }));
-            playSuccess();
-            return `[+] SUCCESS: Recovered Burner VPN Cert!\n[*] Type 'use burner' to reduce global Heat by 25%.`;
-          } else if (arg1 === '0day_poc.sh') {
-            setConsumables(c => ({ ...c, zeroday: c.zeroday + 1 }));
-            playSuccess();
-            return `[+] SUCCESS: Recovered Zero-Day Exploit!\n[*] Type 'use 0day' during a hack for instant root access.`;
-          }
+      if (isInside && world[targetIP]?.val) { aiText += `\n\n[SYSTEM] EXTRACTABLE ASSETS: ₿${world[targetIP].val.toLocaleString()}`; }
+
+      setWorld(prev => {
+        const nw = { ...prev };
+        const key = isInside ? targetIP : 'local';
+        if (nw[key] && nw[key].contents) {
+          nw[key].contents[targetFile] = aiText;
         }
+        return nw;
+      });
 
-        // 3. Resolve the actual file contents
-        let rawData = contents[targetFile] || contents[arg1];
-        if (!rawData && contents) {
-          const fallbackKey = Object.keys(contents).find(k => k.endsWith('/' + arg1) || k === arg1);
-          if (fallbackKey) rawData = contents[fallbackKey];
-        }
-        if (!rawData) return `cat: ${arg1}: No such file`;
+      if (isInside) escalateBlueTeam(targetIP, 5);
+      setIsProcessing(false);
+      setTerminal(prev => [...prev, { type: 'out', text: aiText, isNew: true }]);
+      return null;
+    }
 
-        // 4. File-specific checks based on contents
-        if (rawData === '[STORY_TRIGGER]') {
-  const story = generateStory(targetIP);
-          if (!isInside) return '[-] Must be inside a target node to read intercepts.';
-  setActiveStory(story);
-  // You MUST return this string so it prints to the screen!
-  return `[INTERCEPTED TRANSMISSION — ${arg1}]\n\n${story.story}\n\n[1] ${story.good_action}\n[2] ${story.evil_action}\n\n[*] Type 'resolve 1' or 'resolve 2' to choose.`;
-}
+    // 6. Normal File Output
+    setTerminal(prev => [...prev, { type: 'out', text: rawData, isNew: true }]);
+    
+    // Civilian interaction hook
+    if (isInside && isCivilianNode(targetIP)) {
+      const interaction = buildCivilianInteraction(arg1, rawData, targetIP);
+      if (interaction) {
+        setPendingInteraction(interaction);
+        setTerminal(prev => [
+          ...prev,
+          { type: 'out', text: `\n${interaction.prompt}\n[*] ${interaction.rewardText}`, isNew: true }
+        ]);
+      }
+    }
+    return null;
 
-        if (rawData.startsWith('[LOCKED]')) {
-          if (privilege !== 'root') return `cat: ${arg1}: Permission denied. Root required.`;
-          rawData = rawData.replace('[LOCKED] ', '');
-        }
-
-        // 5. AI Generation
-        if (rawData.includes('[PENDING_GENERATION]') || rawData.includes('[LORE_PENDING]')) {
-          setIsProcessing(true);
-          setTerminal(prev => [...prev, { type: 'out', text: `[*] Decoding data stream...`, isNew: false }]);
-
-          const contextHint = rawData.includes('[HASH]') ? 'password hashes file' : (arg1?.endsWith('.eml') ? 'internal email between employees' : 'standard file');
-          
-          let aiText = "";
-          try {
-            const system = `You are a backend file generator for a hacking simulator called STEAMBREACH. Generate realistic file contents for the organization "${world[targetIP]?.org?.orgName || 'Unknown'}". Write MAX 8 lines. Match the file extension exactly. Hide useful intel naturally. Never use markdown.`;
-            const prompt = `Generate realistic contents for: ${arg1}\nContext: ${contextHint}`;
-            
-            aiText = await generateDirectorText(prompt, system);
-          } catch (e) { 
-            aiText = `[ERROR] Stream corrupted. Partial recovery logged.`; 
-          }
-
-          if (isInside && world[targetIP]?.val) { aiText += `\n\n[SYSTEM] EXTRACTABLE ASSETS: ₿${world[targetIP].val.toLocaleString()}`; }
-
-          setWorld(prev => {
-            const nw = { ...prev };
-            const key = isInside ? targetIP : 'local';
-            if (nw[key]) nw[key] = { ...nw[key], contents: { ...nw[key].contents, [targetFile]: aiText } };
-            return nw;
-          });
-
-          if (isInside) escalateBlueTeam(targetIP, 5);
-          setIsProcessing(false);
-          setTerminal(prev => [...prev, { type: 'out', text: aiText, isNew: true }]);
-          return null;
-        }
-
-        // 6. Normal File Output
-        setTerminal(prev => [...prev, { type: 'out', text: rawData, isNew: true }]);
-        if (isInside && isCivilianNode(targetIP)) {
-          const interaction = buildCivilianInteraction(arg1, rawData, targetIP);
-          if (interaction) {
-            setPendingInteraction(interaction);
-            setTerminal(prev => [
-              ...prev,
-              {
-                type: 'out',
-                text: `\n${interaction.prompt}\n[*] ${interaction.rewardText}`,
-                isNew: true
-              }
-            ]);
-          }
-        }
-        return null;
-      },
+  } catch (err) {
+    setIsProcessing(false);
+    return `[-] FATAL ERROR in cat command: ${err.message}`;
+  }
+},
 
       exit: async () => {
         setIsInside(false); setTargetIP(null); setCurrentDir('~'); setPrivilege('local');

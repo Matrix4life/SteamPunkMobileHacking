@@ -1983,30 +1983,50 @@ const verifyContract = (ip, objectiveType) => {
         }
         return out;
       },
-resolve: async () => {
-  if (!activeStory) return '[-] No active intercept. Type \'cat intercept.log\' first.';
-  if (args[1] === '1') {
-    setMorality(prev => ({
-      signal: prev.signal + 10,
-      chaos: prev.chaos
-    }));
-
-    setMoney(m => m + (activeStory.good_payout || 5000));
-    setActiveStory(null);
-
-   return `[+] ${activeStory.good_action}\n[+] SIGNAL +10 | ₿${(activeStory.good_payout || 5000).toLocaleString()} paid out.`;
+resolve: async (args) => {
+  // 1. Check if a story is actually active in state
+  if (!activeStory) {
+    return "[-] No active intercept found. You must 'cat' a Story Trigger file first (e.g., .rec, .enc, or .mbox).";
   }
 
-  if (args[1] === '2') {
+  const choice = args[1]; // Get the '1' or '2' from the command
+  if (choice !== '1' && choice !== '2') {
+    return "[-] Usage: resolve [1 or 2]";
+  }
+
+  if (choice === '1') {
+    // --- SIGNAL PATH (The "Good" Choice) ---
     setMorality(prev => ({
-      signal: prev.signal,
+      ...prev,
+      signal: prev.signal + 10
+    }));
+
+    // Use the payout from the story generator, or fall back to 5k
+    const payout = activeStory.good_payout || 5000;
+    setMoney(m => m + payout);
+    
+    // Clear the story so it can't be spammed
+    const actionResult = activeStory.good_action;
+    setActiveStory(null); 
+
+    return `[+] ${actionResult}\n[+] SIGNAL +10 | ₿${payout.toLocaleString()} credits transferred.`;
+  }
+
+  if (choice === '2') {
+    // --- CHAOS PATH (The "Evil" Choice) ---
+    setMorality(prev => ({
+      ...prev,
       chaos: prev.chaos + 10
     }));
 
-    setMoney(m => m + (activeStory.evil_payout || 25000));
+    // Chaos usually pays better in cyberpunk—it's high risk, high reward
+    const payout = activeStory.evil_payout || 25000;
+    setMoney(m => m + payout);
+    
+    const actionResult = activeStory.evil_action;
     setActiveStory(null);
 
-   return `[+] ${activeStory.evil_action}\n[+] CHAOS +10 | ₿${(activeStory.evil_payout || 25000).toLocaleString()} paid out.`;
+    return `[+] ${actionResult}\n[+] CHAOS +10 | ₿${payout.toLocaleString()} credits laundered.`;
   }
 },
       stash: async () => {

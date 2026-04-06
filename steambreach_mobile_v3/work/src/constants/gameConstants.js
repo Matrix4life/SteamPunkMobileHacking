@@ -36,11 +36,11 @@ const COMMAND_REGISTRY = [
   { cmd: 'sqlmap <ip>', desc: 'SQL injection attack', category: 'RECON & ACCESS' },
   { cmd: 'msfconsole <ip>', desc: 'Exploit unpatched SMB service', category: 'RECON & ACCESS' },
   { cmd: 'curl <ip>', desc: 'Exploit HTTP/LFI vulnerability', category: 'RECON & ACCESS' },
-  { cmd: 'spearphish <e@ip>', desc: 'Social engineer an employee via live AI chat', category: 'RECON & ACCESS' },
+  { cmd: 'spearphish <ip>', desc: 'Social engineer an employee via live AI chat', category: 'RECON & ACCESS' },
 
   // --- PRIVILEGE ESCALATION ---
   { cmd: 'pwnkit', desc: 'Escalate www-data → root via CVE-2021-4034. Trace +15%', category: 'PRIVILEGE ESCALATION' },
-  { cmd: 'ssh <e@ip> <pass>', desc: 'Authenticate with stolen credentials — bypasses IDS logging', category: 'PRIVILEGE ESCALATION' },
+  { cmd: 'ssh <ip> <pass>', desc: 'Authenticate with stolen credentials — bypasses IDS logging', category: 'PRIVILEGE ESCALATION' },
   { cmd: 'use 0day', desc: 'Burn a hidden Zero-Day for instant root. No IDS logging', category: 'PRIVILEGE ESCALATION' },
   { cmd: 'sendmail -to <email> -attach <file>', desc: 'Spoof internal email to phish an employee (requires shell)', category: 'PRIVILEGE ESCALATION' },
 

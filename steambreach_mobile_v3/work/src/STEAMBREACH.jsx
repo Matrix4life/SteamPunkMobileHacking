@@ -2827,7 +2827,12 @@ resolve: async () => {
       },
       cat: async () => {
         const targetFile = resolvePath(arg1, currentDir);
-        
+       
+        if (rawData === '[STORY_TRIGGER]') {
+  const story = generateStory(targetIP);
+  setActiveStory(story);
+  return `[INTERCEPTED TRANSMISSION — ${arg1}]\n\n${story.story}\n\n[1] ${story.good_action}\n[2] ${story.evil_action}\n\n[*] Type 'resolve 1' or 'resolve 2'.`;
+}
         const isConsumable = ['decoy.bin', 'burner.ovpn', '0day_poc.sh', 'wallet.dat'].includes(arg1);
         if (isConsumable) {
           const currentDirFiles = fs[currentDir] || [];

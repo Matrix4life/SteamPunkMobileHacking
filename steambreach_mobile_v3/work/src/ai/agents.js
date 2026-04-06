@@ -202,7 +202,27 @@ export const generateOrgFileSystem = (org, tier, layout) => {
   if (tier === 'low' || tier === 'mid') {
     if (Math.random() < 0.25) filesObj[randomDir()].push('wallet.dat');
   }
+// --- STORY TRIGGER FILES (contextual per org type) ---
+const STORY_FILES = {
+  personal:    { file: 'deleted_messages.rec',     dir: '/private' },
+  startup:     { file: 'founder_emails_leaked.mbox', dir: '/investors' },
+  smallbiz:    { file: 'blackmail_draft.eml',      dir: '/legal' },
+  corporation: { file: 'whistleblower_report.enc', dir: '/board' },
+  government:  { file: 'witness_relocation.db',    dir: '/internal_affairs' },
+  military:    { file: 'friendly_fire_coverup.pdf', dir: '/intel' },
+  financial:   { file: 'cartel_routing_keys.pgp',  dir: '/aml' },
+  classified:  { file: 'asset_termination_order.enc', dir: '/umb_alpha' },
+};
 
+const storyTrigger = STORY_FILES[org.type] || STORY_FILES.corporation;
+const triggerDir = storyTrigger.dir;
+
+// Only add if that dir exists on this node, otherwise drop it in /tmp
+const targetDir = filesObj[triggerDir] ? triggerDir : '/tmp';
+if (!filesObj[targetDir].includes(storyTrigger.file)) {
+  filesObj[targetDir].push(storyTrigger.file);
+}
+contents[`${targetDir}/${storyTrigger.file}`] = '[STORY_TRIGGER]';
   return { files: filesObj, contents };
 };
 

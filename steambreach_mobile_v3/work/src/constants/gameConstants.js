@@ -42,6 +42,7 @@ const COMMAND_REGISTRY = [
   { cmd: 'pwnkit', desc: 'Escalate www-data → root via CVE-2021-4034. Trace +15%', category: 'PRIVILEGE ESCALATION' },
   { cmd: 'ssh <e@ip> <pass>', desc: 'Authenticate with stolen credentials — bypasses IDS logging', category: 'PRIVILEGE ESCALATION' },
   { cmd: 'use 0day', desc: 'Burn a hidden Zero-Day for instant root. No IDS logging', category: 'PRIVILEGE ESCALATION' },
+  { cmd: 'sendmail -to <email> -attach <file>', desc: 'Spoof internal email to phish an employee (requires shell)', category: 'PRIVILEGE ESCALATION' },
 
   // --- BOTNET & C2 ---
   { cmd: 'sliver', desc: 'Deploy C2 botnet beacon (root) — ₿500/hr passive income per node', category: 'BOTNET & C2' },

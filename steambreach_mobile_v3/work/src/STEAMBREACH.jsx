@@ -2826,12 +2826,16 @@ resolve: async () => {
       },
       cat: async () => {
         const targetFile = resolvePath(arg1, currentDir);
-       
-        if (rawData === '[STORY_TRIGGER]') {
-  const story = generateStory(targetIP);
-  setActiveStory(story);
-  return `[INTERCEPTED TRANSMISSION — ${arg1}]\n\n${story.story}\n\n[1] ${story.good_action}\n[2] ${story.evil_action}\n\n[*] Type 'resolve 1' or 'resolve 2'.`;
-}
+        
+        // 1. Check for specific filenames first (Intercept logs)
+        if (arg1 === 'intercept.log') {
+          if (!isInside) return '[-] Must be inside a target node to read intercepts.';
+          const story = activeStory || generateStory(targetIP);
+          if (!activeStory) setActiveStory(story);
+          return `[INTERCEPT] ${story.story}\n\n[1] ${story.good_action}\n[2] ${story.evil_action}\n\n[*] Type 'resolve 1' or 'resolve 2' to choose.`;
+        }
+
+        // 2. Handle consumable items
         const isConsumable = ['decoy.bin', 'burner.ovpn', '0day_poc.sh', 'wallet.dat'].includes(arg1);
         if (isConsumable) {
           const currentDirFiles = fs[currentDir] || [];
@@ -2843,7 +2847,6 @@ resolve: async () => {
             nw[targetNode].files[currentDir] = nw[targetNode].files[currentDir].filter(f => f !== arg1);
             return nw;
           });
-
 
           if (arg1 === 'wallet.dat') {
             const amt = Math.floor(Math.random() * 800 + 200);
@@ -2865,6 +2868,7 @@ resolve: async () => {
           }
         }
 
+        // 3. Resolve the actual file contents
         let rawData = contents[targetFile] || contents[arg1];
         if (!rawData && contents) {
           const fallbackKey = Object.keys(contents).find(k => k.endsWith('/' + arg1) || k === arg1);
@@ -2872,18 +2876,19 @@ resolve: async () => {
         }
         if (!rawData) return `cat: ${arg1}: No such file`;
 
-        if (arg1 === 'intercept.log') {
-  if (!isInside) return '[-] Must be inside a target node to read intercepts.';
-  const story = activeStory || generateStory(targetIP);
-  if (!activeStory) setActiveStory(story);
-  return `[INTERCEPT] ${story.story}\n\n[1] ${story.good_action}\n[2] ${story.evil_action}\n\n[*] Type 'resolve 1' or 'resolve 2' to choose.`;
-}
+        // 4. File-specific checks based on contents
+        if (rawData === '[STORY_TRIGGER]') {
+          const story = generateStory(targetIP);
+          setActiveStory(story);
+          return `[INTERCEPTED TRANSMISSION — ${arg1}]\n\n${story.story}\n\n[1] ${story.good_action}\n[2] ${story.evil_action}\n\n[*] Type 'resolve 1' or 'resolve 2'.`;
+        }
 
         if (rawData.startsWith('[LOCKED]')) {
           if (privilege !== 'root') return `cat: ${arg1}: Permission denied. Root required.`;
           rawData = rawData.replace('[LOCKED] ', '');
         }
 
+        // 5. AI Generation
         if (rawData.includes('[PENDING_GENERATION]') || rawData.includes('[LORE_PENDING]')) {
           setIsProcessing(true);
           setTerminal(prev => [...prev, { type: 'out', text: `[*] Decoding data stream...`, isNew: false }]);
@@ -2915,23 +2920,22 @@ resolve: async () => {
           return null;
         }
 
+        // 6. Normal File Output
         setTerminal(prev => [...prev, { type: 'out', text: rawData, isNew: true }]);
         if (isInside && isCivilianNode(targetIP)) {
-  const interaction = buildCivilianInteraction(arg1, rawData, targetIP);
-
-  if (interaction) {
-    setPendingInteraction(interaction);
-
-    setTerminal(prev => [
-      ...prev,
-      {
-        type: 'out',
-        text: `\n${interaction.prompt}\n[*] ${interaction.rewardText}`,
-        isNew: true
-      }
-    ]);
-  }
-}
+          const interaction = buildCivilianInteraction(arg1, rawData, targetIP);
+          if (interaction) {
+            setPendingInteraction(interaction);
+            setTerminal(prev => [
+              ...prev,
+              {
+                type: 'out',
+                text: `\n${interaction.prompt}\n[*] ${interaction.rewardText}`,
+                isNew: true
+              }
+            ]);
+          }
+        }
         return null;
       },
 

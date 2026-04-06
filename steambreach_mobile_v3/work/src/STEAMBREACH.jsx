@@ -1496,7 +1496,8 @@ const verifyContract = (ip, objectiveType) => {
       },
       
       market: async () => {
-        if (isInside) return `[-] Cannot access market while inside a target.`;
+  if (isInside) return `[-] Cannot access market while inside a target.`;
+  setScreen('market');
         openHardwareMarket();
         if (walletFrozen) return `[!] WALLET FROZEN — limited trading. Reduce heat below 75%.`;
         return '';
@@ -1976,10 +1977,9 @@ const verifyContract = (ip, objectiveType) => {
         }
         return out;
       },
-resolve: async (args) => {
-  if (!activeStory) return 'No active story';
-
-  if (args[0] === '1') {
+resolve: async () => {
+  if (!activeStory) return '[-] No active intercept. Type \'cat intercept.log\' first.';
+  if (args[1] === '1') {
     setMorality(prev => ({
       signal: prev.signal + 10,
       chaos: prev.chaos
@@ -1991,7 +1991,7 @@ resolve: async (args) => {
     return 'You chose the GOOD path';
   }
 
-  if (args[0] === '2') {
+  if (args[1] === '2') {
     setMorality(prev => ({
       signal: prev.signal,
       chaos: prev.chaos + 10
@@ -2839,10 +2839,11 @@ resolve: async (args) => {
             nw[targetNode].files[currentDir] = nw[targetNode].files[currentDir].filter(f => f !== arg1);
             return nw;
           });
-if (args === 'intercept.log') {
-  if (!activeStory) {
-    setActiveStory(generateStory(targetIP));
-  }
+if (arg1 === 'intercept.log') {
+  const story = activeStory || generateStory(targetIP);
+  if (!activeStory) setActiveStory(story);
+  return `[INTERCEPT] ${story.story}\n\n[1] ${story.good_action}\n[2] ${story.evil_action}\n\n[*] Type 'resolve 1' or 'resolve 2' to choose.`;
+}
 }
           if (arg1 === 'wallet.dat') {
             const amt = Math.floor(Math.random() * 800 + 200);

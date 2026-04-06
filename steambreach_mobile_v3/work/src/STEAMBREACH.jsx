@@ -2820,12 +2820,42 @@ resolve: async () => {
         return out;
       },
 
-      ls: async () => {
-        const target = resolvePath(arg1, currentDir);
-        const listing = fs[target];
-        if (!listing) return `ls: cannot access '${arg1 || currentDir}': No such file or directory`;
-        return listing.join('  ');
-      },
+     ls: async () => {
+  // 1. Determine the actual directory path we are looking at
+  const targetPath = arg1 ? (arg1.startsWith('/') ? arg1 : `${currentDir === '/' ? '' : currentDir}/${arg1}`) : currentDir;
+  
+  // 2. Clean up trailing slashes for consistency
+  const normalizedPath = targetPath.endsWith('/') && targetPath !== '/' ? targetPath.slice(0, -1) : targetPath;
+
+  // 3. Filter the files based on the directory
+  // Logic: Get files that start with the path but don't contain further slashes
+  const visibleFiles = Object.keys(contents).filter(path => {
+    if (normalizedPath === '/') {
+      // Root level: find files with only one slash at the start
+      return path.startsWith('/') && path.lastIndexOf('/') === 0;
+    } else {
+      // Subfolder: find files inside this specific directory
+      return path.startsWith(normalizedPath + '/') && 
+             path.split('/').length === (normalizedPath.split('/').length + 1);
+    }
+  }).map(path => path.split('/').pop()); // Show only the filename, not full path
+
+  // 4. Also find sub-directories to show them in the list
+  const subDirs = Object.keys(contents)
+    .filter(path => path.startsWith(normalizedPath + '/') && path.split('/').length > (normalizedPath.split('/').length + 1))
+    .map(path => path.split('/')[normalizedPath === '/' ? 1 : normalizedPath.split('/').length])
+    .filter((value, index, self) => self.indexOf(value) === index); // Unique values only
+
+  const allItems = [...subDirs, ...visibleFiles];
+
+  if (allItems.length === 0 && normalizedPath !== '/') {
+      // Check if the directory even exists in our file structure
+      const dirExists = Object.keys(contents).some(path => path.startsWith(normalizedPath + '/'));
+      if (!dirExists) return `ls: cannot access '${arg1 || currentDir}': No such file or directory`;
+  }
+
+  return allItems.sort().join('  ');
+},
       cd: async () => {
         const dest = arg1 === '..' ? (currentDir.split('/').slice(0, -1).join('/') || '/') : resolvePath(arg1, currentDir);
         if (fs[dest] || dest === '/') { setCurrentDir(dest); return ''; }
@@ -2885,10 +2915,11 @@ resolve: async () => {
 
         // 4. File-specific checks based on contents
         if (rawData === '[STORY_TRIGGER]') {
-          const story = generateStory(targetIP);
-          setActiveStory(story);
-          return `[INTERCEPTED TRANSMISSION — ${arg1}]\n\n${story.story}\n\n[1] ${story.good_action}\n[2] ${story.evil_action}\n\n[*] Type 'resolve 1' or 'resolve 2'.`;
-        }
+  const story = generateStory(targetIP);
+  setActiveStory(story);
+  // You MUST return this string so it prints to the screen!
+  return `[INTERCEPTED TRANSMISSION — ${arg1}]\n\n${story.story}\n\n[1] ${story.good_action}\n[2] ${story.evil_action}\n\n[*] Type 'resolve 1' or 'resolve 2' to choose.`;
+}
 
         if (rawData.startsWith('[LOCKED]')) {
           if (privilege !== 'root') return `cat: ${arg1}: Permission denied. Root required.`;

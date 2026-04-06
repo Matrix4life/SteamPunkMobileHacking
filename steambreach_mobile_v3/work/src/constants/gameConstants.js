@@ -28,28 +28,29 @@ const COLORS = {
 // 2. MASTER COMMAND REGISTRY
 // ==========================================
 const COMMAND_REGISTRY = [
-  // --- RECON & INITIAL ACCESS ---
-  { cmd: 'nmap [ip]', desc: 'Scan network or specific target', category: 'RECON & ACCESS' },
+  // --- RECON & ACCESS ---
+  { cmd: 'nmap', desc: 'Scan for new targets / open network map', category: 'RECON & ACCESS' },
+  { cmd: 'nmap <ip>', desc: 'Scan specific target — shows vuln, employees, ports', category: 'RECON & ACCESS' },
+  { cmd: 'ettercap', desc: 'ARP poison + sniff internal Slack/Teams comms (inside node, requires Deep Packet Inspector)', category: 'RECON & ACCESS' },
   { cmd: 'hydra <ip>', desc: 'Brute-force SSH credentials', category: 'RECON & ACCESS' },
   { cmd: 'sqlmap <ip>', desc: 'SQL injection attack', category: 'RECON & ACCESS' },
-  { cmd: 'msfconsole <ip>', desc: 'Exploit unpatched SMB', category: 'RECON & ACCESS' },
+  { cmd: 'msfconsole <ip>', desc: 'Exploit unpatched SMB service', category: 'RECON & ACCESS' },
   { cmd: 'curl <ip>', desc: 'Exploit HTTP/LFI vulnerability', category: 'RECON & ACCESS' },
-  { cmd: 'spearphish <e>', desc: 'Social engineer an employee', category: 'RECON & ACCESS' },
+  { cmd: 'spearphish <e@ip>', desc: 'Social engineer an employee via live AI chat', category: 'RECON & ACCESS' },
 
   // --- PRIVILEGE ESCALATION ---
-  { cmd: 'pwnkit', desc: 'Privilege escalation to root', category: 'PRIVILEGE ESCALATION' },
-  { cmd: 'ssh <user@ip> <pass>', desc: 'Log in using stolen credentials (0 trace)', category: 'PRIVILEGE ESCALATION' },
-  { cmd: 'sendmail -to <u कक्ष> -attach <f>', desc: 'Spoof internal emails (requires shell)', category: 'PRIVILEGE ESCALATION' },
+  { cmd: 'pwnkit', desc: 'Escalate www-data → root via CVE-2021-4034. Trace +15%', category: 'PRIVILEGE ESCALATION' },
+  { cmd: 'ssh <e@ip> <pass>', desc: 'Authenticate with stolen credentials — bypasses IDS logging', category: 'PRIVILEGE ESCALATION' },
+  { cmd: 'use 0day', desc: 'Burn a hidden Zero-Day for instant root. No IDS logging', category: 'PRIVILEGE ESCALATION' },
 
-  // --- BOTNET & C2 CONTROL ---
-  { cmd: 'ettercap', desc: 'ARP poison + sniff network comms', category: 'BOTNET & C2' },
-  { cmd: 'sliver', desc: 'Deploy C2 botnet beacon (root)', category: 'BOTNET & C2' },
-  { cmd: 'chisel', desc: 'Create SOCKS5 proxy tunnel (root)', category: 'BOTNET & C2' },
-  { cmd: 'disconnect <ip>', desc: 'Remove proxy or botnet node', category: 'BOTNET & C2' },
-  { cmd: 'hping3 <ip>', desc: 'Botnet SYN flood DDoS attack', category: 'BOTNET & C2' },
-  { cmd: 'mimikatz <ip>', desc: 'Dump LSASS creds from botnet node', category: 'BOTNET & C2' },
-  { cmd: 'stash <file>', desc: 'Stage exfil through botnet', category: 'BOTNET & C2' },
-  
+  // --- BOTNET & C2 ---
+  { cmd: 'sliver', desc: 'Deploy C2 botnet beacon (root) — ₿500/hr passive income per node', category: 'BOTNET & C2' },
+  { cmd: 'chisel', desc: 'Create SOCKS5 proxy tunnel — slows trace (root)', category: 'BOTNET & C2' },
+  { cmd: 'disconnect <ip>', desc: 'Remove proxy or botnet node, free proxy slot', category: 'BOTNET & C2' },
+  { cmd: 'hping3 <ip>', desc: 'Botnet SYN flood — weakens Blue Team alertness', category: 'BOTNET & C2' },
+  { cmd: 'mimikatz <ip>', desc: 'Dump LSASS credentials from a botnet node', category: 'BOTNET & C2' },
+  { cmd: 'stash <file>', desc: 'Route exfil through botnet node (+3% heat vs +10% direct)', category: 'BOTNET & C2' },
+
   // --- PAYLOADS & MALWARE ---
   { cmd: 'msfvenom <arg>', desc: 'Deploy viral payloads (root)', category: 'PAYLOADS & MALWARE' },
   { cmd: 'eternalblue <arg>', desc: 'Mass SMBv1 propagation (root)', category: 'PAYLOADS & MALWARE' },
@@ -60,30 +61,44 @@ const COMMAND_REGISTRY = [
   { cmd: 'crontab <arg>', desc: 'Schedule logic bombs (root)', category: 'PAYLOADS & MALWARE' },
   { cmd: 'wipe', desc: 'Scrub system logs (root)', category: 'PAYLOADS & MALWARE' },
 
-  // --- EXFILTRATION & CRACKING ---
-  { cmd: 'exfil <file>', desc: 'Extract financial assets', category: 'DATA & CRACKING' },
-  { cmd: 'rclone', desc: 'Mass exfiltration of corporate data', category: 'DATA & CRACKING' },
-  { cmd: 'download <file>', desc: 'Save remote file locally', category: 'DATA & CRACKING' },
-  { cmd: 'hashcat <file>', desc: 'Crack hashes (-d for botnet pool)', category: 'DATA & CRACKING' },
-  { cmd: 'john <file>', desc: 'CPU-optimized local password cracker', category: 'DATA & CRACKING' },
-  { cmd: 'fence intel', desc: 'Sell exfiltrated data on the Darknet', category: 'DATA & CRACKING' },
+  // --- DATA & CRACKING ---
+  { cmd: 'exfil <file>', desc: 'Extract financial assets. Trace +25%, Heat +10%', category: 'DATA & CRACKING' },
+  { cmd: 'rclone', desc: 'Mass exfiltration of corporate data (HIGH/ELITE nodes, root required)', category: 'DATA & CRACKING' },
+  { cmd: 'download <file>', desc: 'Save remote file locally for offline use', category: 'DATA & CRACKING' },
+  { cmd: 'hashcat <file>', desc: 'Crack hashes (-d for distributed botnet pool)', category: 'DATA & CRACKING' },
+  { cmd: 'john <file>', desc: 'CPU-optimized local password cracker. Download hash file first', category: 'DATA & CRACKING' },
+  { cmd: 'fence intel', desc: 'Sell exfiltrated Corporate Intel on the Darknet', category: 'DATA & CRACKING' },
 
-  // --- ECONOMY & PROGRESSION ---
-  { cmd: 'use <item>', desc: 'Consume a hidden item (decoy, burner, 0day)', category: 'ECONOMY & ITEMS' },
+  // --- ECONOMY & ITEMS ---
+  { cmd: 'use decoy', desc: 'Deploy a Trace Decoy — Trace −30% (find in target files)', category: 'ECONOMY & ITEMS' },
+  { cmd: 'use burner', desc: 'Burn a Burner VPN — Heat −25% (find in target files)', category: 'ECONOMY & ITEMS' },
+  { cmd: 'use 0day', desc: 'Instant root via Zero-Day — no logging (find in target files)', category: 'ECONOMY & ITEMS' },
   { cmd: 'contracts', desc: 'View AI fixer contracts board', category: 'ECONOMY & ITEMS' },
-  { cmd: 'market', desc: 'Open Black Market Trading UI', category: 'ECONOMY & ITEMS' },
-  { cmd: 'shop', desc: 'Access darknet software market', category: 'ECONOMY & ITEMS' },
-  { cmd: 'hardware', desc: 'Open hardware marketplace — buy/sell/build your rig', category: 'ECONOMY & ITEMS' },
-  { cmd: 'rig', desc: 'Alias for hardware marketplace', category: 'ECONOMY & ITEMS' },
-  
-  // --- SYSTEM & NAVIGATION ---
-  { cmd: 'travel <region>', desc: 'Route gateway to new global subnet', category: 'SYSTEM & NAV' },
-  { cmd: 'status', desc: 'View operator threat assessment & inventory', category: 'SYSTEM & NAV' },
-  { cmd: 'ls / cd / pwd', desc: 'Navigate file systems', category: 'SYSTEM & NAV' },
-  { cmd: 'cat <file>', desc: 'Read file contents', category: 'SYSTEM & NAV' },
+  { cmd: 'market', desc: 'Open Black Market — buy/sell cc_dumps, botnets, exploits, zerodays', category: 'ECONOMY & ITEMS' },
+  { cmd: 'buy <item> <qty>', desc: 'Buy a commodity at current market price', category: 'ECONOMY & ITEMS' },
+  { cmd: 'sell <item> <qty>', desc: 'Sell a commodity from your stash', category: 'ECONOMY & ITEMS' },
+  { cmd: 'shop', desc: 'Access darknet software marketplace', category: 'ECONOMY & ITEMS' },
+  { cmd: 'hardware / rig', desc: 'Open hardware marketplace — buy and install rig components', category: 'ECONOMY & ITEMS' },
+
+  // --- MORALITY ---
+  { cmd: 'assist', desc: 'When prompted: quietly help a civilian — raises SIGNAL score', category: 'MORALITY' },
+  { cmd: 'crashpc', desc: 'When prompted: brick a civilian machine — raises CHAOS score', category: 'MORALITY' },
+  { cmd: 'salvage', desc: 'When prompted: recover a hidden power-up from a civilian node', category: 'MORALITY' },
+
+  // --- STORY EVENTS ---
+  { cmd: 'cat intercept.log', desc: 'Trigger an AI-generated moral dilemma on the current node', category: 'STORY EVENTS' },
+  { cmd: 'resolve 1', desc: 'Take the heroic path — lower payout, raises SIGNAL', category: 'STORY EVENTS' },
+  { cmd: 'resolve 2', desc: 'Take the ruthless path — higher payout, raises CHAOS', category: 'STORY EVENTS' },
+
+  // --- SYSTEM & NAV ---
+  { cmd: 'travel <region>', desc: 'Reroute gateway — us-gov, ru-darknet, cn-financial, eu-central', category: 'SYSTEM & NAV' },
+  { cmd: 'status', desc: 'Operator report: wanted level, botnet, morality, inventory', category: 'SYSTEM & NAV' },
+  { cmd: 'ls / cd / pwd', desc: 'Navigate remote file systems', category: 'SYSTEM & NAV' },
+  { cmd: 'cat <file>', desc: 'Read file contents (AI-generated)', category: 'SYSTEM & NAV' },
+  { cmd: 'exit', desc: 'Disconnect from current node before trace hits 100%', category: 'SYSTEM & NAV' },
   { cmd: 'clear', desc: 'Clear terminal output', category: 'SYSTEM & NAV' },
   { cmd: 'save', desc: 'Save current progress', category: 'SYSTEM & NAV' },
-  { cmd: 'menu', desc: 'Return to main menu', category: 'SYSTEM & NAV' }
+  { cmd: 'menu', desc: 'Auto-save and return to main menu', category: 'SYSTEM & NAV' },
 ];
 const DEV_COMMANDS = [
   { cmd: 'sudo devmode', desc: 'Toggle Developer Godmode' },

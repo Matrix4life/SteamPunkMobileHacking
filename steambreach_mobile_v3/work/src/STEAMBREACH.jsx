@@ -2879,6 +2879,7 @@ resolve: async () => {
         // 4. File-specific checks based on contents
         if (rawData === '[STORY_TRIGGER]') {
   const story = generateStory(targetIP);
+          if (!isInside) return '[-] Must be inside a target node to read intercepts.';
   setActiveStory(story);
   // You MUST return this string so it prints to the screen!
   return `[INTERCEPTED TRANSMISSION — ${arg1}]\n\n${story.story}\n\n[1] ${story.good_action}\n[2] ${story.evil_action}\n\n[*] Type 'resolve 1' or 'resolve 2' to choose.`;

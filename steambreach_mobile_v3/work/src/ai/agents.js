@@ -116,9 +116,7 @@ export const generateOrgNarrative = (tier) => {
   return { orgName, type: template.type, employees, secrets };
 };
 
-// 1. The Base OS (Applies to ALL computers)
-const BASE_OS_SKELETON = {
-  // 1. OS Profiles (Different roots for different machines)
+// 1. OS Profiles (Different roots for different machines)
 const OS_PROFILES = {
   workstation: {
     dirs: ['home', 'home/user', 'home/user/.ssh', 'Applications', 'tmp', 'Library'],
@@ -148,7 +146,7 @@ const OS_PROFILES = {
   }
 };
 
-// 2. The Org Themes (Where the juicy stuff goes, NO duplicate keys)
+// 2. The Org Themes (Where the juicy stuff goes)
 const FILE_SYSTEM_THEMES = {
   personal: {
     dirs: ['home/user/documents', 'home/user/pictures', 'home/user/downloads', 'home/user/desktop', 'home/user/private'],
@@ -225,9 +223,9 @@ export const generateOrgFileSystem = (org, tier, layout) => {
 
   // Helper: Build folders safely
   const buildDirs = (dirList) => {
+    if(!dirList) return;
     dirList.forEach(dir => {
       filesObj[`/${dir}`] = [];
-      // Also ensure root knows about the top-level folders
       const topLevel = dir.split('/')[0];
       if (!filesObj['/'].includes(`${topLevel}/`)) {
         filesObj['/'].push(`${topLevel}/`);
@@ -237,11 +235,11 @@ export const generateOrgFileSystem = (org, tier, layout) => {
 
   // Helper: Place files & lock them if high tier
   const placeFiles = (fileMap) => {
+    if(!fileMap) return;
     Object.keys(fileMap).forEach(folderName => {
       const targetDir = `/${folderName}`;
       const finalDir = filesObj[targetDir] ? targetDir : '/';
       
-      // Pick 1 to 3 random files from the available list to keep it fresh
       const count = Math.floor(Math.random() * 3) + 1;
       const selectedFiles = [...fileMap[folderName]].sort(() => 0.5 - Math.random()).slice(0, count);
       
@@ -258,8 +256,9 @@ export const generateOrgFileSystem = (org, tier, layout) => {
       });
     });
   };
-  
-let osProfile;
+
+  // 1. Select and Build the OS Skeleton based on Target Type
+  let osProfile;
   if (org.type === 'personal') {
     osProfile = OS_PROFILES.workstation;
   } else if (['government', 'military', 'classified'].includes(org.type)) {
@@ -267,10 +266,9 @@ let osProfile;
   } else {
     osProfile = OS_PROFILES.server;
   }
-  
-  // 1. Build the Base Linux OS
-  buildDirs(BASE_OS_SKELETON.dirs);
-  placeFiles(BASE_OS_SKELETON.files);
+
+  buildDirs(osProfile.dirs);
+  placeFiles(osProfile.files);
 
   // 2. Layer the unique Org Theme on top
   buildDirs(theme.dirs);
@@ -283,7 +281,10 @@ let osProfile;
     mailFiles.push(filename);
     contents[`/mail/${filename}`] = '[LORE_PENDING]';
   });
-  filesObj['/mail'] = mailFiles;
+  
+  if (!filesObj['/mail']) filesObj['/mail'] = [];
+  if (!filesObj['/'].includes('mail/')) filesObj['/'].push('mail/');
+  filesObj['/mail'].push(...mailFiles);
 
   // 4. Random Consumable Drops (Decoys, Burners, Wallets)
   const allDirs = Object.keys(filesObj).filter(d => d !== '/'); // Don't drop in root
@@ -313,6 +314,8 @@ let osProfile;
   const storyTrigger = STORY_FILES[org.type] || STORY_FILES.corporation;
   const triggerDir = storyTrigger.dir;
   const targetDir = filesObj[triggerDir] ? triggerDir : '/tmp';
+  
+  if (!filesObj[targetDir]) filesObj[targetDir] = [];
   
   if (!filesObj[targetDir].includes(storyTrigger.file)) {
     filesObj[targetDir].push(storyTrigger.file);
@@ -414,17 +417,15 @@ export const generateAIContract = async (targetIP, nodeData, currentRep, arg4, a
   const actualNumTargets = Math.min(numTargets, 1 + shuffledIPs.length);
   const selectedIPs = [targetIP, ...shuffledIPs].slice(0, actualNumTargets);
 
-  // 1. Add the new types to the pool
   const actionTypes = ['exfil', 'destroy', 'ransom', 'mine', 'sniff', 'breach'];
   
-  // 2. Set the payout multipliers for the new jobs
   const actionValueMult = {
     exfil: 1.0,
     destroy: 1.18,
     ransom: 1.32,
-    mine: 0.85,    // Mining is passive income, so upfront bounty is slightly lower
-    sniff: 1.10,   // Espionage/Wiretapping pays well
-    breach: 1.40,  // Mass rclone extraction is highly lucrative
+    mine: 0.85,    
+    sniff: 1.10,   
+    breach: 1.40,  
   };
 
   const objectives = [];
@@ -462,7 +463,6 @@ export const generateAIContract = async (targetIP, nodeData, currentRep, arg4, a
         : 'proprietary_data.zip';
     }
 
-    // 3. Add the UI labels for the new jobs
     let label = '';
     if (type === 'exfil') label = `Exfiltrate ${targetFile || 'proprietary_data.zip'} from ${node?.org?.orgName || 'target node'}`;
     else if (type === 'destroy') label = `Destroy the target environment at ${node?.org?.orgName || 'target node'}`;

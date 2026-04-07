@@ -248,8 +248,16 @@ function Slot({ slot, pos, tier, selected, onClick, isProcessing, rgbPhase }) {
 }
 
 function EnergyTrace({ pts, active, tier, rgbPhase, isCase }) {
+  // Calculate the path data string once
   const d = pts.map((p,i) => `${i===0?'M':'L'} ${p[0]} ${p[1]}`).join(' ');
-  const color = isCase ? `hsl(${rgbPhase%360}, 70%, 55%)` : tier >= 3 ? COLORS.warning : tier >= 2 ? COLORS.secondary : tier >= 1 ? COLORS.primary : '#2a3545';
+  
+  const color = isCase 
+    ? `hsl(${rgbPhase%360}, 70%, 55%)` 
+    : tier >= 3 ? COLORS.warning : tier >= 2 ? COLORS.secondary : tier >= 1 ? COLORS.primary : '#2a3545';
+  
+  // Determine if data flows backwards based on node (e.g., CPU sending to RAM)
+  const isReverse = pts[0][0] > pts[pts.length-1][0]; // Simple heuristic: if starting X is greater than ending X
+
   return (
     <>
       <path d={d} fill="none" stroke={color} strokeOpacity={tier>0?0.15:0.05} strokeWidth={6} strokeLinecap="round" />

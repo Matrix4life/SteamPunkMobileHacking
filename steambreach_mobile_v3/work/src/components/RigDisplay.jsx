@@ -78,7 +78,7 @@ function Rotator({ cx, cy, active, reverse, slow, children }) {
 
 function DataPacket({ pathData, color, duration = 1.2, delay = 0, reverse = false }) {
   return (
-    <g>
+    <g opacity="0"> {/* Start invisible to prevent visual popping */}
       <circle r={2} fill={color} />
       <circle r={4} fill={color} fillOpacity={0.4} />
       
@@ -92,6 +92,7 @@ function DataPacket({ pathData, color, duration = 1.2, delay = 0, reverse = fals
         keyPoints={reverse ? "1;0" : "0;1"}
         keyTimes="0;1"
       />
+      {/* This handles the fade in/out perfectly synced with the movement */}
       <animate 
         attributeName="opacity" 
         values="0;1;1;0" 
@@ -284,7 +285,7 @@ function EnergyTrace({ pts, active, tier, rgbPhase, isCase, isHacking }) {
 
       {isHacking && tier > 0 && burstArray.map((index) => (
         <DataPacket 
-          key={index}
+         key={`${isHacking}-${index}`} /* <--- Forces a complete remount */
           pathData={d} 
           color={color} 
           duration={1.2} 
@@ -459,7 +460,8 @@ export default function RigDisplay({ rig = {}, inventory = [], heat = 0, isProce
             style={{ 
               position: 'absolute', 
               bottom: 12, 
-              left: 12, 
+              left: 12,
+              zIndex: 100,
               padding: '6px 12px', 
               background: isHacking ? 'rgba(255,255,255,0.1)' : 'rgba(255,216,102,0.2)', 
               border: `1px solid ${isHacking ? 'rgba(255,255,255,0.3)' : COLORS.warning}`, 

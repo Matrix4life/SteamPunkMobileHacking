@@ -260,7 +260,8 @@ export default function RigDisplay({
       
       // CRITICAL: We ensure tier is a number between 0-3
       // This is what triggers the colors/glow in the SVG
-      obj[s] = part ? (part.gen || 1) : 0;
+     const genMap = { 'GEN2': 1, 'GEN3': 2, 'GEN4': 3, 'GEN5': 3, 'XGEN': 3 };
+obj[s] = part ? (genMap[part.gen] ?? 1) : 0;
     });
     return obj;
   }, [rig]);

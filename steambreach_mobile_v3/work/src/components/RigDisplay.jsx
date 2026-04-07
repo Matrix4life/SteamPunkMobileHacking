@@ -107,10 +107,16 @@ function SlotIcon({ slot, x, y, tier, color, isProcessing }) {
       </g>
     );
 
-    case 'GPU': return (
-      <g opacity={dim}>
-        <rect x={cx-13} y={cy-8} width={26} height={16} rx={2} fill="none" stroke={c} strokeWidth="1" />
-        {/* Fan 1 - spins */}
+    case 'GPU': {
+  const clipId = `gpu-clip-${cx}-${cy}`;
+  return (
+    <g opacity={dim}>
+      <clipPath id={clipId}>
+        <rect x={cx-13} y={cy-8} width={26} height={16} rx={2} />
+      </clipPath>
+      <rect x={cx-13} y={cy-8} width={26} height={16} rx={2} fill="none" stroke={c} strokeWidth="1" />
+      {/* Fan 1 */}
+      <g clipPath={`url(#${clipId})`}>
         <g style={{transformOrigin:`${cx-4}px ${cy}px`}} className={active ? 'spin-fan' : (tier > 0 ? 'spin-fan-slow' : '')}>
           <circle cx={cx-4} cy={cy} r={4.5} fill="none" stroke={c} strokeWidth="0.6" strokeOpacity="0.4" />
           {[0,60,120,180,240,300].map(a => {
@@ -119,7 +125,7 @@ function SlotIcon({ slot, x, y, tier, color, isProcessing }) {
           })}
           <circle cx={cx-4} cy={cy} r={1.2} fill={c} fillOpacity="0.6" />
         </g>
-        {/* Fan 2 - counter-spins */}
+        {/* Fan 2 */}
         <g style={{transformOrigin:`${cx+5}px ${cy}px`}} className={active ? 'spin-fan-rev' : (tier > 0 ? 'spin-fan-slow' : '')}>
           <circle cx={cx+5} cy={cy} r={4.5} fill="none" stroke={c} strokeWidth="0.6" strokeOpacity="0.4" />
           {[30,90,150,210,270,330].map(a => {
@@ -128,10 +134,11 @@ function SlotIcon({ slot, x, y, tier, color, isProcessing }) {
           })}
           <circle cx={cx+5} cy={cy} r={1.2} fill={c} fillOpacity="0.6" />
         </g>
-        {/* VRAM strip */}
-        {tier >= 2 && <rect x={cx-12} y={cy+5} width={24} height={2} rx={1} fill={c} fillOpacity={active ? 0.5 : 0.2} className={active ? 'ssd-flash' : ''} />}
       </g>
-    );
+      {tier >= 2 && <rect x={cx-12} y={cy+5} width={24} height={2} rx={1} fill={c} fillOpacity={active ? 0.5 : 0.2} className={active ? 'ssd-flash' : ''} />}
+    </g>
+  );
+}
 
     case 'RAM': return (
       <g opacity={dim}>
@@ -198,14 +205,19 @@ function SlotIcon({ slot, x, y, tier, color, isProcessing }) {
       </g>
     );
 
-    case 'COOL': return (
-      <g opacity={dim}>
-        <circle cx={cx} cy={cy} r={9} fill="none" stroke={c} strokeWidth="0.8" strokeOpacity="0.5" />
-        {/* Main fan - always spins if installed */}
+    case 'COOL': {
+  const clipId = `cool-clip-${cx}-${cy}`;
+  return (
+    <g opacity={dim}>
+      <clipPath id={clipId}>
+        <circle cx={cx} cy={cy} r={9} />
+      </clipPath>
+      <circle cx={cx} cy={cy} r={9} fill="none" stroke={c} strokeWidth="0.8" strokeOpacity="0.5" />
+      <g clipPath={`url(#${clipId})`}>
         <g style={{transformOrigin:`${cx}px ${cy}px`}} className={tier > 0 ? (active ? 'spin-fan' : 'spin-fan-slow') : ''}>
           {[0,45,90,135,180,225,270,315].map(a => {
-            const rad = a*Math.PI/180;
-            const r1 = 2, r2 = 7.5;
+            const rad = a * Math.PI/180;
+            const r1 = 2, r2 = 8.5;
             const spread = 0.35;
             return (
               <path key={a}
@@ -216,12 +228,12 @@ function SlotIcon({ slot, x, y, tier, color, isProcessing }) {
           })}
           <circle cx={cx} cy={cy} r={2} fill={c} fillOpacity={0.5} />
         </g>
-        {/* Hub */}
-        <circle cx={cx} cy={cy} r={1.5} fill={c} fillOpacity={0.8} />
-        {/* Liquid cooling tubes on high tier */}
-        {tier >= 2 && <rect x={cx-9} y={cy+7} width={18} height={2} rx={1} fill={c} fillOpacity={0.2} className={active ? 'ssd-flash' : ''} style={active?{animationDelay:'0.4s'}:{}} />}
       </g>
-    );
+      <circle cx={cx} cy={cy} r={1.5} fill={c} fillOpacity={0.8} />
+      {tier >= 2 && <rect x={cx-9} y={cy+7} width={18} height={2} rx={1} fill={c} fillOpacity={0.2} className={active ? 'ssd-flash' : ''} style={active?{animationDelay:'0.4s'}:{}} />}
+    </g>
+  );
+}
 
     case 'NET': return (
       <g opacity={dim}>

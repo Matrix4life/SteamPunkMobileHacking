@@ -305,7 +305,7 @@ export default function RigDisplay({ rig = {}, inventory = [], heat = 0, isProce
 
   const [selected, setSelected] = useState('CPU');
   const [rgbPhase, setRgbPhase] = useState(0);
-  const [isHacking, setIsHacking] = useState(false);
+ 
 
   const safeHeat = clamp(heat, 0, 100);
   const isHot = safeHeat >= 78;

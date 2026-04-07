@@ -40,8 +40,6 @@ const ANIM_CSS = `
   @keyframes traceFlowFast{ to { stroke-dashoffset: -12; } }
   @keyframes blinkWarn    { 0%,100%{opacity:1} 50%{opacity:0.3} }
   @keyframes pulseBar     { 0%,100%{opacity:0.8} 50%{opacity:0.2} }
-  @keyframes spinFan      { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
-  @keyframes spinFanRev   { from{transform:rotate(0deg)} to{transform:rotate(-360deg)} }
   @keyframes cpuCorePulse { 0%,100%{opacity:0.15;r:3} 50%{opacity:0.55;r:4.5} }
   @keyframes cpuPinFlash  { 0%,100%{opacity:0.7} 50%{opacity:0.2} }
   @keyframes ramDataFlow  { 0%{opacity:0.1} 40%{opacity:0.8} 100%{opacity:0.1} }
@@ -64,9 +62,6 @@ const ANIM_CSS = `
   .trace-flow-fast { animation: traceFlowFast 0.6s linear infinite; stroke-dasharray: 2 5; }
   .blink-warn      { animation: blinkWarn 0.8s linear infinite; }
   .pulse-bar       { animation: pulseBar 1s ease-in-out infinite; }
-  .spin-fan        { animation: spinFan 1.2s linear infinite; transform-box: fill-box; transform-origin: center; }
-  .spin-fan-slow   { animation: spinFan 2.5s linear infinite; transform-box: fill-box; transform-origin: center; }
-  .spin-fan-rev    { animation: spinFanRev 0.9s linear infinite; transform-box: fill-box; transform-origin: center; }
   .cpu-core        { animation: cpuCorePulse 1.6s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
   .cpu-pin         { animation: cpuPinFlash 2s ease-in-out infinite; }
   .ram-data        { animation: ramDataFlow 0.8s ease-in-out infinite; }
@@ -79,6 +74,29 @@ const ANIM_CSS = `
   .led-blink       { animation: ledBlink 1s step-end infinite; }
 `;
 
+// Pro-grade SVG Rotation Helper
+function Rotator({ cx, cy, active, reverse, slow, children }) {
+  if (!active && !slow) return <g>{children}</g>;
+  
+  const dur = (slow && !active) ? "2.5s" : reverse ? "0.9s" : "1.2s";
+  const from = reverse ? `360 ${cx} ${cy}` : `0 ${cx} ${cy}`;
+  const to = reverse ? `0 ${cx} ${cy}` : `360 ${cx} ${cy}`;
+  
+  return (
+    <g>
+      <animateTransform 
+        attributeName="transform" 
+        type="rotate" 
+        from={from} 
+        to={to} 
+        dur={dur} 
+        repeatCount="indefinite" 
+      />
+      {children}
+    </g>
+  );
+}
+
 // Animated slot icons
 function SlotIcon({ slot, x, y, tier, color, isProcessing }) {
   const c = tier > 0 ? color : '#2a3545';
@@ -89,61 +107,53 @@ function SlotIcon({ slot, x, y, tier, color, isProcessing }) {
   switch (slot) {
     case 'CPU': return (
       <g opacity={dim}>
-        {/* Outer casing */}
         <rect x={cx-9} y={cy-9} width={18} height={18} rx={2} fill="none" stroke={c} strokeWidth="1.2" className={active ? 'slot-glow' : ''} />
-        {/* Pins - top/bottom/left/right */}
         {[-6,-2,2,6].map((d,i) => <line key={`t${d}`} x1={cx+d} y1={cy-9} x2={cx+d} y2={cy-13} stroke={c} strokeWidth="0.8" className={active ? 'cpu-pin' : ''} style={active?{animationDelay:`${i*0.15}s`}:{}} />)}
         {[-6,-2,2,6].map((d,i) => <line key={`b${d}`} x1={cx+d} y1={cy+9} x2={cx+d} y2={cy+13} stroke={c} strokeWidth="0.8" className={active ? 'cpu-pin' : ''} style={active?{animationDelay:`${i*0.15+0.6}s`}:{}} />)}
         {[-6,-2,2,6].map((d,i) => <line key={`l${d}`} x1={cx-9} y1={cy+d} x2={cx-13} y2={cy+d} stroke={c} strokeWidth="0.8" className={active ? 'cpu-pin' : ''} style={active?{animationDelay:`${i*0.15+0.3}s`}:{}} />)}
         {[-6,-2,2,6].map((d,i) => <line key={`r${d}`} x1={cx+9} y1={cy+d} x2={cx+13} y2={cy+d} stroke={c} strokeWidth="0.8" className={active ? 'cpu-pin' : ''} style={active?{animationDelay:`${i*0.15+0.9}s`}:{}} />)}
-        {/* Die grid */}
         <rect x={cx-5} y={cy-5} width={10} height={10} rx={1} fill={c} fillOpacity={0.1} stroke={c} strokeWidth="0.5" />
         <line x1={cx-5} y1={cy} x2={cx+5} y2={cy} stroke={c} strokeWidth="0.4" strokeOpacity="0.5" />
         <line x1={cx} y1={cy-5} x2={cx} y2={cy+5} stroke={c} strokeWidth="0.4" strokeOpacity="0.5" />
-        {/* Core pulse */}
         {tier > 0 && <circle cx={cx} cy={cy} r={2.5} fill={c} fillOpacity={0.3} className={active ? 'cpu-core' : ''} />}
-        {/* Expanding ring on processing */}
         {active && <circle cx={cx} cy={cy} r={3} fill="none" stroke={c} strokeWidth="0.6" className="core-ring" />}
       </g>
     );
 
     case 'GPU': {
-  const clipId = `gpu-clip-${cx}-${cy}`;
-  return (
-    <g opacity={dim}>
-      <clipPath id={clipId}>
-        <rect x={cx-13} y={cy-8} width={26} height={16} rx={2} />
-      </clipPath>
-      <rect x={cx-13} y={cy-8} width={26} height={16} rx={2} fill="none" stroke={c} strokeWidth="1" />
-      {/* Fan 1 */}
-      <g clipPath={`url(#${clipId})`}>
-        <g style={{transformOrigin:`${cx-4}px ${cy}px`}} className={active ? 'spin-fan' : (tier > 0 ? 'spin-fan-slow' : '')}>
-          <circle cx={cx-4} cy={cy} r={4.5} fill="none" stroke={c} strokeWidth="0.6" strokeOpacity="0.4" />
-          {[0,60,120,180,240,300].map(a => {
-            const rad = a * Math.PI/180;
-            return <line key={a} x1={cx-4} y1={cy} x2={cx-4+Math.cos(rad)*4} y2={cy+Math.sin(rad)*4} stroke={c} strokeWidth="0.8" strokeOpacity="0.7" />;
-          })}
-          <circle cx={cx-4} cy={cy} r={1.2} fill={c} fillOpacity="0.6" />
+      const clipId = `gpu-clip-${cx}-${cy}`;
+      return (
+        <g opacity={dim}>
+          <clipPath id={clipId}>
+            <rect x={cx-13} y={cy-8} width={26} height={16} rx={2} />
+          </clipPath>
+          <rect x={cx-13} y={cy-8} width={26} height={16} rx={2} fill="none" stroke={c} strokeWidth="1" />
+          <g clipPath={`url(#${clipId})`}>
+            <Rotator cx={cx-4} cy={cy} active={active} slow={tier > 0}>
+              <circle cx={cx-4} cy={cy} r={4.5} fill="none" stroke={c} strokeWidth="0.6" strokeOpacity="0.4" />
+              {[0,60,120,180,240,300].map(a => {
+                const rad = a * Math.PI/180;
+                return <line key={a} x1={cx-4} y1={cy} x2={cx-4+Math.cos(rad)*4} y2={cy+Math.sin(rad)*4} stroke={c} strokeWidth="0.8" strokeOpacity="0.7" />;
+              })}
+              <circle cx={cx-4} cy={cy} r={1.2} fill={c} fillOpacity="0.6" />
+            </Rotator>
+            <Rotator cx={cx+5} cy={cy} active={active} reverse slow={tier > 0}>
+              <circle cx={cx+5} cy={cy} r={4.5} fill="none" stroke={c} strokeWidth="0.6" strokeOpacity="0.4" />
+              {[30,90,150,210,270,330].map(a => {
+                const rad = a * Math.PI/180;
+                return <line key={a} x1={cx+5} y1={cy} x2={cx+5+Math.cos(rad)*4} y2={cy+Math.sin(rad)*4} stroke={c} strokeWidth="0.8" strokeOpacity="0.7" />;
+              })}
+              <circle cx={cx+5} cy={cy} r={1.2} fill={c} fillOpacity="0.6" />
+            </Rotator>
+          </g>
+          {tier >= 2 && <rect x={cx-12} y={cy+5} width={24} height={2} rx={1} fill={c} fillOpacity={active ? 0.5 : 0.2} className={active ? 'ssd-flash' : ''} />}
         </g>
-        {/* Fan 2 */}
-        <g style={{transformOrigin:`${cx+5}px ${cy}px`}} className={active ? 'spin-fan-rev' : (tier > 0 ? 'spin-fan-slow' : '')}>
-          <circle cx={cx+5} cy={cy} r={4.5} fill="none" stroke={c} strokeWidth="0.6" strokeOpacity="0.4" />
-          {[30,90,150,210,270,330].map(a => {
-            const rad = a * Math.PI/180;
-            return <line key={a} x1={cx+5} y1={cy} x2={cx+5+Math.cos(rad)*4} y2={cy+Math.sin(rad)*4} stroke={c} strokeWidth="0.8" strokeOpacity="0.7" />;
-          })}
-          <circle cx={cx+5} cy={cy} r={1.2} fill={c} fillOpacity="0.6" />
-        </g>
-      </g>
-      {tier >= 2 && <rect x={cx-12} y={cy+5} width={24} height={2} rx={1} fill={c} fillOpacity={active ? 0.5 : 0.2} className={active ? 'ssd-flash' : ''} />}
-    </g>
-  );
-}
+      );
+    }
 
     case 'RAM': return (
       <g opacity={dim}>
         <rect x={cx-11} y={cy-6} width={22} height={12} rx={1} fill="none" stroke={c} strokeWidth="0.9" />
-        {/* Chips with data animation */}
         {[-7,-3,1,5].map((d,i) => (
           <rect key={d} x={cx+d} y={cy-4} width={2.5} height={8} rx={0.5}
             fill={c} fillOpacity={active ? 0.6 : 0.2}
@@ -151,11 +161,9 @@ function SlotIcon({ slot, x, y, tier, color, isProcessing }) {
             style={active ? {animationDelay:`${i*0.15}s`} : {}}
           />
         ))}
-        {/* Notch */}
         <rect x={cx-4} y={cy+6} width={8} height={3} rx={0} fill="none" stroke={c} strokeWidth="0.5" strokeOpacity="0.4" />
         <line x1={cx-11} y1={cy+5} x2={cx-11} y2={cy+9} stroke={c} strokeWidth="0.5" />
         <line x1={cx+11} y1={cy+5} x2={cx+11} y2={cy+9} stroke={c} strokeWidth="0.5" />
-        {/* LED */}
         {tier > 0 && <circle cx={cx-9} cy={cy-4} r={1} fill={c} fillOpacity={0.8} className={active ? 'led-blink' : ''} />}
       </g>
     );
@@ -163,7 +171,6 @@ function SlotIcon({ slot, x, y, tier, color, isProcessing }) {
     case 'SSD': return (
       <g opacity={dim}>
         <rect x={cx-11} y={cy-5} width={22} height={10} rx={2} fill="none" stroke={c} strokeWidth="0.9" />
-        {/* NAND chips */}
         <rect x={cx-8} y={cy-3} width={6} height={6} rx={1} fill={c} fillOpacity={0.2} stroke={c} strokeWidth="0.4" />
         <rect x={cx-1} y={cy-3} width={4} height={6} rx={1} fill={c}
           fillOpacity={active ? 0.5 : 0.15}
@@ -174,10 +181,8 @@ function SlotIcon({ slot, x, y, tier, color, isProcessing }) {
           className={active ? 'ssd-flash' : ''}
           style={active ? {animationDelay:'0.3s'} : {}}
         />
-        {/* Activity LED */}
         <circle cx={cx+9} cy={cy} r={1.5} fill="none" stroke={c} strokeWidth="0.6" />
         {tier > 0 && <circle cx={cx+9} cy={cy} r={0.8} fill={c} fillOpacity={0.8} className={active ? 'led-blink' : ''} style={active?{animationDelay:'0.1s'}:{}} />}
-        {/* Data stripe */}
         {tier >= 2 && <rect x={cx-10} y={cy+4} width={20} height={1} rx={0.5} fill={c} fillOpacity={active ? 0.7 : 0.2} className={active ? 'ssd-flash' : ''} style={active?{animationDelay:'0.2s'}:{}} />}
       </g>
     );
@@ -185,66 +190,60 @@ function SlotIcon({ slot, x, y, tier, color, isProcessing }) {
     case 'PSU': return (
       <g opacity={dim}>
         <rect x={cx-9} y={cy-8} width={18} height={16} rx={2} fill="none" stroke={c} strokeWidth="0.9" />
-        {/* Lightning bolt - animated */}
         <path d={`M${cx-1} ${cy-7} L${cx+2} ${cy-1} L${cx-0} ${cy-1} L${cx+3} ${cy+7} L${cx+0} ${cy+1} L${cx+2} ${cy+1} Z`}
           fill={c} fillOpacity={active ? 0.8 : 0.3}
           className={active ? 'psu-zap' : ''}
         />
-        {/* Fan vent */}
         <circle cx={cx+6} cy={cy+4} r={2.5} fill="none" stroke={c} strokeWidth="0.5" strokeOpacity="0.5" />
         {tier > 0 && (
-          <g style={{transformOrigin:`${cx+6}px ${cy+4}px`}} className={tier > 0 ? 'spin-fan-slow' : ''}>
+          <Rotator cx={cx+6} cy={cy+4} active={false} slow={true}>
             {[0,90,180,270].map(a => {
               const rad = a*Math.PI/180;
               return <line key={a} x1={cx+6} y1={cy+4} x2={cx+6+Math.cos(rad)*2} y2={cy+4+Math.sin(rad)*2} stroke={c} strokeWidth="0.6" strokeOpacity="0.6" />;
             })}
-          </g>
+          </Rotator>
         )}
-        {/* Power LED */}
         {tier > 0 && <circle cx={cx-7} cy={cy-6} r={1} fill={c} fillOpacity={0.9} className={active ? 'led-blink' : ''} style={active?{animationDelay:'0.5s'}:{}} />}
       </g>
     );
 
     case 'COOL': {
-  const clipId = `cool-clip-${cx}-${cy}`;
-  return (
-    <g opacity={dim}>
-      <clipPath id={clipId}>
-        <circle cx={cx} cy={cy} r={9} />
-      </clipPath>
-      <circle cx={cx} cy={cy} r={9} fill="none" stroke={c} strokeWidth="0.8" strokeOpacity="0.5" />
-      <g clipPath={`url(#${clipId})`}>
-        <g style={{transformOrigin:`${cx}px ${cy}px`}} className={tier > 0 ? (active ? 'spin-fan' : 'spin-fan-slow') : ''}>
-          {[0,45,90,135,180,225,270,315].map(a => {
-            const rad = a * Math.PI/180;
-            const r1 = 2, r2 = 8.5;
-            const spread = 0.35;
-            return (
-              <path key={a}
-                d={`M${cx+Math.cos(rad-spread)*r1} ${cy+Math.sin(rad-spread)*r1} Q${cx+Math.cos(rad)*r2*0.7} ${cy+Math.sin(rad)*r2*0.7} ${cx+Math.cos(rad+spread)*r2} ${cy+Math.sin(rad+spread)*r2} L${cx+Math.cos(rad+spread)*r1} ${cy+Math.sin(rad+spread)*r1} Z`}
-                fill={c} fillOpacity={0.35} stroke={c} strokeWidth="0.3"
-              />
-            );
-          })}
-          <circle cx={cx} cy={cy} r={2} fill={c} fillOpacity={0.5} />
+      const clipId = `cool-clip-${cx}-${cy}`;
+      return (
+        <g opacity={dim}>
+          <clipPath id={clipId}>
+            <circle cx={cx} cy={cy} r={9} />
+          </clipPath>
+          <circle cx={cx} cy={cy} r={9} fill="none" stroke={c} strokeWidth="0.8" strokeOpacity="0.5" />
+          <g clipPath={`url(#${clipId})`}>
+            <Rotator cx={cx} cy={cy} active={active} slow={tier > 0}>
+              {[0,45,90,135,180,225,270,315].map(a => {
+                const rad = a * Math.PI/180;
+                const r1 = 2, r2 = 8.5;
+                const spread = 0.35;
+                return (
+                  <path key={a}
+                    d={`M${cx+Math.cos(rad-spread)*r1} ${cy+Math.sin(rad-spread)*r1} Q${cx+Math.cos(rad)*r2*0.7} ${cy+Math.sin(rad)*r2*0.7} ${cx+Math.cos(rad+spread)*r2} ${cy+Math.sin(rad+spread)*r2} L${cx+Math.cos(rad+spread)*r1} ${cy+Math.sin(rad+spread)*r1} Z`}
+                    fill={c} fillOpacity={0.35} stroke={c} strokeWidth="0.3"
+                  />
+                );
+              })}
+              <circle cx={cx} cy={cy} r={2} fill={c} fillOpacity={0.5} />
+            </Rotator>
+          </g>
+          <circle cx={cx} cy={cy} r={1.5} fill={c} fillOpacity={0.8} />
+          {tier >= 2 && <rect x={cx-9} y={cy+7} width={18} height={2} rx={1} fill={c} fillOpacity={0.2} className={active ? 'ssd-flash' : ''} style={active?{animationDelay:'0.4s'}:{}} />}
         </g>
-      </g>
-      <circle cx={cx} cy={cy} r={1.5} fill={c} fillOpacity={0.8} />
-      {tier >= 2 && <rect x={cx-9} y={cy+7} width={18} height={2} rx={1} fill={c} fillOpacity={0.2} className={active ? 'ssd-flash' : ''} style={active?{animationDelay:'0.4s'}:{}} />}
-    </g>
-  );
-}
+      );
+    }
 
     case 'NET': return (
       <g opacity={dim}>
-        {/* Antenna */}
         <line x1={cx} y1={cy+7} x2={cx} y2={cy-5} stroke={c} strokeWidth="1.2" />
         <circle cx={cx} cy={cy-5} r={1} fill={c} fillOpacity={0.8} />
-        {/* Signal waves - animated outward */}
         <path d={`M${cx-4} ${cy-1} Q${cx} ${cy-7} ${cx+4} ${cy-1}`} fill="none" stroke={c} strokeWidth="0.8" strokeOpacity={active ? 0.9 : 0.5} className={active ? 'net-wave' : ''} />
         <path d={`M${cx-7} ${cy+1} Q${cx} ${cy-11} ${cx+7} ${cy+1}`} fill="none" stroke={c} strokeWidth="0.7" strokeOpacity={active ? 0.6 : 0.35} className={active ? 'net-wave' : ''} style={active?{animationDelay:'0.4s'}:{}} />
         {tier >= 2 && <path d={`M${cx-10} ${cy+3} Q${cx} ${cy-15} ${cx+10} ${cy+3}`} fill="none" stroke={c} strokeWidth="0.5" strokeOpacity={active ? 0.4 : 0.2} className={active ? 'net-wave' : ''} style={active?{animationDelay:'0.8s'}:{}} />}
-        {/* Signal dot */}
         {active && <circle cx={cx} cy={cy-5} r={1.5} fill={c} fillOpacity={0.6} className="core-ring" />}
       </g>
     );
@@ -253,12 +252,9 @@ function SlotIcon({ slot, x, y, tier, color, isProcessing }) {
       <g opacity={dim}>
         <rect x={cx-10} y={cy-8} width={20} height={16} rx={2} fill="none" stroke={c} strokeWidth="0.9" />
         <line x1={cx-10} y1={cy-3} x2={cx+10} y2={cy-3} stroke={c} strokeWidth="0.4" strokeOpacity="0.5" />
-        {/* Drive bays */}
         <rect x={cx-7} y={cy-1} width={5} height={5} rx={1} fill={c} fillOpacity={0.15} />
         <rect x={cx+1} y={cy-1} width={5} height={5} rx={1} fill={c} fillOpacity={tier >= 2 ? 0.3 : 0.1} />
-        {/* Window panel */}
         {tier >= 2 && <rect x={cx-7} y={cy-7} width={14} height={4} rx={1} fill={c} fillOpacity={0.1} stroke={c} strokeWidth="0.4" />}
-        {/* Power LED */}
         {tier > 0 && <circle cx={cx-8} cy={cy+5} r={1} fill={c} fillOpacity={0.9} className="led-blink" style={{animationDelay:'0.2s'}} />}
       </g>
     );

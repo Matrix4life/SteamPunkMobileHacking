@@ -454,30 +454,7 @@ export default function RigDisplay({ rig = {}, inventory = [], heat = 0, isProce
             </svg>
           </div>
 
-          <button 
-            onClick={(e) => { 
-              e.stopPropagation(); 
-              triggerHack(); 
-            }} 
-            style={{ 
-              position: 'absolute', 
-              bottom: 12, 
-              left: 12, 
-              zIndex: 9999, // FORCED to the absolute front
-              pointerEvents: 'auto', // FORCED to accept clicks
-              padding: '6px 12px', 
-              background: isHacking ? 'rgba(255,255,255,0.1)' : 'rgba(255,216,102,0.2)', 
-              border: `1px solid ${isHacking ? 'rgba(255,255,255,0.3)' : COLORS.warning}`, 
-              color: isHacking ? 'rgba(255,255,255,0.5)' : COLORS.warning, 
-              borderRadius: '4px', 
-              cursor: isHacking ? 'not-allowed' : 'pointer',
-              fontSize: '10px',
-              fontWeight: 'bold',
-              letterSpacing: '1px'
-            }}
-          >
-            {isHacking ? 'UPLOADING...' : 'INITIATE HACK'}
-          </button>
+        
         </>
       ) : (
         <div style={{ padding: '28px 12px 6px', display:'flex', gap:6, alignItems:'center' }}>

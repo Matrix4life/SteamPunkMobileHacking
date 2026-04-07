@@ -78,7 +78,7 @@ function Rotator({ cx, cy, active, reverse, slow, children }) {
 
 function DataPacket({ pathData, color, duration = 1.2, delay = 0, reverse = false }) {
   return (
-    <g opacity="0"> {/* Start invisible to prevent visual popping */}
+    <g opacity="0">
       <circle r={2} fill={color} />
       <circle r={4} fill={color} fillOpacity={0.4} />
       
@@ -92,7 +92,6 @@ function DataPacket({ pathData, color, duration = 1.2, delay = 0, reverse = fals
         keyPoints={reverse ? "1;0" : "0;1"}
         keyTimes="0;1"
       />
-      {/* This handles the fade in/out perfectly synced with the movement */}
       <animate 
         attributeName="opacity" 
         values="0;1;1;0" 
@@ -285,7 +284,7 @@ function EnergyTrace({ pts, active, tier, rgbPhase, isCase, isHacking }) {
 
       {isHacking && tier > 0 && burstArray.map((index) => (
         <DataPacket 
-         key={`${isHacking}-${index}`} /* <--- Forces a complete remount */
+          key={`${isHacking}-${index}`}
           pathData={d} 
           color={color} 
           duration={1.2} 
@@ -314,6 +313,7 @@ export default function RigDisplay({ rig = {}, inventory = [], heat = 0, isProce
 
   // Trigger function for the hack event
   const triggerHack = () => {
+    console.log("Hack Initiated!"); // Check your browser console to verify the button works!
     if (isHacking) return;
     setIsHacking(true);
     setTimeout(() => {
@@ -373,13 +373,14 @@ export default function RigDisplay({ rig = {}, inventory = [], heat = 0, isProce
           <span style={{ color:statusColor }}>{safeHeat}°C</span>
           {expanded && <span style={{ color:COLORS.proxy }}>SYS.PWR: {rig.power||0}W</span>}
         </div>
-        <button onClick={e => { e.stopPropagation(); toggleExpand(); }} style={{ background:'none', border:'none', color:COLORS.textDim, fontSize:'10px', cursor:'pointer' }}>
+        <button onClick={e => { e.stopPropagation(); toggleExpand(); }} style={{ background:'none', border:'none', color:COLORS.textDim, fontSize:'10px', cursor:'pointer', zIndex: 200, position: 'relative' }}>
           {expanded ? '✕' : '⇲'}
         </button>
       </div>
 
       {expanded ? (
         <>
+          {/* Centered Left value to 30 */}
           <div style={{ position: 'absolute', top: 30, left: 30, width: 340, height: 300, perspective: '1200px', pointerEvents: 'none' }}>
             <svg width="100%" height="100%" viewBox="-20 -20 340 300" style={{ transform: 'rotateX(55deg) rotateZ(-45deg)', transformStyle: 'preserve-3d', overflow: 'visible', pointerEvents: 'auto' }}>
               <g>
@@ -387,7 +388,6 @@ export default function RigDisplay({ rig = {}, inventory = [], heat = 0, isProce
                 <rect x={0} y={0} width={290} height={220} rx={8} fill="#0d131c" stroke={hasRGB ? `hsla(${rgbPhase%360}, 60%, 50%, 0.4)` : 'rgba(120,220,232,0.15)'} strokeWidth="1.5" />
               </g>
 
-              {/* Pass isHacking to EnergyTrace */}
               {TRACES.map((t,i) => (
                 <EnergyTrace key={i} pts={t.pts} active={isProcessing} tier={Math.max(tiers[t.from]||0, tiers[t.to]||0)} rgbPhase={rgbPhase} isCase={t.to==='CASE' && tiers.CASE>=2} isHacking={isHacking} />
               ))}
@@ -454,14 +454,17 @@ export default function RigDisplay({ rig = {}, inventory = [], heat = 0, isProce
             </svg>
           </div>
 
-          {/* SIMULATED HACK BUTTON FOR TESTING */}
           <button 
-            onClick={(e) => { e.stopPropagation(); triggerHack(); }} 
+            onClick={(e) => { 
+              e.stopPropagation(); 
+              triggerHack(); 
+            }} 
             style={{ 
               position: 'absolute', 
               bottom: 12, 
-              left: 12,
-              zIndex: 100,
+              left: 12, 
+              zIndex: 9999, // FORCED to the absolute front
+              pointerEvents: 'auto', // FORCED to accept clicks
               padding: '6px 12px', 
               background: isHacking ? 'rgba(255,255,255,0.1)' : 'rgba(255,216,102,0.2)', 
               border: `1px solid ${isHacking ? 'rgba(255,255,255,0.3)' : COLORS.warning}`, 

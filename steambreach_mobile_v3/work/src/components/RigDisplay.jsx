@@ -379,7 +379,7 @@ export default function RigDisplay({ rig = {}, inventory = [], heat = 0, isProce
 
       {expanded ? (
         <>
-          <div style={{ position: 'absolute', top: 30, left: -20, width: 340, height: 300, perspective: '1200px', pointerEvents: 'none' }}>
+          <div style={{ position: 'absolute', top: 30, left: 30, width: 340, height: 300, perspective: '1200px', pointerEvents: 'none' }}>
             <svg width="100%" height="100%" viewBox="-20 -20 340 300" style={{ transform: 'rotateX(55deg) rotateZ(-45deg)', transformStyle: 'preserve-3d', overflow: 'visible', pointerEvents: 'auto' }}>
               <g>
                 <path d="M0,220 L12,232 L302,232 L302,12 L290,0 Z" fill="#05080c" />

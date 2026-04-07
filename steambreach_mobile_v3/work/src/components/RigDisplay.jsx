@@ -300,7 +300,7 @@ function EnergyTrace({ pts, active, tier, rgbPhase, isCase, isHacking }) {
 // MAIN COMPONENT EXPORT
 // ------------------------------------------
 
-export default function RigDisplay({ rig = {}, inventory = [], heat = 0, isProcessing = false, expanded = false, toggleExpand, isMobile = false }) {
+export default function RigDisplay({ rig = {}, inventory = [], heat = 0, isProcessing = false, isHacking = false, expanded = false, toggleExpand, isMobile = false }) {
   if (isMobile) return null;
 
   const [selected, setSelected] = useState('CPU');

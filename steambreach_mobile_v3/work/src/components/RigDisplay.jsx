@@ -172,7 +172,8 @@ function StatBar({ x, y, w, label, value, max, color }) {
 
 function DetailPanel({ slot, partId, heat, cpuPct, gpuPct, isProcessing }) {
   const part = PARTS_BY_ID[partId];
-  const tier = part ? part.gen : 0;
+  const genMap = { 'GEN2': 1, 'GEN3': 2, 'GEN4': 3, 'GEN5': 3, 'XGEN': 3 };
+  const tier = part ? (genMap[part.gen] ?? 1) : 0;
   const glow = TIER_GLOW[tier] || TIER_GLOW[0];
   const name = part ? part.name : `EMPTY — ${slot}`;
   const effect = part ? part.desc : 'No module installed';

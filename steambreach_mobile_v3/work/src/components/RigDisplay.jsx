@@ -27,7 +27,6 @@ const TRACES = [
   { from: 'PSU', to: 'CASE', pts: [[86,189],[196,189]] },
 ];
 
-// Opaque fills to simulate physical hardware chips
 const TIER_GLOW = {
   0: { fill: '#141a22', stroke: 'rgba(120,220,232,0.12)', glow: 'none', text: '#3a4a55' },
   1: { fill: '#162432', stroke: 'rgba(120,220,232,0.6)', glow: '0 0 8px rgba(120,220,232,0.3)', text: COLORS.primary },
@@ -64,7 +63,6 @@ const ANIM_CSS = `
   .led-blink       { animation: ledBlink 1s step-end infinite; }
 `;
 
-// Pro-grade SVG Rotation Helper
 function Rotator({ cx, cy, active, reverse, slow, children }) {
   if (!active && !slow) return <g>{children}</g>;
   const dur = (slow && !active) ? "2.5s" : reverse ? "0.9s" : "1.2s";
@@ -74,6 +72,34 @@ function Rotator({ cx, cy, active, reverse, slow, children }) {
     <g>
       <animateTransform attributeName="transform" type="rotate" from={from} to={to} dur={dur} repeatCount="indefinite" />
       {children}
+    </g>
+  );
+}
+
+function DataPacket({ pathData, color, duration = 1.2, delay = 0, reverse = false }) {
+  return (
+    <g>
+      <circle r={2} fill={color} />
+      <circle r={4} fill={color} fillOpacity={0.4} />
+      
+      <animateMotion 
+        path={pathData}
+        dur={`${duration}s`} 
+        begin={`${delay}s`} 
+        repeatCount="1"          
+        fill="freeze"            
+        calcMode="linear"
+        keyPoints={reverse ? "1;0" : "0;1"}
+        keyTimes="0;1"
+      />
+      <animate 
+        attributeName="opacity" 
+        values="0;1;1;0" 
+        keyTimes="0; 0.1; 0.9; 1" 
+        dur={`${duration}s`} 
+        begin={`${delay}s`} 
+        fill="freeze"
+      />
     </g>
   );
 }
@@ -202,16 +228,13 @@ function Slot({ slot, pos, tier, selected, onClick, isProcessing, rgbPhase }) {
   const caseStroke = isCase ? `hsl(${rgbPhase % 360}, 70%, 60%)` : glow.stroke;
   const activeStroke = selected ? COLORS.warning : (isCase ? caseStroke : glow.stroke);
 
-  // Isometric Lift Math: Moving -x and -y on a board rotated -45deg z translates to straight UP visually.
   const lift = selected ? 'translate(-10px, -10px)' : 'translate(0px, 0px)';
   const shadowOffset = selected ? '16px' : '4px';
   const shadowOpacity = selected ? 0.8 : 0.4;
 
   return (
     <g onClick={onClick} style={{ cursor: 'pointer' }}>
-      {/* 3D Drop Shadow / Extrusion Layer */}
       <g style={{ transition: 'all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)' }}>
-        {/* Dynamic Shadow */}
         <rect x={pos.x} y={pos.y} width={pos.w} height={pos.h} rx={6} fill="black" 
           style={{ 
             transform: `translate(${shadowOffset}, ${shadowOffset})`,
@@ -221,9 +244,7 @@ function Slot({ slot, pos, tier, selected, onClick, isProcessing, rgbPhase }) {
           }} 
         />
         
-        {/* The Raised Chip Layer */}
         <g style={{ transform: lift, transition: 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)' }}>
-          {/* Main opaque body */}
           <rect x={pos.x} y={pos.y} width={pos.w} height={pos.h} rx={6} fill={glow.fill} 
             stroke={activeStroke} strokeWidth={selected ? 2 : (tier > 0 ? 1 : 0.5)} 
             className={tier > 0 && !selected ? 'slot-breath' : ''} 
@@ -247,35 +268,57 @@ function Slot({ slot, pos, tier, selected, onClick, isProcessing, rgbPhase }) {
   );
 }
 
-function EnergyTrace({ pts, active, tier, rgbPhase, isCase }) {
-  // Calculate the path data string once
+function EnergyTrace({ pts, active, tier, rgbPhase, isCase, isHacking }) {
   const d = pts.map((p,i) => `${i===0?'M':'L'} ${p[0]} ${p[1]}`).join(' ');
+  const color = isCase ? `hsl(${rgbPhase%360}, 70%, 55%)` : tier >= 3 ? COLORS.warning : tier >= 2 ? COLORS.secondary : tier >= 1 ? COLORS.primary : '#2a3545';
   
-  const color = isCase 
-    ? `hsl(${rgbPhase%360}, 70%, 55%)` 
-    : tier >= 3 ? COLORS.warning : tier >= 2 ? COLORS.secondary : tier >= 1 ? COLORS.primary : '#2a3545';
-  
-  // Determine if data flows backwards based on node (e.g., CPU sending to RAM)
-  const isReverse = pts[0][0] > pts[pts.length-1][0]; // Simple heuristic: if starting X is greater than ending X
+  const isReverse = pts[0][0] > pts[pts.length-1][0]; 
+  const burstArray = [0, 1, 2, 3, 4]; 
 
   return (
     <>
       <path d={d} fill="none" stroke={color} strokeOpacity={tier>0?0.15:0.05} strokeWidth={6} strokeLinecap="round" />
       <path d={d} fill="none" stroke={color} strokeOpacity={tier>0?0.5:0.1} strokeWidth={1.5} strokeLinecap="round" />
+      
       {active && tier > 0 && <path d={d} fill="none" stroke={color} strokeWidth={tier>=3?2.5:1.5} className={tier>=2 ? 'trace-flow-fast' : 'trace-flow'} />}
+
+      {isHacking && tier > 0 && burstArray.map((index) => (
+        <DataPacket 
+          key={index}
+          pathData={d} 
+          color={color} 
+          duration={1.2} 
+          delay={index * 0.2}
+          reverse={isReverse} 
+        />
+      ))}
     </>
   );
 }
+
+// ------------------------------------------
+// MAIN COMPONENT EXPORT
+// ------------------------------------------
 
 export default function RigDisplay({ rig = {}, inventory = [], heat = 0, isProcessing = false, expanded = false, toggleExpand, isMobile = false }) {
   if (isMobile) return null;
 
   const [selected, setSelected] = useState('CPU');
   const [rgbPhase, setRgbPhase] = useState(0);
+  const [isHacking, setIsHacking] = useState(false);
 
   const safeHeat = clamp(heat, 0, 100);
   const isHot = safeHeat >= 78;
   const hasRGB = inventory.includes('RGB');
+
+  // Trigger function for the hack event
+  const triggerHack = () => {
+    if (isHacking) return;
+    setIsHacking(true);
+    setTimeout(() => {
+      setIsHacking(false);
+    }, 2200); 
+  };
 
   useEffect(() => {
     if (!hasRGB) return;
@@ -297,7 +340,6 @@ export default function RigDisplay({ rig = {}, inventory = [], heat = 0, isProce
   const cpuPct = tiers.CPU > 0 ? clamp(Math.round(safeHeat*0.72 + (isProcessing?10:0)), 8, 100) : 0;
   const gpuPct = tiers.GPU > 0 ? clamp(Math.round(safeHeat*0.9  + (isProcessing?12:0)), 10, 100) : 0;
   
-  // HUD colors
   const statusColor = isHot ? COLORS.danger : safeHeat >= 45 ? COLORS.warning : COLORS.secondary;
   const selPartId = rig[selected.toLowerCase()];
   const selPart = PARTS_BY_ID && selPartId ? PARTS_BY_ID[selPartId] : null;
@@ -337,38 +379,28 @@ export default function RigDisplay({ rig = {}, inventory = [], heat = 0, isProce
 
       {expanded ? (
         <>
-          {/* LAYER 1: 3D Isometric Hardware Board */}
-          {/* We wrap the SVG in a div with perspective to handle the 3D rotation safely */}
           <div style={{ position: 'absolute', top: 30, left: -20, width: 340, height: 300, perspective: '1200px', pointerEvents: 'none' }}>
-            
             <svg width="100%" height="100%" viewBox="-20 -20 340 300" style={{ transform: 'rotateX(55deg) rotateZ(-45deg)', transformStyle: 'preserve-3d', overflow: 'visible', pointerEvents: 'auto' }}>
-              
-              {/* Motherboard Base with 3D Extruded Edge */}
               <g>
                 <path d="M0,220 L12,232 L302,232 L302,12 L290,0 Z" fill="#05080c" />
                 <rect x={0} y={0} width={290} height={220} rx={8} fill="#0d131c" stroke={hasRGB ? `hsla(${rgbPhase%360}, 60%, 50%, 0.4)` : 'rgba(120,220,232,0.15)'} strokeWidth="1.5" />
               </g>
 
-              {/* Glowing Traces */}
+              {/* Pass isHacking to EnergyTrace */}
               {TRACES.map((t,i) => (
-                <EnergyTrace key={i} pts={t.pts} active={isProcessing} tier={Math.max(tiers[t.from]||0, tiers[t.to]||0)} rgbPhase={rgbPhase} isCase={t.to==='CASE' && tiers.CASE>=2} />
+                <EnergyTrace key={i} pts={t.pts} active={isProcessing} tier={Math.max(tiers[t.from]||0, tiers[t.to]||0)} rgbPhase={rgbPhase} isCase={t.to==='CASE' && tiers.CASE>=2} isHacking={isHacking} />
               ))}
 
-              {/* Component Slots */}
               {Object.entries(SLOT_LAYOUT).map(([slot, pos]) => (
                 <Slot key={slot} slot={slot} pos={pos} tier={tiers[slot]} selected={selected===slot} isProcessing={isProcessing} rgbPhase={rgbPhase} onClick={() => setSelected(slot)} />
               ))}
             </svg>
           </div>
 
-          {/* LAYER 2: Flat 2D HUD (Detail Panel) */}
-          {/* Bolted to the right side, completely bypassing the 3D transform for crisp readability */}
           <div style={{ position: 'absolute', right: 12, top: 34, width: 200, height: 270 }}>
             <svg width="100%" height="100%">
-              {/* HUD Glass Pane */}
               <rect x={0} y={0} width={200} height={270} rx={8} fill="rgba(8,12,18,0.7)" stroke={selTier > 0 ? selGlow.stroke : 'rgba(120,220,232,0.15)'} strokeWidth="1" style={{ filter: 'backdrop-filter(blur(4px))' }} />
               
-              {/* Corner brackets for tech feel */}
               <path d="M0,8 L0,0 L8,0 M192,0 L200,0 L200,8 M200,262 L200,270 L192,270 M8,270 L0,270 L0,262" fill="none" stroke={selTier > 0 ? selGlow.stroke : COLORS.textDim} strokeWidth="2" opacity="0.5" />
 
               <text x={16} y={26} fill={selGlow.text} fontSize="14" fontWeight="bold" letterSpacing="2px">{selected}</text>
@@ -383,7 +415,6 @@ export default function RigDisplay({ rig = {}, inventory = [], heat = 0, isProce
               <line x1={16} y1={36} x2={184} y2={36} stroke="rgba(255,255,255,0.08)" strokeWidth="1" />
               <text x={16} y={54} fill={selTier > 0 ? COLORS.text : '#3a4a55'} fontSize="11" fontWeight="bold">{selPart ? selPart.name : `EMPTY SLOT`}</text>
               
-              {/* High-res Icon Box */}
               <rect x={16} y={64} width={168} height={80} rx={6} fill="#05080c" stroke="rgba(255,255,255,0.05)" strokeWidth="1" />
               <g transform="translate(100 104) scale(3.5)">
                 {isProcessing && selTier>0 && <circle cx={0} cy={0} r={12} fill="none" stroke={selGlow.stroke} strokeWidth="0.5" strokeOpacity="0.3" className="core-ring" />}
@@ -396,7 +427,6 @@ export default function RigDisplay({ rig = {}, inventory = [], heat = 0, isProce
               
               <line x1={16} y1={180} x2={184} y2={180} stroke="rgba(255,255,255,0.08)" strokeWidth="1" />
               
-              {/* Telemetry */}
               <g transform="translate(16 194)">
                 <text x={0} y={6} fill={COLORS.textDim} fontSize="8" letterSpacing="1px">TEMP</text>
                 <rect x={40} y={0} width={90} height={6} rx={3} fill="#0d131c" />
@@ -422,6 +452,27 @@ export default function RigDisplay({ rig = {}, inventory = [], heat = 0, isProce
               </text>
             </svg>
           </div>
+
+          {/* SIMULATED HACK BUTTON FOR TESTING */}
+          <button 
+            onClick={(e) => { e.stopPropagation(); triggerHack(); }} 
+            style={{ 
+              position: 'absolute', 
+              bottom: 12, 
+              left: 12, 
+              padding: '6px 12px', 
+              background: isHacking ? 'rgba(255,255,255,0.1)' : 'rgba(255,216,102,0.2)', 
+              border: `1px solid ${isHacking ? 'rgba(255,255,255,0.3)' : COLORS.warning}`, 
+              color: isHacking ? 'rgba(255,255,255,0.5)' : COLORS.warning, 
+              borderRadius: '4px', 
+              cursor: isHacking ? 'not-allowed' : 'pointer',
+              fontSize: '10px',
+              fontWeight: 'bold',
+              letterSpacing: '1px'
+            }}
+          >
+            {isHacking ? 'UPLOADING...' : 'INITIATE HACK'}
+          </button>
         </>
       ) : (
         <div style={{ padding: '28px 12px 6px', display:'flex', gap:6, alignItems:'center' }}>

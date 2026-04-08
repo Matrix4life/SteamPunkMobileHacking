@@ -2038,6 +2038,7 @@ setWorld(prev => {
   return nw;
 });
 return `[+] ${actionResult}\n[+] SIGNAL +10 | ₿${payout.toLocaleString()} credits transferred.`;
+    }
 
   if (choice === '2') {
     // --- CHAOS PATH (The "Evil" Choice) ---

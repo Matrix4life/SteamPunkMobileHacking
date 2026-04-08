@@ -509,17 +509,28 @@ const toggleSection = (section) => {
 
       {panel === 'actions' && !subMenu && (
   <>
-    {/* RECON */}
-    <button onClick={() => toggleSection('recon')} style={{ ...S.label, cursor: 'pointer', display: 'flex', justifyContent: 'space-between', width: '100%', padding: '6px 0' }}>
-      <span>RECON</span>
-      <span>{openSections.includes('recon') ? '▼' : '▶'}</span>
-    </button>
-    {openSections.includes('recon') && (
-      <div style={S.row}>
-        <button onClick={() => tap('nmap')} style={btn(COLORS.primary, true, false)}>📡 NMAP</button>
-        <button onClick={() => { buzz(25); onToggleMap(); }} style={btn(COLORS.secondary, mapExpanded, false)}>🗺 MAP</button>
+   {/* RECON */}
+<button onClick={() => toggleSection('recon')} style={{ ...S.label, cursor: 'pointer', display: 'flex', justifyContent: 'space-between', width: '100%', padding: '6px 0' }}>
+  <span>RECON</span>
+  <span>{openSections.includes('recon') ? '▼' : '▶'}</span>
+</button>
+{openSections.includes('recon') && (
+  <>
+    <div style={S.row}>
+      <button onClick={() => tap('nmap')} style={btn(COLORS.primary, true, false)}>📡 NMAP</button>
+      <button onClick={() => { buzz(25); onToggleMap(); }} style={btn(COLORS.secondary, mapExpanded, false)}>🗺 MAP</button>
+    </div>
+    {discoveredNodes.length > 0 && (
+      <div style={S.scrollRow}>
+        {discoveredNodes.filter(n => !n.hacked).map((n, i) => (
+          <button key={i} onClick={() => tap(`${n.exp} ${n.ip}`)} style={btn(expColor(n.exp), true, false)}>
+            ⚡ {n.exp.toUpperCase()} → {n.name.slice(0, 8)}
+          </button>
+        ))}
       </div>
     )}
+  </>
+)}
 
     {/* BOTNET OPS */}
     {botnet?.length > 0 && (

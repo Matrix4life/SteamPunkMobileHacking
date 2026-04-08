@@ -199,7 +199,7 @@ const RadialMenu = ({
     centerLabel: {
       position: 'absolute',
       left: '50%',
-      top: '-30px',
+      top: '-140px',
       transform: 'translateX(-50%)',
       fontSize: '11px',
       fontWeight: 'bold',

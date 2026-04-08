@@ -3604,6 +3604,9 @@ if (screen === 'soundmanager') {
           onFillInput={(text) => { setInput(text); setShowMobileKeyboard(true); setTimeout(() => inputRef.current?.focus(), 100); }}
           externalSelectedIP={mobileSelectedTarget}
           clearExternalSelection={() => setMobileSelectedTarget(null)}
+          activeStory={activeStory}
+          alignment={alignment}
+          pendingInteraction={pendingInteraction}
         />
       )}
 

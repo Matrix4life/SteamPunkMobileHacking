@@ -2929,17 +2929,25 @@ return `[+] ${actionResult}\n[+] CHAOS +10 | ₿${payout.toLocaleString()} credi
     }
 
    // 3. File-specific checks based on contents
-if (typeof rawData === 'string' && rawData.includes('[STORY_TRIGGER]') && !world[targetIP]?.storyCompleted) {
+if (typeof rawData === 'string' && rawData.includes('[STORY_TRIGGER]')) {
   if (!isInside) return '[-] Must be inside a target node to read intercepts.';
+  
+  // Debug: Check if storyCompleted is blocking
+  if (world[targetIP]?.storyCompleted) {
+    return '[DEBUG] Story already completed on this node.';
+  }
   
   if (activeStory && activeStory.ip === targetIP) {
     return `[INTERCEPTED TRANSMISSION — ${fileName}]\n\n${activeStory.story}\n\n[1] ${activeStory.good_action}\n[2] ${activeStory.evil_action}\n\n[*] Type 'resolve 1' or 'resolve 2' to choose.`;
   }
   
-  const story = await generateStory(targetIP, world[targetIP]);
-  setActiveStory(story);
-  
-  return `[INTERCEPTED TRANSMISSION — ${fileName}]\n\n${story.story}\n\n[1] ${story.good_action}\n[2] ${story.evil_action}\n\n[*] Type 'resolve 1' or 'resolve 2' to choose.`;
+  try {
+    const story = await generateStory(targetIP, world[targetIP]);
+    setActiveStory(story);
+    return `[INTERCEPTED TRANSMISSION — ${fileName}]\n\n${story.story}\n\n[1] ${story.good_action}\n[2] ${story.evil_action}\n\n[*] Type 'resolve 1' or 'resolve 2' to choose.`;
+  } catch (err) {
+    return `[DEBUG] generateStory failed: ${err.message}`;
+  }
 }
     // 4. Handle High-Tier Locks safely
     if (typeof rawData === 'string' && rawData.startsWith('[LOCKED]')) {

@@ -50,7 +50,7 @@ const RadialMenu = ({
     const newY = clientY - dragStart.current.y;
     
     // Check if moved more than 5px (to distinguish drag from tap)
-    if (Math.abs(newX - position.x) > 5 || Math.abs(newY - position.y) > 5) {
+    if (Math.abs(newX - position.x) > 10 || Math.abs(newY - position.y) > 10) {
       dragMoved.current = true;
     }
     
@@ -235,7 +235,7 @@ const RadialMenu = ({
           )}
           
           {!subMenu && mainItems.map((item, i) => {
-            const pos = getPosition(i, mainItems.length, 85);
+            const pos = getPosition(i, mainItems.length, 110);
             return (
               <div key={item.id} style={styles.menuItem(pos, item.color, i * 30)} onClick={item.action}>
                 <span style={styles.menuIcon}>{item.icon}</span>
@@ -253,7 +253,7 @@ const RadialMenu = ({
                 </div>
               ) : (
                 unhackedTargets.slice(0, 6).map((node, i) => {
-                  const pos = getPosition(i, Math.min(unhackedTargets.length, 6), 80);
+                  const pos = getPosition(i, Math.min(unhackedTargets.length, 6), 105);
                   return (
                     <div key={node.ip} style={styles.subItem(pos, expColor(node.exp), i * 40)} onClick={() => tap(`${node.exp} ${node.ip}`)}>
                       <span style={{ ...styles.subLabel, color: expColor(node.exp) }}>⚡ {node.exp.toUpperCase()}</span>

@@ -280,11 +280,13 @@ const RadialMenu = ({
                   <div style={styles.subItem({ x: 70, y: -50 }, COLORS.warning, 50)} onClick={() => { onFillInput('mimikatz '); setIsOpen(false); setSubMenu(null); }}>
                     <span style={styles.subLabel}>🔑 MIMIKATZ</span>
                   </div>
-                  {botnetNodes.slice(0, 4).map((node, i) => (
-                    <div key={node.ip} style={styles.subItem({ x: -60 + (i * 40), y: 40 }, COLORS.secondary, i * 40 + 100)} onClick={() => tap(`nmap ${node.ip}`)}>
-                      <span style={styles.subLabel}>🤖</span>
-                      <span style={styles.subDetail}>{node.name.slice(0, 8)}</span>
-                    </div>
+                {botnetNodes.slice(0, 6).map((node, i) => {
+  const pos = getPosition(i + 2, botnetNodes.length + 2, 105); // spread in circle below
+  return (
+    <div key={node.ip} style={styles.subItem(pos, COLORS.secondary, i * 40 + 100)} onClick={() => tap(`nmap ${node.ip}`)}>
+      <span style={styles.subLabel}>🤖 {node.name.slice(0, 8)}</span>
+      <span style={styles.subDetail}>{node.ip.slice(-8)}</span>
+    </div>
                   ))}
                 </>
               )}

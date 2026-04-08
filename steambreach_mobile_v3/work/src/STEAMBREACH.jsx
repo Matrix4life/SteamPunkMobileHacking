@@ -2918,15 +2918,24 @@ resolve: async (args) => {
       return null; // Stop execution here
     }
 
-    // 3. File-specific checks based on contents
-    if (typeof rawData === 'string' && rawData.includes('[STORY_TRIGGER]')) {
-      if (!isInside) return '[-] Must be inside a target node to read intercepts.';
-      
-      const story = activeStory || await generateStory(targetIP, world[targetIP]);
-      if (!activeStory) setActiveStory(story);
-      
-      return `[INTERCEPTED TRANSMISSION — ${fileName}]\n\n${story.story}\n\n[1] ${story.good_action}\n[2] ${story.evil_action}\n\n[*] Type 'resolve 1' or 'resolve 2' to choose.`;
-    }
+   // 3. File-specific checks based on contents
+if (typeof rawData === 'string' && rawData.includes('[STORY_TRIGGER]')) {
+  if (!isInside) return '[-] Must be inside a target node to read intercepts.';
+  
+  if (activeStory) {
+    return `[INTERCEPTED TRANSMISSION — ${fileName}]\n\n${activeStory.story}\n\n[1] ${activeStory.good_action}\n[2] ${activeStory.evil_action}\n\n[*] Type 'resolve 1' or 'resolve 2' to choose.`;
+  }
+  
+  // Generate new story (async)
+  setIsProcessing(true);
+  setTerminal(prev => [...prev, { type: 'out', text: `[*] Decrypting intercept...`, isNew: false }]);
+  
+  const story = await generateStory(targetIP, world[targetIP]);
+  setActiveStory(story);
+  setIsProcessing(false);
+  
+  return `[INTERCEPTED TRANSMISSION — ${fileName}]\n\n${story.story}\n\n[1] ${story.good_action}\n[2] ${story.evil_action}\n\n[*] Type 'resolve 1' or 'resolve 2' to choose.`;
+}
 
     // 4. Handle High-Tier Locks safely
     if (typeof rawData === 'string' && rawData.startsWith('[LOCKED]')) {

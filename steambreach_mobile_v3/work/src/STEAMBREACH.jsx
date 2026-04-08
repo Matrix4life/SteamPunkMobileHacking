@@ -2029,11 +2029,15 @@ if (choice !== '1' && choice !== '2') {
     setMoney(m => m + payout);
     
     // Clear the story so it can't be spammed
-    const actionResult = activeStory.good_action;
-    setActiveStory(null); 
-
-    return `[+] ${actionResult}\n[+] SIGNAL +10 | ₿${payout.toLocaleString()} credits transferred.`;
-  }
+   const actionResult = activeStory.good_action;
+const storyIP = activeStory.ip;
+setActiveStory(null);
+setWorld(prev => {
+  const nw = { ...prev };
+  if (nw[storyIP]) nw[storyIP].storyCompleted = true;
+  return nw;
+});
+return `[+] ${actionResult}\n[+] SIGNAL +10 | ₿${payout.toLocaleString()} credits transferred.`;
 
   if (choice === '2') {
     // --- CHAOS PATH (The "Evil" Choice) ---
@@ -2047,9 +2051,14 @@ if (choice !== '1' && choice !== '2') {
     setMoney(m => m + payout);
     
     const actionResult = activeStory.evil_action;
-    setActiveStory(null);
-
-    return `[+] ${actionResult}\n[+] CHAOS +10 | ₿${payout.toLocaleString()} credits laundered.`;
+const storyIP = activeStory.ip;
+setActiveStory(null);
+setWorld(prev => {
+  const nw = { ...prev };
+  if (nw[storyIP]) nw[storyIP].storyCompleted = true;
+  return nw;
+});
+return `[+] ${actionResult}\n[+] CHAOS +10 | ₿${payout.toLocaleString()} credits laundered.`;
   }
 },
       stash: async () => {

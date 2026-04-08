@@ -3639,7 +3639,7 @@ if (screen === 'soundmanager') {
     />
   </>
 )}
-      )}
+      
 
       {(!isMobile || showMobileKeyboard) && (
       <div onClick={() => { if (inputRef.current) inputRef.current.focus(); }} style={{ flexShrink: 0, display: 'flex', alignItems: 'center', borderTop: `1px solid ${trace > 75 ? COLORS.danger + '60' : COLORS.border}`, paddingTop: '8px', background: trace > 75 ? `${COLORS.danger}08` : 'transparent', cursor: 'text' }}>

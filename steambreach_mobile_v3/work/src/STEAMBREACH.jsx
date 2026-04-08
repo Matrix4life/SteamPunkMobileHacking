@@ -135,41 +135,40 @@ const STEAMBREACH = () => {
   const getExfilRigMult = () => clamp(0.9 + (rigFx.exfilMultiplier / 10), 0.9, 1.7);
   const getMineRigMult = () => clamp(0.75 + (rigFx.mineMultiplier / 3000), 0.75, 2.5);
   const getHeatRiskMult = (baseHeat = heat) => clamp(1 + ((100 - baseHeat) / 200), 1, 1.5);
- const generateStory = (ip, alignment) => {
-  const stories = [
-    {
-      good_action: 'Patch the system and notify the employee',
-      evil_action: 'Deploy ransomware and lock all files',
-      good_payout: 5000,
-      evil_payout: 25000,
-      good_align: 10,
-      evil_align: -15,
-    },
-    {
-      good_action: 'Expose company corruption to the public',
-      evil_action: 'Sell the data on the darknet',
-      good_payout: 8000,
-      evil_payout: 30000,
-      good_align: 15,
-      evil_align: -20,
-    },
-    {
-      good_action: 'Help recover stolen credentials',
-      evil_action: 'Hijack accounts and drain funds',
-      good_payout: 4000,
-      evil_payout: 20000,
-      good_align: 8,
-      evil_align: -12,
-    }
+ const generateStory = async (ip, orgData) => {
+  const orgName = orgData?.org?.orgName || 'Unknown Corp';
+  const orgType = orgData?.org?.type || 'corporation';
+  
+  const actionPairs = [
+    { good: 'Leak the evidence to journalists', evil: 'Sell it to the highest bidder', goodPay: 5000, evilPay: 25000 },
+    { good: 'Alert the victims anonymously', evil: 'Harvest the data for yourself', goodPay: 4000, evilPay: 20000 },
+    { good: 'Report it to regulators', evil: 'Blackmail the executives', goodPay: 8000, evilPay: 35000 },
+    { good: 'Patch the vulnerability quietly', evil: 'Deploy ransomware', goodPay: 3000, evilPay: 30000 },
+    { good: 'Warn the whistleblower', evil: 'Sell their identity', goodPay: 6000, evilPay: 28000 },
+    { good: 'Expose the cover-up', evil: 'Bury it deeper for a fee', goodPay: 7000, evilPay: 32000 },
   ];
-
-  const pick = stories[Math.floor(Math.random() * stories.length)];
+  
+  const pair = actionPairs[Math.floor(Math.random() * actionPairs.length)];
+  
+  let storyText = '';
+  try {
+    const prompt = `Write 2-3 sentences for a hacking game. You just breached ${orgName} (a ${orgType}). You found something explosive — corruption, cover-ups, stolen data, or crimes. Set up a moral dilemma. No markdown. Dark cyberpunk tone. Max 50 words.`;
+    storyText = await generateDirectorText(prompt, 'You are a noir narrative generator for a cyberpunk hacking game.');
+  } catch (e) {
+    storyText = `You've found encrypted files that ${orgName} never wanted anyone to see. The data reveals something they'd kill to keep buried.`;
+  }
 
   return {
     ip,
-    ...pick
+    story: storyText,
+    good_action: pair.good,
+    evil_action: pair.evil,
+    good_payout: pair.goodPay,
+    evil_payout: pair.evilPay,
+    good_align: 10,
+    evil_align: -15,
   };
-}; 
+};
   const getEconomyPayout = ({
     ip = targetIP,
     action = 'generic',
@@ -2923,7 +2922,7 @@ resolve: async (args) => {
     if (typeof rawData === 'string' && rawData.includes('[STORY_TRIGGER]')) {
       if (!isInside) return '[-] Must be inside a target node to read intercepts.';
       
-      const story = activeStory || generateStory(targetIP);
+      const story = activeStory || await generateStory(targetIP, world[targetIP]);
       if (!activeStory) setActiveStory(story);
       
       return `[INTERCEPTED TRANSMISSION — ${fileName}]\n\n${story.story}\n\n[1] ${story.good_action}\n[2] ${story.evil_action}\n\n[*] Type 'resolve 1' or 'resolve 2' to choose.`;

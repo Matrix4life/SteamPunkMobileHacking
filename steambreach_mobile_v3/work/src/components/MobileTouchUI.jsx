@@ -397,24 +397,30 @@ export default function MobileTouchUI({
                             {isCon ? 'COLLECT' : 'READ'}
                           </button>
                           
-                          {!isCon && (
-                            <>
-                              <button 
-                                onClick={() => { buzz(30); onCommand(`exfil ${file}`); }} 
-                                style={{ ...btn(COLORS.warning, true, false), padding: '6px 8px', fontSize: '10px' }}
-                              >
-                                EXFIL
-                              </button>
-                              {botnet && botnet.length > 0 && (
-                                <button 
-                                  onClick={() => { buzz(30); onCommand(`stash ${file}`); }} 
-                                  style={{ ...btn(COLORS.file, true, false), padding: '6px 8px', fontSize: '10px' }}
-                                >
-                                  STASH
-                                </button>
-                              )}
-                            </>
-                          )}
+                       {!isCon && (
+  <>
+    <button 
+      onClick={() => { buzz(20); onCommand(`download ${file}`); }} 
+      style={{ ...btn(COLORS.secondary, true, false), padding: '6px 8px', fontSize: '10px' }}
+    >
+      DL
+    </button>
+    <button 
+      onClick={() => { buzz(30); onCommand(`exfil ${file}`); }} 
+      style={{ ...btn(COLORS.warning, true, false), padding: '6px 8px', fontSize: '10px' }}
+    >
+      EXFIL
+    </button>
+    {botnet && botnet.length > 0 && (
+      <button 
+        onClick={() => { buzz(30); onCommand(`stash ${file}`); }} 
+        style={{ ...btn(COLORS.file, true, false), padding: '6px 8px', fontSize: '10px' }}
+      >
+        STASH
+      </button>
+    )}
+  </>
+)}
                         </div>
                       </div>
                     );

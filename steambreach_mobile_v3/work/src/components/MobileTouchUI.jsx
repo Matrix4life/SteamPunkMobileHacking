@@ -301,50 +301,68 @@ export default function MobileTouchUI({
         )}
 
         {panel === 'actions' && !subMenu && (
-          <>
-            {privilege !== 'root' && (
-              <div style={S.row}>
-                <button onClick={() => smartCmd('pwnkit')} style={btn('#ff4444', true, true)}>⚡ PWNKIT → ROOT</button>
-              </div>
-            )}
-            {privilege === 'root' && (
-              <>
-                <div style={S.label}>PERSIST</div>
-                <div style={S.row}>
-                  <button onClick={() => tap('sliver')} style={btn(COLORS.secondary, true, true)}>SLIVER</button>
-                  <button onClick={() => tap('chisel')} style={btn(COLORS.primary, true, true)}>CHISEL</button>
-                  <button onClick={() => tap('wipe')} style={btn(COLORS.warning, true, true)}>WIPE</button>
-                  <button onClick={() => smartCmd('reptile')} style={btn('#aa66ff', true, true)}>REPTILE{isField ? ' ▾' : ''}</button>
-                </div>
-                <div style={S.label}>ATTACK</div>
-                <div style={S.row}>
-                  <button onClick={() => smartCmd('shred')} style={btn(COLORS.danger, true, false)}>SHRED{isField ? ' ▾' : ''}</button>
-                  <button onClick={() => smartCmd('openssl')} style={btn(COLORS.danger, true, false)}>RANSOM{isField ? ' ▾' : ''}</button>
-                  <button onClick={() => smartCmd('msfvenom')} style={btn(COLORS.warning, true, false)}>MSFVENOM{isField ? ' ▾' : ''}</button>
-                  <button onClick={() => smartCmd('eternalblue')} style={btn(COLORS.danger, true, false)}>ETERNALBLUE{isField ? ' ▾' : ''}</button>
-                  <button onClick={() => tap('ettercap')} style={btn(COLORS.chat, true, false)}>ETTERCAP</button>
-                  <button onClick={() => smartCmd('xmrig')} style={btn(COLORS.warning, true, false)}>XMRIG{isField ? ' ▾' : ''}</button>
-                </div>
-              </>
-            )}
-            <div style={S.label}>NAVIGATE</div>
-            <div style={S.row}>
-              <button onClick={() => tap('ls')} style={btn(COLORS.textDim, true, false)}>LS</button>
-              <button onClick={() => tap('cd ..')} style={btn(COLORS.textDim, true, false)}>CD ..</button>
-              <button onClick={() => switchPanel('files')} style={btn(COLORS.file, true, false)}>BROWSE FILES →</button>
-            </div>
-            {(consumables?.decoy > 0 || consumables?.burner > 0 || consumables?.zeroday > 0) && (
-              <>
-                <div style={S.label}>ITEMS</div>
-                <div style={S.row}>
-                  {consumables.decoy > 0 && <button onClick={() => tap('use decoy')} style={btn(COLORS.primary, true, false)}>DECOY ×{consumables.decoy}</button>}
-                  {consumables.burner > 0 && <button onClick={() => tap('use burner')} style={btn(COLORS.secondary, true, false)}>BURNER ×{consumables.burner}</button>}
-                  {consumables.zeroday > 0 && <button onClick={() => tap('use zeroday')} style={btn(COLORS.danger, true, false)}>0DAY ×{consumables.zeroday}</button>}
-                </div>
-              </>
-            )}
-          </>
-        )}
+  <>
+    {/* PWNKIT - only show if not root */}
+    {privilege !== 'root' && (
+      <div style={S.row}>
+        <button onClick={() => smartCmd('pwnkit')} style={btn('#ff4444', true, true)}>⚡ PWNKIT → ROOT</button>
+      </div>
+    )}
+
+    {/* NO ROOT REQUIRED */}
+    <div style={S.label}>RECON</div>
+    <div style={S.row}>
+      <button onClick={() => tap('ettercap')} style={btn(COLORS.chat, true, false)}>📡 ETTERCAP</button>
+      <button onClick={() => tap('download')} style={btn(COLORS.file, true, false)}>💾 DOWNLOAD</button>
+    </div>
+
+    {/* PERSIST - requires root */}
+    <div style={S.label}>
+      PERSIST {privilege !== 'root' && <span style={{ color: COLORS.danger, fontSize: '9px' }}>(ROOT)</span>}
+    </div>
+    <div style={S.row}>
+      <button onClick={() => privilege === 'root' ? tap('sliver') : null} style={btn(COLORS.secondary, privilege === 'root', false)}>🤖 SLIVER</button>
+      <button onClick={() => privilege === 'root' ? tap('chisel') : null} style={btn(COLORS.primary, privilege === 'root', false)}>🛡 CHISEL</button>
+      <button onClick={() => privilege === 'root' ? tap('wipe') : null} style={btn(COLORS.warning, privilege === 'root', false)}>🧹 WIPE</button>
+      <button onClick={() => privilege === 'root' ? smartCmd('reptile') : null} style={btn('#aa66ff', privilege === 'root', false)}>👻 REPTILE{isField ? ' ▾' : ''}</button>
+    </div>
+
+    {/* ATTACK - requires root */}
+    <div style={S.label}>
+      ATTACK {privilege !== 'root' && <span style={{ color: COLORS.danger, fontSize: '9px' }}>(ROOT)</span>}
+    </div>
+    <div style={S.row}>
+      <button onClick={() => privilege === 'root' ? smartCmd('shred') : null} style={btn(COLORS.danger, privilege === 'root', false)}>💀 SHRED{isField ? ' ▾' : ''}</button>
+      <button onClick={() => privilege === 'root' ? smartCmd('openssl') : null} style={btn(COLORS.danger, privilege === 'root', false)}>🔐 RANSOM{isField ? ' ▾' : ''}</button>
+      <button onClick={() => privilege === 'root' ? smartCmd('msfvenom') : null} style={btn(COLORS.warning, privilege === 'root', false)}>🦠 MSFVENOM{isField ? ' ▾' : ''}</button>
+      <button onClick={() => privilege === 'root' ? smartCmd('eternalblue') : null} style={btn(COLORS.danger, privilege === 'root', false)}>💥 ETERNALBLUE{isField ? ' ▾' : ''}</button>
+    </div>
+    <div style={S.row}>
+      <button onClick={() => privilege === 'root' ? smartCmd('xmrig') : null} style={btn(COLORS.secondary, privilege === 'root', false)}>⛏ XMRIG{isField ? ' ▾' : ''}</button>
+      <button onClick={() => privilege === 'root' ? tap('crontab') : null} style={btn(COLORS.warning, privilege === 'root', false)}>⏰ CRONTAB</button>
+    </div>
+
+    {/* NAVIGATE */}
+    <div style={S.label}>NAVIGATE</div>
+    <div style={S.row}>
+      <button onClick={() => tap('ls')} style={btn(COLORS.textDim, true, false)}>📂 LS</button>
+      <button onClick={() => tap('cd ..')} style={btn(COLORS.textDim, true, false)}>⬆ CD ..</button>
+      <button onClick={() => switchPanel('files')} style={btn(COLORS.file, true, false)}>📁 FILES →</button>
+    </div>
+
+    {/* ITEMS */}
+    {(consumables?.decoy > 0 || consumables?.burner > 0 || consumables?.zeroday > 0) && (
+      <>
+        <div style={S.label}>ITEMS</div>
+        <div style={S.row}>
+          {consumables.decoy > 0 && <button onClick={() => tap('use decoy')} style={btn(COLORS.primary, true, false)}>🎭 DECOY ×{consumables.decoy}</button>}
+          {consumables.burner > 0 && <button onClick={() => tap('use burner')} style={btn(COLORS.secondary, true, false)}>📱 BURNER ×{consumables.burner}</button>}
+          {consumables.zeroday > 0 && <button onClick={() => tap('use zeroday')} style={btn(COLORS.danger, true, false)}>💀 0DAY ×{consumables.zeroday}</button>}
+        </div>
+      </>
+    )}
+  </>
+)}
 
         {panel === 'files' && (
           <>

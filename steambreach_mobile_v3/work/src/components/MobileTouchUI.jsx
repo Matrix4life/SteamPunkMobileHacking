@@ -322,7 +322,7 @@ export default function MobileTouchUI({
                   <button onClick={() => smartCmd('openssl')} style={btn(COLORS.danger, true, false)}>RANSOM{isField ? ' ▾' : ''}</button>
                   <button onClick={() => smartCmd('msfvenom')} style={btn(COLORS.warning, true, false)}>MSFVENOM{isField ? ' ▾' : ''}</button>
                   <button onClick={() => smartCmd('eternalblue')} style={btn(COLORS.danger, true, false)}>ETERNALBLUE{isField ? ' ▾' : ''}</button>
-                  {inventory.includes('DPI') && <button onClick={() => tap('ettercap')} style={btn(COLORS.chat, true, false)}>ETTERCAP</button>}
+                  <button onClick={() => tap('ettercap')} style={btn(COLORS.chat, true, false)}>ETTERCAP</button>
                   <button onClick={() => smartCmd('xmrig')} style={btn(COLORS.warning, true, false)}>XMRIG{isField ? ' ▾' : ''}</button>
                 </div>
               </>

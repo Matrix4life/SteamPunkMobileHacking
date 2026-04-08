@@ -435,50 +435,68 @@ export default function MobileTouchUI({
       {subMenu && <SubMenu cmd={subMenu} />}
 
       {panel === 'actions' && !subMenu && (
-        <>
-          <div style={S.row}>
-            <button onClick={() => tap('nmap')} style={btn(COLORS.primary, true, true)}>📡 NMAP SCAN</button>
-            <button onClick={() => { buzz(25); onToggleMap(); }} style={btn(COLORS.secondary, mapExpanded, true)}>🗺 MAP</button>
-            <button onClick={() => tap('status')} style={btn(COLORS.textDim, true, true)}>STATUS</button>
-          </div>
-          <div style={S.row}>
-            <button onClick={() => tap('shop')} style={btn(COLORS.warning, true, true)}>🏪 SHOP</button>
-            <button onClick={() => tap('contracts')} style={btn(COLORS.chat, true, true)}>📋 CONTRACTS</button>
-            
-            <button 
-              onClick={() => smartCmd('travel')} 
-              style={btn(COLORS.ip, subMenu === 'travel', true)}
-            >
-              ✈️ TRAVEL ▾
+  <>
+    {/* RECON */}
+    <div style={S.label}>RECON</div>
+    <div style={S.row}>
+      <button onClick={() => tap('nmap')} style={btn(COLORS.primary, true, true)}>📡 NMAP SCAN</button>
+      <button onClick={() => { buzz(25); onToggleMap(); }} style={btn(COLORS.secondary, mapExpanded, true)}>🗺 MAP</button>
+    </div>
+
+    {/* BOTNET OPS - only show if player has botnet nodes */}
+    {botnet?.length > 0 && (
+      <>
+        <div style={S.label}>BOTNET OPS ({botnet.length} nodes)</div>
+        <div style={S.row}>
+          <button onClick={() => tap('hping3')} style={btn(COLORS.danger, true, false)}>⚡ HPING3</button>
+          <button onClick={() => tap('mimikatz')} style={btn(COLORS.warning, true, false)}>🔑 MIMIKATZ</button>
+          <button onClick={() => tap('disconnect')} style={btn(COLORS.textDim, true, false)}>🔌 DISCONNECT</button>
+        </div>
+        <div style={S.scrollRow}>
+          {discoveredNodes.filter(n => n.hasSliver).map((n, i) => (
+            <button key={i} onClick={() => selectIP(n.ip)} style={btn(COLORS.secondary, true, false)}>
+              🤖 {n.name.slice(0, 12)}{n.name.length > 12 ? '…' : ''}
             </button>
-          </div>
-          <div style={S.row}>
-            <button onClick={() => tap('save')} style={btn(COLORS.textDim, false, false)}>💾 SAVE GAME</button>
-          </div>
+          ))}
+        </div>
+      </>
+    )}
 
-          {botnet?.length > 0 && (
-            <>
-              <div style={S.label}>BOTNET ({botnet.length})</div>
-              <div style={S.scrollRow}>
-                {discoveredNodes.filter(n => n.hasSliver).map((n, i) => (
-                  <button key={i} onClick={() => selectIP(n.ip)} style={btn(COLORS.secondary, true, false)}>🤖 {n.name} ({n.ip})</button>
-                ))}
-              </div>
-            </>
-          )}
-          {(consumables?.decoy > 0 || consumables?.burner > 0 || consumables?.zeroday > 0) && (
-            <>
-              <div style={S.label}>ITEMS</div>
-              <div style={S.row}>
-                {consumables?.decoy > 0 && <button onClick={() => tap('use decoy')} style={btn(COLORS.primary, true, false)}>DECOY ×{consumables.decoy}</button>}
-                {consumables?.burner > 0 && <button onClick={() => tap('use burner')} style={btn(COLORS.secondary, true, false)}>BURNER ×{consumables.burner}</button>}
-                {consumables?.zeroday > 0 && <button onClick={() => tap('use zeroday')} style={btn(COLORS.danger, true, false)}>0DAY ×{consumables.zeroday}</button>}
-              </div>
-            </>
-          )}
-        </>
-      )}
+    {/* LOCAL OPS - only show if player has downloaded files */}
+    {world?.local?.files?.['/home/operator'] && 
+     world.local.files['/home/operator'].filter(f => !f.endsWith('/') && f !== 'readme.txt' && f !== 'contracts/').length > 0 && (
+      <>
+        <div style={S.label}>LOCAL FILES</div>
+        <div style={S.row}>
+          <button onClick={() => tap('hashcat')} style={btn(COLORS.warning, true, false)}>🔓 HASHCAT</button>
+          <button onClick={() => tap('john')} style={btn(COLORS.warning, true, false)}>🔓 JOHN</button>
+          <button onClick={() => tap('ls /home/operator')} style={btn(COLORS.textDim, true, false)}>📂 VIEW</button>
+        </div>
+      </>
+    )}
 
+    {/* ITEMS - consumables */}
+    {(consumables?.decoy > 0 || consumables?.burner > 0 || consumables?.zeroday > 0) && (
+      <>
+        <div style={S.label}>ITEMS</div>
+        <div style={S.row}>
+          {consumables?.decoy > 0 && <button onClick={() => tap('use decoy')} style={btn(COLORS.primary, true, false)}>🎭 DECOY ×{consumables.decoy}</button>}
+          {consumables?.burner > 0 && <button onClick={() => tap('use burner')} style={btn(COLORS.secondary, true, false)}>📱 BURNER ×{consumables.burner}</button>}
+          {consumables?.zeroday > 0 && <button onClick={() => tap('use zeroday')} style={btn(COLORS.danger, true, false)}>💀 0DAY ×{consumables.zeroday}</button>}
+        </div>
+      </>
+    )}
+
+    {/* NAV */}
+    <div style={S.label}>NAV</div>
+    <div style={S.row}>
+      <button onClick={() => tap('shop')} style={btn(COLORS.warning, true, false)}>🏪 SHOP</button>
+      <button onClick={() => tap('contracts')} style={btn(COLORS.chat, true, false)}>📋 CONTRACTS</button>
+      <button onClick={() => smartCmd('travel')} style={btn(COLORS.ip, subMenu === 'travel', false)}>✈️ TRAVEL ▾</button>
+      <button onClick={() => tap('save')} style={btn(COLORS.textDim, false, false)}>💾 SAVE</button>
+    </div>
+  </>
+)}
       {panel === 'targets' && (
         <>
           {discoveredNodes.length === 0 ? (

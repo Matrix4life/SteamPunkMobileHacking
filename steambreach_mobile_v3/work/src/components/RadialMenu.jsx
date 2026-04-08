@@ -77,26 +77,8 @@ const handleDragEnd = () => {
     setSubMenu(subMenu === menu ? null : menu);
   };
 
-  // Drag handlers
-  const handleDragStart = (e) => {
-    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-    dragStart.current = { x: clientX - position.x, y: clientY - position.y };
-    dragMoved.current = false;
-    setIsDragging(true);
-  };
-
-  const handleDragMove = (e) => {
-    if (!isDragging) return;
-    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-    const newX = clientX - dragStart.current.x;
-    const newY = clientY - dragStart.current.y;
-    
-    // Check if moved more than 5px (to distinguish drag from tap)
-    if (Math.abs(newX - position.x) > 10 || Math.abs(newY - position.y) > 10) {
-      dragMoved.current = true;
-    }
+  
+  
     
     // Keep within bounds
     const boundedX = Math.max(60, Math.min(window.innerWidth - 60, newX));
@@ -104,16 +86,7 @@ const handleDragEnd = () => {
     setPosition({ x: boundedX, y: boundedY });
   };
 
-  const handleDragEnd = () => {
-    setIsDragging(false);
-    // Only toggle menu if we didn't drag
-    if (!dragMoved.current) {
-      buzz(40);
-      setIsOpen(!isOpen);
-      setSubMenu(null);
-    }
-  };
-
+  
   // Main menu items
   const mainItems = [
     { id: 'nmap', icon: '📡', label: 'NMAP', color: COLORS.primary, action: () => tap('nmap') },

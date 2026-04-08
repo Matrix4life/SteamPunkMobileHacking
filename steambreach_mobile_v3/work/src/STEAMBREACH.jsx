@@ -137,6 +137,7 @@ const STEAMBREACH = () => {
   const getHeatRiskMult = (baseHeat = heat) => clamp(1 + ((100 - baseHeat) / 200), 1, 1.5);
 const generateStory = async (ip, orgData) => {
   const orgName = orgData?.org?.orgName || 'Unknown Corp';
+  const orgType = orgData?.org?.type || 'corporation';
   
   const actionPairs = [
     { good: 'Leak the evidence to journalists', evil: 'Sell it to the highest bidder', goodPay: 5000, evilPay: 25000 },
@@ -156,7 +157,29 @@ const generateStory = async (ip, orgData) => {
   ];
   
   const pair = actionPairs[Math.floor(Math.random() * actionPairs.length)];
-  const storyText = fallbackStories[Math.floor(Math.random() * fallbackStories.length)];
+  let storyText = fallbackStories[Math.floor(Math.random() * fallbackStories.length)];
+  
+  // Try AI generation with timeout
+  try {
+    const config = JSON.parse(localStorage.getItem('steambreach_ai_config') || '{}');
+    if (config.apiKey && config.apiKey.trim() !== '') {
+      const prompt = `Write 2-3 sentences for a hacking game. You breached ${orgName} (a ${orgType}). You found something explosive — corruption, cover-ups, stolen data, or crimes. Set up a moral dilemma. No markdown. Dark cyberpunk tone. Max 50 words.`;
+      
+      // Race between AI call and 6 second timeout
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('timeout')), 6000)
+      );
+      const aiPromise = generateDirectorText(prompt, 'You are a noir narrative generator for a cyberpunk hacking game.');
+      
+      const result = await Promise.race([aiPromise, timeoutPromise]);
+      
+      if (result && typeof result === 'string' && !result.startsWith('ERROR')) {
+        storyText = result;
+      }
+    }
+  } catch (e) {
+    // Timeout or error — use fallback (already set)
+  }
 
   return {
     ip,

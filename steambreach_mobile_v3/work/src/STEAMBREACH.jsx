@@ -2932,24 +2932,23 @@ return `[+] ${actionResult}\n[+] CHAOS +10 | ₿${payout.toLocaleString()} credi
 if (typeof rawData === 'string' && rawData.includes('[STORY_TRIGGER]')) {
   if (!isInside) return '[-] Must be inside a target node to read intercepts.';
   
-  // Debug: Check if storyCompleted is blocking
   if (world[targetIP]?.storyCompleted) {
-    return '[DEBUG] Story already completed on this node.';
+    return '[*] Transmission already decrypted. Nothing new here.';
   }
   
   if (activeStory && activeStory.ip === targetIP) {
-    return `[INTERCEPTED TRANSMISSION — ${fileName}]\n\n${activeStory.story}\n\n[1] ${activeStory.good_action}\n[2] ${activeStory.evil_action}\n\n[*] Type 'resolve 1' or 'resolve 2' to choose.`;
+    const msg = `[INTERCEPTED TRANSMISSION — ${fileName}]\n\n${activeStory.story}\n\n[1] ${activeStory.good_action}\n[2] ${activeStory.evil_action}\n\n[*] Type 'resolve 1' or 'resolve 2' to choose.`;
+    setTerminal(prev => [...prev, { type: 'out', text: msg, isNew: true }]);
+    return null;
   }
   
-  try {
-    const story = await generateStory(targetIP, world[targetIP]);
-    setActiveStory(story);
-    return `[INTERCEPTED TRANSMISSION — ${fileName}]\n\n${story.story}\n\n[1] ${story.good_action}\n[2] ${story.evil_action}\n\n[*] Type 'resolve 1' or 'resolve 2' to choose.`;
-  } catch (err) {
-    return `[DEBUG] generateStory failed: ${err.message}`;
-  }
-}
-    // 4. Handle High-Tier Locks safely
+  const story = await generateStory(targetIP, world[targetIP]);
+  setActiveStory(story);
+  
+  const msg = `[INTERCEPTED TRANSMISSION — ${fileName}]\n\n${story.story}\n\n[1] ${story.good_action}\n[2] ${story.evil_action}\n\n[*] Type 'resolve 1' or 'resolve 2' to choose.`;
+  setTerminal(prev => [...prev, { type: 'out', text: msg, isNew: true }]);
+  return null;
+}    // 4. Handle High-Tier Locks safely
     if (typeof rawData === 'string' && rawData.startsWith('[LOCKED]')) {
       if (privilege !== 'root') return `cat: ${fileName}: Permission denied. Root required.`;
       rawData = rawData.replace('[LOCKED] ', '').replace('[LOCKED]', '');

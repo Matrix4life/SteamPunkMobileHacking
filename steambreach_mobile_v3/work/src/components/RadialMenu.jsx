@@ -265,33 +265,34 @@ const RadialMenu = ({
             </>
           )}
           
-          {subMenu === 'botnet' && (
-            <>
-              {botnetNodes.length === 0 ? (
-                <div style={{ ...styles.subItem({ x: 0, y: -60 }, COLORS.textDim, 0), opacity: 1, transform: 'translate(-50%, -50%) scale(1)' }}>
-                  <span style={styles.subLabel}>NO BOTS</span>
-                  <span style={styles.subDetail}>Deploy SLIVER first</span>
-                </div>
-              ) : (
-                <>
-                  <div style={styles.subItem({ x: -70, y: -50 }, COLORS.danger, 0)} onClick={() => { onFillInput('hping3 '); setIsOpen(false); setSubMenu(null); }}>
-                    <span style={styles.subLabel}>⚡ HPING3</span>
-                  </div>
-                  <div style={styles.subItem({ x: 70, y: -50 }, COLORS.warning, 50)} onClick={() => { onFillInput('mimikatz '); setIsOpen(false); setSubMenu(null); }}>
-                    <span style={styles.subLabel}>🔑 MIMIKATZ</span>
-                  </div>
-                {botnetNodes.slice(0, 6).map((node, i) => {
-  const pos = getPosition(i + 2, botnetNodes.length + 2, 105); // spread in circle below
-  return (
-    <div key={node.ip} style={styles.subItem(pos, COLORS.secondary, i * 40 + 100)} onClick={() => tap(`nmap ${node.ip}`)}>
-      <span style={styles.subLabel}>🤖 {node.name.slice(0, 8)}</span>
-      <span style={styles.subDetail}>{node.ip.slice(-8)}</span>
-    </div>
-                  );
-})}
-              )}
-            </>
-          )}
+         {subMenu === 'botnet' && (
+  <>
+    {botnetNodes.length === 0 ? (
+      <div style={{ ...styles.subItem({ x: 0, y: -60 }, COLORS.textDim, 0), opacity: 1, transform: 'translate(-50%, -50%) scale(1)' }}>
+        <span style={styles.subLabel}>NO BOTS</span>
+        <span style={styles.subDetail}>Deploy SLIVER first</span>
+      </div>
+    ) : (
+      <>
+        <div style={styles.subItem({ x: -80, y: -60 }, COLORS.danger, 0)} onClick={() => { onFillInput('hping3 '); setIsOpen(false); setSubMenu(null); }}>
+          <span style={styles.subLabel}>⚡ HPING3</span>
+        </div>
+        <div style={styles.subItem({ x: 80, y: -60 }, COLORS.warning, 50)} onClick={() => { onFillInput('mimikatz '); setIsOpen(false); setSubMenu(null); }}>
+          <span style={styles.subLabel}>🔑 MIMIKATZ</span>
+        </div>
+        {botnetNodes.slice(0, 6).map((node, i) => {
+          const pos = getPosition(i, Math.min(botnetNodes.length, 6), 100);
+          return (
+            <div key={node.ip} style={styles.subItem(pos, COLORS.secondary, i * 40 + 100)} onClick={() => tap(`nmap ${node.ip}`)}>
+              <span style={styles.subLabel}>🤖 {node.name.slice(0, 8)}</span>
+              <span style={styles.subDetail}>{node.ip.slice(-8)}</span>
+            </div>
+          );
+        })}
+      </>
+    )}
+  </>
+)}
         </div>
       )}
       

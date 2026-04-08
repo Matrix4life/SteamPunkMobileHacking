@@ -16,6 +16,50 @@ const RadialMenu = ({
   const [isDragging, setIsDragging] = useState(false);
   const dragStart = useRef({ x: 0, y: 0 });
   const dragMoved = useRef(false);
+  const handleDragStart = (e) => {
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+  dragStart.current = { x: clientX - position.x, y: clientY - position.y };
+  dragMoved.current = false;
+  setIsDragging(true);
+  
+  // Start hold timer — if held 500ms without moving, close menu
+  holdTimer.current = setTimeout(() => {
+    if (!dragMoved.current && isOpen) {
+      buzz(40);
+      setIsOpen(false);
+      setSubMenu(null);
+    }
+  }, 500);
+};
+
+const handleDragMove = (e) => {
+  if (!isDragging) return;
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+  const newX = clientX - dragStart.current.x;
+  const newY = clientY - dragStart.current.y;
+  
+  if (Math.abs(newX - position.x) > 10 || Math.abs(newY - position.y) > 10) {
+    dragMoved.current = true;
+    clearTimeout(holdTimer.current); // Cancel hold if dragging
+  }
+  
+  const boundedX = Math.max(60, Math.min(window.innerWidth - 60, newX));
+  const boundedY = Math.max(100, Math.min(window.innerHeight - 60, newY));
+  setPosition({ x: boundedX, y: boundedY });
+};
+
+const handleDragEnd = () => {
+  setIsDragging(false);
+  clearTimeout(holdTimer.current);
+  
+  // Only open if we didn't drag and menu is closed
+  if (!dragMoved.current && !isOpen) {
+    buzz(40);
+    setIsOpen(true);
+  }
+};
 
   const buzz = (ms = 25) => {
     try { navigator.vibrate?.(ms); } catch {}

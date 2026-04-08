@@ -107,7 +107,6 @@ export default function MobileTouchUI({
   onCommand, onToggleKeyboard, onToggleMap,
   onFillInput,
   externalSelectedIP, clearExternalSelection,
-  activeStory, alignment,
   activeStory, alignment, pendingInteraction,
 }) {
   const [panel, setPanel] = useState('actions');

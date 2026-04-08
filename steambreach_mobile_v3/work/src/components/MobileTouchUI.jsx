@@ -594,11 +594,14 @@ export default function MobileTouchUI({
           <div style={{ ...S.label, fontSize: '12px', color: COLORS.ip }}>{selectedNode.name}</div>
           <div style={{ color: COLORS.textDim, fontSize: '11px', marginBottom: '6px', paddingLeft: '2px' }}>{selectedNode.ip} • {selectedNode.sec} SEC</div>
           <div style={S.row}>
-            <button onClick={() => tap(`nmap ${selectedNode.ip}`)} style={btn(COLORS.primary, true, true)}>📡 SCAN</button>
-            {!selectedNode.hacked && (
-              <button onClick={() => tap(`${selectedNode.exp} ${selectedNode.ip}`)} style={btn(expColor(selectedNode.exp), true, true)}>⚡ {expLabel(selectedNode.exp)}</button>
-            )}
-          </div>
+  <button onClick={() => tap(`nmap ${selectedNode.ip}`)} style={btn(COLORS.primary, true, true)}>📡 SCAN</button>
+  <button 
+    onClick={() => !selectedNode.hacked && tap(`${selectedNode.exp} ${selectedNode.ip}`)} 
+    style={btn(expColor(selectedNode.exp), !selectedNode.hacked, true)}
+  >
+    ⚡ {expLabel(selectedNode.exp)} {selectedNode.hacked && '✓'}
+  </button>
+</div>
           {selectedNode.hacked && (
             <>
               <div style={S.label}>NODE ACTIONS</div>

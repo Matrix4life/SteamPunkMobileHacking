@@ -109,6 +109,13 @@ export default function MobileTouchUI({
   externalSelectedIP, clearExternalSelection,
   activeStory, alignment, pendingInteraction,
 }) {
+  const [openSections, setOpenSections] = useState(['recon']); // Only RECON open by default
+
+const toggleSection = (section) => {
+  setOpenSections(prev => 
+    prev.includes(section) ? prev.filter(s => s !== section) : [...prev, section]
+  );
+};
   const [panel, setPanel] = useState('actions');
   const [selectedIP, setSelectedIP] = useState(null);
   const [subMenu, setSubMenu] = useState(null);
@@ -503,63 +510,85 @@ export default function MobileTouchUI({
       {panel === 'actions' && !subMenu && (
   <>
     {/* RECON */}
-    <div style={S.label}>RECON</div>
-    <div style={S.row}>
-      <button onClick={() => tap('nmap')} style={btn(COLORS.primary, true, true)}>📡 NMAP SCAN</button>
-      <button onClick={() => { buzz(25); onToggleMap(); }} style={btn(COLORS.secondary, mapExpanded, true)}>🗺 MAP</button>
-    </div>
+    <button onClick={() => toggleSection('recon')} style={{ ...S.label, cursor: 'pointer', display: 'flex', justifyContent: 'space-between', width: '100%', padding: '6px 0' }}>
+      <span>RECON</span>
+      <span>{openSections.includes('recon') ? '▼' : '▶'}</span>
+    </button>
+    {openSections.includes('recon') && (
+      <div style={S.row}>
+        <button onClick={() => tap('nmap')} style={btn(COLORS.primary, true, false)}>📡 NMAP</button>
+        <button onClick={() => { buzz(25); onToggleMap(); }} style={btn(COLORS.secondary, mapExpanded, false)}>🗺 MAP</button>
+      </div>
+    )}
 
-    {/* BOTNET OPS - only show if player has botnet nodes */}
+    {/* BOTNET OPS */}
     {botnet?.length > 0 && (
       <>
-        <div style={S.label}>BOTNET OPS ({botnet.length} nodes)</div>
-        <div style={S.row}>
-          <button onClick={() => tap('hping3')} style={btn(COLORS.danger, true, false)}>⚡ HPING3</button>
-          <button onClick={() => tap('mimikatz')} style={btn(COLORS.warning, true, false)}>🔑 MIMIKATZ</button>
-          <button onClick={() => tap('disconnect')} style={btn(COLORS.textDim, true, false)}>🔌 DISCONNECT</button>
-        </div>
-        <div style={S.scrollRow}>
-          {discoveredNodes.filter(n => n.hasSliver).map((n, i) => (
-            <button key={i} onClick={() => selectIP(n.ip)} style={btn(COLORS.secondary, true, false)}>
-              🤖 {n.name.slice(0, 12)}{n.name.length > 12 ? '…' : ''}
-            </button>
-          ))}
-        </div>
+        <button onClick={() => toggleSection('botnet')} style={{ ...S.label, cursor: 'pointer', display: 'flex', justifyContent: 'space-between', width: '100%', padding: '6px 0' }}>
+          <span>BOTNET ({botnet.length})</span>
+          <span>{openSections.includes('botnet') ? '▼' : '▶'}</span>
+        </button>
+        {openSections.includes('botnet') && (
+          <>
+            <div style={S.row}>
+              <button onClick={() => onFillInput('hping3 ')} style={btn(COLORS.danger, true, false)}>⚡ HPING3</button>
+              <button onClick={() => onFillInput('mimikatz ')} style={btn(COLORS.warning, true, false)}>🔑 MIMIKATZ</button>
+              <button onClick={() => onFillInput('disconnect ')} style={btn(COLORS.textDim, true, false)}>🔌 DROP</button>
+            </div>
+            <div style={S.scrollRow}>
+              {discoveredNodes.filter(n => n.hasSliver).map((n, i) => (
+                <button key={i} onClick={() => selectIP(n.ip)} style={btn(COLORS.secondary, true, false)}>
+                  🤖 {n.name.slice(0, 10)}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
       </>
     )}
 
-    {/* LOCAL OPS - only show if player has downloaded files */}
+    {/* LOCAL FILES */}
     {world?.local?.files?.['/home/operator'] && 
      world.local.files['/home/operator'].filter(f => !f.endsWith('/') && f !== 'readme.txt' && f !== 'contracts/').length > 0 && (
       <>
-        <div style={S.label}>LOCAL FILES</div>
-        <div style={S.row}>
-          <button onClick={() => tap('hashcat')} style={btn(COLORS.warning, true, false)}>🔓 HASHCAT</button>
-          <button onClick={() => tap('john')} style={btn(COLORS.warning, true, false)}>🔓 JOHN</button>
-          <button onClick={() => tap('ls /home/operator')} style={btn(COLORS.textDim, true, false)}>📂 VIEW</button>
-        </div>
+        <button onClick={() => toggleSection('local')} style={{ ...S.label, cursor: 'pointer', display: 'flex', justifyContent: 'space-between', width: '100%', padding: '6px 0' }}>
+          <span>LOCAL FILES</span>
+          <span>{openSections.includes('local') ? '▼' : '▶'}</span>
+        </button>
+        {openSections.includes('local') && (
+          <div style={S.row}>
+            <button onClick={() => onFillInput('hashcat ')} style={btn(COLORS.warning, true, false)}>🔓 HASHCAT</button>
+            <button onClick={() => onFillInput('john ')} style={btn(COLORS.warning, true, false)}>🔓 JOHN</button>
+            <button onClick={() => tap('ls /home/operator')} style={btn(COLORS.textDim, true, false)}>📂 VIEW</button>
+          </div>
+        )}
       </>
     )}
 
-    {/* ITEMS - consumables */}
+    {/* ITEMS */}
     {(consumables?.decoy > 0 || consumables?.burner > 0 || consumables?.zeroday > 0) && (
       <>
-        <div style={S.label}>ITEMS</div>
-        <div style={S.row}>
-          {consumables?.decoy > 0 && <button onClick={() => tap('use decoy')} style={btn(COLORS.primary, true, false)}>🎭 DECOY ×{consumables.decoy}</button>}
-          {consumables?.burner > 0 && <button onClick={() => tap('use burner')} style={btn(COLORS.secondary, true, false)}>📱 BURNER ×{consumables.burner}</button>}
-          {consumables?.zeroday > 0 && <button onClick={() => tap('use zeroday')} style={btn(COLORS.danger, true, false)}>💀 0DAY ×{consumables.zeroday}</button>}
-        </div>
+        <button onClick={() => toggleSection('items')} style={{ ...S.label, cursor: 'pointer', display: 'flex', justifyContent: 'space-between', width: '100%', padding: '6px 0' }}>
+          <span>ITEMS</span>
+          <span>{openSections.includes('items') ? '▼' : '▶'}</span>
+        </button>
+        {openSections.includes('items') && (
+          <div style={S.row}>
+            {consumables?.decoy > 0 && <button onClick={() => tap('use decoy')} style={btn(COLORS.primary, true, false)}>🎭 ×{consumables.decoy}</button>}
+            {consumables?.burner > 0 && <button onClick={() => tap('use burner')} style={btn(COLORS.secondary, true, false)}>📱 ×{consumables.burner}</button>}
+            {consumables?.zeroday > 0 && <button onClick={() => tap('use zeroday')} style={btn(COLORS.danger, true, false)}>💀 ×{consumables.zeroday}</button>}
+          </div>
+        )}
       </>
     )}
 
-    {/* NAV */}
-    <div style={S.label}>NAV</div>
+    {/* NAV - always visible */}
+    <div style={{ ...S.label, paddingTop: '6px' }}>NAV</div>
     <div style={S.row}>
-      <button onClick={() => tap('shop')} style={btn(COLORS.warning, true, false)}>🏪 SHOP</button>
-      <button onClick={() => tap('contracts')} style={btn(COLORS.chat, true, false)}>📋 CONTRACTS</button>
-      <button onClick={() => smartCmd('travel')} style={btn(COLORS.ip, subMenu === 'travel', false)}>✈️ TRAVEL ▾</button>
-      <button onClick={() => tap('save')} style={btn(COLORS.textDim, false, false)}>💾 SAVE</button>
+      <button onClick={() => tap('shop')} style={btn(COLORS.warning, true, false)}>🏪</button>
+      <button onClick={() => tap('contracts')} style={btn(COLORS.chat, true, false)}>📋</button>
+      <button onClick={() => smartCmd('travel')} style={btn(COLORS.ip, subMenu === 'travel', false)}>✈️</button>
+      <button onClick={() => tap('save')} style={btn(COLORS.textDim, false, false)}>💾</button>
     </div>
   </>
 )}

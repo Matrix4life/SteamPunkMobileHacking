@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { COLORS } from '../constants/gameConstants';
 
 const RadialMenu = ({
@@ -11,7 +11,11 @@ const RadialMenu = ({
   mapExpanded,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [subMenu, setSubMenu] = useState(null); // 'exploit' | 'botnet' | null
+  const [subMenu, setSubMenu] = useState(null);
+  const [position, setPosition] = useState({ x: window.innerWidth / 2, y: window.innerHeight - 150 });
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStart = useRef({ x: 0, y: 0 });
+  const dragMoved = useRef(false);
 
   const buzz = (ms = 25) => {
     try { navigator.vibrate?.(ms); } catch {}
@@ -29,7 +33,44 @@ const RadialMenu = ({
     setSubMenu(subMenu === menu ? null : menu);
   };
 
-  // Main menu items positioned in a circle
+  // Drag handlers
+  const handleDragStart = (e) => {
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    dragStart.current = { x: clientX - position.x, y: clientY - position.y };
+    dragMoved.current = false;
+    setIsDragging(true);
+  };
+
+  const handleDragMove = (e) => {
+    if (!isDragging) return;
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    const newX = clientX - dragStart.current.x;
+    const newY = clientY - dragStart.current.y;
+    
+    // Check if moved more than 5px (to distinguish drag from tap)
+    if (Math.abs(newX - position.x) > 5 || Math.abs(newY - position.y) > 5) {
+      dragMoved.current = true;
+    }
+    
+    // Keep within bounds
+    const boundedX = Math.max(60, Math.min(window.innerWidth - 60, newX));
+    const boundedY = Math.max(100, Math.min(window.innerHeight - 60, newY));
+    setPosition({ x: boundedX, y: boundedY });
+  };
+
+  const handleDragEnd = () => {
+    setIsDragging(false);
+    // Only toggle menu if we didn't drag
+    if (!dragMoved.current) {
+      buzz(40);
+      setIsOpen(!isOpen);
+      setSubMenu(null);
+    }
+  };
+
+  // Main menu items
   const mainItems = [
     { id: 'nmap', icon: '📡', label: 'NMAP', color: COLORS.primary, action: () => tap('nmap') },
     { id: 'map', icon: '🗺', label: 'MAP', color: COLORS.secondary, action: () => { buzz(25); onToggleMap(); setIsOpen(false); } },
@@ -41,13 +82,11 @@ const RadialMenu = ({
     { id: 'save', icon: '💾', label: 'SAVE', color: COLORS.textDim, action: () => tap('save') },
   ].filter(item => item.show !== false);
 
-  // Get unhacked targets for exploit submenu
   const unhackedTargets = discoveredNodes.filter(n => !n.hacked);
   const botnetNodes = discoveredNodes.filter(n => n.hasSliver);
 
-  // Calculate positions in a circle
   const getPosition = (index, total, radius = 85) => {
-    const angle = (index / total) * 2 * Math.PI - Math.PI / 2; // Start from top
+    const angle = (index / total) * 2 * Math.PI - Math.PI / 2;
     return {
       x: Math.cos(angle) * radius,
       y: Math.sin(angle) * radius,
@@ -55,11 +94,11 @@ const RadialMenu = ({
   };
 
   const styles = {
-    // Floating trigger button
     trigger: {
       position: 'fixed',
-      bottom: '90px',
-      right: '20px',
+      left: `${position.x}px`,
+      top: `${position.y}px`,
+      transform: `translate(-50%, -50%) ${isOpen ? 'rotate(45deg) scale(1.1)' : 'rotate(0deg)'}`,
       width: '56px',
       height: '56px',
       borderRadius: '50%',
@@ -70,12 +109,11 @@ const RadialMenu = ({
       alignItems: 'center',
       justifyContent: 'center',
       fontSize: '24px',
-      cursor: 'pointer',
+      cursor: isDragging ? 'grabbing' : 'grab',
       zIndex: 1000,
-      transition: 'all 0.3s ease',
-      transform: isOpen ? 'rotate(45deg)' : 'rotate(0deg)',
+      transition: isDragging ? 'none' : 'all 0.3s ease',
+      touchAction: 'none',
     },
-    // Overlay when menu is open
     overlay: {
       position: 'fixed',
       top: 0,
@@ -89,17 +127,16 @@ const RadialMenu = ({
       pointerEvents: isOpen ? 'auto' : 'none',
       transition: 'opacity 0.3s ease',
     },
-    // Center of the wheel
     wheelCenter: {
       position: 'fixed',
-      bottom: '118px',
-      right: '48px',
+      left: `${position.x}px`,
+      top: `${position.y}px`,
+      transform: 'translate(-50%, -50%)',
       width: '0',
       height: '0',
       zIndex: 999,
     },
-    // Individual menu item
-    menuItem: (pos, color, isActive, delay) => ({
+    menuItem: (pos, color, delay) => ({
       position: 'absolute',
       left: `${pos.x}px`,
       top: `${pos.y}px`,
@@ -118,18 +155,8 @@ const RadialMenu = ({
       transition: `all 0.3s ease ${delay}ms`,
       opacity: isOpen && !subMenu ? 1 : 0,
     }),
-    menuIcon: {
-      fontSize: '20px',
-      lineHeight: 1,
-    },
-    menuLabel: {
-      fontSize: '8px',
-      fontWeight: 'bold',
-      color: COLORS.text,
-      marginTop: '2px',
-      letterSpacing: '0.5px',
-    },
-    // Submenu items (smaller, tighter circle)
+    menuIcon: { fontSize: '20px', lineHeight: 1 },
+    menuLabel: { fontSize: '8px', fontWeight: 'bold', color: COLORS.text, marginTop: '2px', letterSpacing: '0.5px' },
     subItem: (pos, color, delay) => ({
       position: 'absolute',
       left: `${pos.x}px`,
@@ -149,19 +176,8 @@ const RadialMenu = ({
       transition: `all 0.25s ease ${delay}ms`,
       opacity: subMenu ? 1 : 0,
     }),
-    subLabel: {
-      fontSize: '9px',
-      fontWeight: 'bold',
-      color: COLORS.text,
-      textAlign: 'center',
-      whiteSpace: 'nowrap',
-    },
-    subDetail: {
-      fontSize: '8px',
-      color: COLORS.textDim,
-      marginTop: '2px',
-    },
-    // Back button for submenu
+    subLabel: { fontSize: '9px', fontWeight: 'bold', color: COLORS.text, textAlign: 'center', whiteSpace: 'nowrap' },
+    subDetail: { fontSize: '8px', color: COLORS.textDim, marginTop: '2px' },
     backBtn: {
       position: 'absolute',
       left: '0px',
@@ -180,7 +196,6 @@ const RadialMenu = ({
       opacity: subMenu ? 1 : 0,
       transition: 'all 0.2s ease',
     },
-    // Center label showing current submenu
     centerLabel: {
       position: 'absolute',
       left: '50%',
@@ -193,6 +208,7 @@ const RadialMenu = ({
       textShadow: `0 0 10px ${COLORS.primary}`,
       opacity: subMenu ? 1 : 0,
       transition: 'opacity 0.2s ease',
+      whiteSpace: 'nowrap',
     },
   };
 
@@ -205,49 +221,33 @@ const RadialMenu = ({
 
   return (
     <>
-      {/* Overlay */}
       <div style={styles.overlay} onClick={() => { setIsOpen(false); setSubMenu(null); }} />
       
-      {/* Wheel Center */}
       {isOpen && (
         <div style={styles.wheelCenter}>
-          {/* Center label */}
           <div style={styles.centerLabel}>
             {subMenu === 'exploit' && '⚡ SELECT TARGET'}
             {subMenu === 'botnet' && '🤖 BOTNET NODES'}
           </div>
           
-          {/* Back button when in submenu */}
           {subMenu && (
-            <div style={styles.backBtn} onClick={() => setSubMenu(null)}>
-              ←
-            </div>
+            <div style={styles.backBtn} onClick={() => setSubMenu(null)}>←</div>
           )}
           
-          {/* Main menu items */}
           {!subMenu && mainItems.map((item, i) => {
             const pos = getPosition(i, mainItems.length, 85);
             return (
-              <div
-                key={item.id}
-                style={styles.menuItem(pos, item.color, false, i * 30)}
-                onClick={item.action}
-              >
+              <div key={item.id} style={styles.menuItem(pos, item.color, i * 30)} onClick={item.action}>
                 <span style={styles.menuIcon}>{item.icon}</span>
                 <span style={styles.menuLabel}>{item.label}</span>
               </div>
             );
           })}
           
-          {/* Exploit submenu */}
           {subMenu === 'exploit' && (
             <>
               {unhackedTargets.length === 0 ? (
-                <div style={{
-                  ...styles.subItem({ x: 0, y: -60 }, COLORS.textDim, 0),
-                  opacity: 1,
-                  transform: 'translate(-50%, -50%) scale(1)',
-                }}>
+                <div style={{ ...styles.subItem({ x: 0, y: -60 }, COLORS.textDim, 0), opacity: 1, transform: 'translate(-50%, -50%) scale(1)' }}>
                   <span style={styles.subLabel}>NO TARGETS</span>
                   <span style={styles.subDetail}>Run NMAP first</span>
                 </div>
@@ -255,14 +255,8 @@ const RadialMenu = ({
                 unhackedTargets.slice(0, 6).map((node, i) => {
                   const pos = getPosition(i, Math.min(unhackedTargets.length, 6), 80);
                   return (
-                    <div
-                      key={node.ip}
-                      style={styles.subItem(pos, expColor(node.exp), i * 40)}
-                      onClick={() => tap(`${node.exp} ${node.ip}`)}
-                    >
-                      <span style={{ ...styles.subLabel, color: expColor(node.exp) }}>
-                        ⚡ {node.exp.toUpperCase()}
-                      </span>
+                    <div key={node.ip} style={styles.subItem(pos, expColor(node.exp), i * 40)} onClick={() => tap(`${node.exp} ${node.ip}`)}>
+                      <span style={{ ...styles.subLabel, color: expColor(node.exp) }}>⚡ {node.exp.toUpperCase()}</span>
                       <span style={styles.subDetail}>{node.name.slice(0, 12)}</span>
                     </div>
                   );
@@ -271,48 +265,27 @@ const RadialMenu = ({
             </>
           )}
           
-          {/* Botnet submenu */}
           {subMenu === 'botnet' && (
             <>
               {botnetNodes.length === 0 ? (
-                <div style={{
-                  ...styles.subItem({ x: 0, y: -60 }, COLORS.textDim, 0),
-                  opacity: 1,
-                  transform: 'translate(-50%, -50%) scale(1)',
-                }}>
+                <div style={{ ...styles.subItem({ x: 0, y: -60 }, COLORS.textDim, 0), opacity: 1, transform: 'translate(-50%, -50%) scale(1)' }}>
                   <span style={styles.subLabel}>NO BOTS</span>
                   <span style={styles.subDetail}>Deploy SLIVER first</span>
                 </div>
               ) : (
                 <>
-                  {/* Botnet actions */}
-                  <div
-                    style={styles.subItem({ x: -70, y: -50 }, COLORS.danger, 0)}
-                    onClick={() => { onFillInput('hping3 '); setIsOpen(false); setSubMenu(null); }}
-                  >
+                  <div style={styles.subItem({ x: -70, y: -50 }, COLORS.danger, 0)} onClick={() => { onFillInput('hping3 '); setIsOpen(false); setSubMenu(null); }}>
                     <span style={styles.subLabel}>⚡ HPING3</span>
                   </div>
-                  <div
-                    style={styles.subItem({ x: 70, y: -50 }, COLORS.warning, 50)}
-                    onClick={() => { onFillInput('mimikatz '); setIsOpen(false); setSubMenu(null); }}
-                  >
+                  <div style={styles.subItem({ x: 70, y: -50 }, COLORS.warning, 50)} onClick={() => { onFillInput('mimikatz '); setIsOpen(false); setSubMenu(null); }}>
                     <span style={styles.subLabel}>🔑 MIMIKATZ</span>
                   </div>
-                  
-                  {/* Bot nodes in a row below */}
-                  {botnetNodes.slice(0, 4).map((node, i) => {
-                    const pos = { x: -60 + (i * 40), y: 40 };
-                    return (
-                      <div
-                        key={node.ip}
-                        style={styles.subItem(pos, COLORS.secondary, i * 40 + 100)}
-                        onClick={() => tap(`nmap ${node.ip}`)}
-                      >
-                        <span style={styles.subLabel}>🤖</span>
-                        <span style={styles.subDetail}>{node.name.slice(0, 8)}</span>
-                      </div>
-                    );
-                  })}
+                  {botnetNodes.slice(0, 4).map((node, i) => (
+                    <div key={node.ip} style={styles.subItem({ x: -60 + (i * 40), y: 40 }, COLORS.secondary, i * 40 + 100)} onClick={() => tap(`nmap ${node.ip}`)}>
+                      <span style={styles.subLabel}>🤖</span>
+                      <span style={styles.subDetail}>{node.name.slice(0, 8)}</span>
+                    </div>
+                  ))}
                 </>
               )}
             </>
@@ -320,8 +293,16 @@ const RadialMenu = ({
         </div>
       )}
       
-      {/* Trigger Button */}
-      <div style={styles.trigger} onClick={() => { buzz(40); setIsOpen(!isOpen); setSubMenu(null); }}>
+      <div
+        style={styles.trigger}
+        onMouseDown={handleDragStart}
+        onMouseMove={handleDragMove}
+        onMouseUp={handleDragEnd}
+        onMouseLeave={() => isDragging && handleDragEnd()}
+        onTouchStart={handleDragStart}
+        onTouchMove={handleDragMove}
+        onTouchEnd={handleDragEnd}
+      >
         {isOpen ? '✕' : '⚡'}
       </div>
     </>

@@ -1,4 +1,5 @@
 import HelpMenu from './components/HelpMenu';
+import RadialMenu from './components/RadialMenu';
 import AiSettings from './components/AiSettings';
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import SoundManager from './components/SoundManager';
@@ -3590,7 +3591,8 @@ if (screen === 'soundmanager') {
         <div ref={terminalEndRef} style={{ height: '8px' }} />
       </div>
 
-      {isMobile && (
+      {isMobile && screen === 'game' &&  (
+      <>
         <MobileTouchUI
           world={world}
           currentRegion={currentRegion}
@@ -3618,6 +3620,25 @@ if (screen === 'soundmanager') {
           alignment={alignment}
           pendingInteraction={pendingInteraction}
         />
+        <RadialMenu
+      onCommand={executeQuickCommand}
+      onFillInput={(text) => { setInput(text); setShowMobileKeyboard(true); setTimeout(() => inputRef.current?.focus(), 100); }}
+      onToggleMap={() => setMapExpanded(e => !e)}
+      discoveredNodes={Object.entries(world)
+        .filter(([k, v]) => k !== 'local' && !v.isHidden)
+        .map(([ip, node]) => ({
+          ip,
+          name: node.org?.orgName || node.name || ip,
+          exp: node.exp || 'hydra',
+          hacked: node.hacked || false,
+          hasSliver: botnet.includes(ip),
+        }))}
+      botnet={botnet}
+      consumables={consumables}
+      mapExpanded={mapExpanded}
+    />
+  </>
+)}
       )}
 
       {(!isMobile || showMobileKeyboard) && (

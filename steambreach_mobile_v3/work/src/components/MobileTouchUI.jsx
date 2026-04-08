@@ -108,6 +108,7 @@ export default function MobileTouchUI({
   onFillInput,
   externalSelectedIP, clearExternalSelection,
   activeStory, alignment,
+  activeStory, alignment, pendingInteraction,
 }) {
   const [panel, setPanel] = useState('actions');
   const [selectedIP, setSelectedIP] = useState(null);
@@ -302,6 +303,48 @@ export default function MobileTouchUI({
 
         {panel === 'actions' && !subMenu && (
   <>
+    {/* PENDING INTERACTION - Civilian choices */}
+{pendingInteraction && isInside && targetIP === pendingInteraction.id?.split(':')[0] && (
+  <div style={{
+    background: `${COLORS.warning}10`, border: `1px solid ${COLORS.warning}40`,
+    borderRadius: '5px', padding: '12px', marginBottom: '8px',
+  }}>
+    <div style={{ ...S.label, color: COLORS.warning, fontSize: '11px', marginBottom: '8px' }}>
+      ⚡ OPPORTUNITY DETECTED
+    </div>
+    <div style={{ display: 'flex', gap: '6px' }}>
+      {pendingInteraction.kind === 'assist' && (
+        <button onClick={() => tap('assist')} style={{
+          ...btn('#00ff88', true, true), flex: 1,
+          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px',
+        }}>
+          <span style={{ fontSize: '14px' }}>🛠 ASSIST</span>
+          <span style={{ fontSize: '10px', fontWeight: 'normal', color: '#00ff8899' }}>Help the user</span>
+          <span style={{ fontSize: '11px' }}>SIGNAL +{pendingInteraction.signal || 5}</span>
+        </button>
+      )}
+      {pendingInteraction.kind === 'crash' && (
+        <button onClick={() => tap('crashpc')} style={{
+          ...btn('#ff3366', true, true), flex: 1,
+          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px',
+        }}>
+          <span style={{ fontSize: '14px' }}>💀 CRASH</span>
+          <span style={{ fontSize: '10px', fontWeight: 'normal', color: '#ff336699' }}>Brick the machine</span>
+          <span style={{ fontSize: '11px' }}>CHAOS +{pendingInteraction.chaos || 5}</span>
+        </button>
+      )}
+      {pendingInteraction.kind === 'salvage' && (
+        <button onClick={() => tap('salvage')} style={{
+          ...btn('#ffaa00', true, true), flex: 1,
+          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px',
+        }}>
+          <span style={{ fontSize: '14px' }}>🔍 SALVAGE</span>
+          <span style={{ fontSize: '10px', fontWeight: 'normal', color: '#ffaa0099' }}>Extract hidden data</span>
+        </button>
+      )}
+    </div>
+  </div>
+)}
     {/* PWNKIT - only show if not root */}
     {privilege !== 'root' && (
       <div style={S.row}>

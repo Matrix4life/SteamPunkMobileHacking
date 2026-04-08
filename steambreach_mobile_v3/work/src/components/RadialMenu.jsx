@@ -274,10 +274,10 @@ const RadialMenu = ({
       </div>
     ) : (
       <>
-        <div style={styles.subItem({ x: -80, y: -60 }, COLORS.danger, 0)} onClick={() => { onFillInput('hping3 '); setIsOpen(false); setSubMenu(null); }}>
+        <div style={styles.subItem({ x: -80, y: -120 }, COLORS.danger, 0)} onClick={() => { onFillInput('hping3 '); setIsOpen(false); setSubMenu(null); }}>
           <span style={styles.subLabel}>⚡ HPING3</span>
         </div>
-        <div style={styles.subItem({ x: 80, y: -60 }, COLORS.warning, 50)} onClick={() => { onFillInput('mimikatz '); setIsOpen(false); setSubMenu(null); }}>
+        <div style={styles.subItem({ x: 80, y: -120 }, COLORS.warning, 50)} onClick={() => { onFillInput('mimikatz '); setIsOpen(false); setSubMenu(null); }}>
           <span style={styles.subLabel}>🔑 MIMIKATZ</span>
         </div>
         {botnetNodes.slice(0, 6).map((node, i) => {

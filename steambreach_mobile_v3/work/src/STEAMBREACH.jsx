@@ -2012,10 +2012,10 @@ resolve: async (args) => {
     return "[-] No active intercept found. You must 'cat' a Story Trigger file first (e.g., .rec, .enc, or .mbox).";
   }
 
-  const choice = args?.[1]; // Get the '1' or '2' from the command
-  if (choice !== '1' && choice !== '2') {
-    return "[-] Usage: resolve [1 or 2]";
-  }
+  const choice = arg1; // arg1 is already defined at the top of executeCommand
+if (choice !== '1' && choice !== '2') {
+  return "[-] Usage: resolve [1 or 2]";
+}
 
   if (choice === '1') {
     // --- SIGNAL PATH (The "Good" Choice) ---

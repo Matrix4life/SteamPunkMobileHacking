@@ -16,50 +16,7 @@ const RadialMenu = ({
   const [isDragging, setIsDragging] = useState(false);
   const dragStart = useRef({ x: 0, y: 0 });
   const dragMoved = useRef(false);
-  const handleDragStart = (e) => {
-  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-  dragStart.current = { x: clientX - position.x, y: clientY - position.y };
-  dragMoved.current = false;
-  setIsDragging(true);
-  
-  // Start hold timer — if held 500ms without moving, close menu
-  holdTimer.current = setTimeout(() => {
-    if (!dragMoved.current && isOpen) {
-      buzz(40);
-      setIsOpen(false);
-      setSubMenu(null);
-    }
-  }, 500);
-};
-
-const handleDragMove = (e) => {
-  if (!isDragging) return;
-  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-  const newX = clientX - dragStart.current.x;
-  const newY = clientY - dragStart.current.y;
-  
-  if (Math.abs(newX - position.x) > 10 || Math.abs(newY - position.y) > 10) {
-    dragMoved.current = true;
-    clearTimeout(holdTimer.current); // Cancel hold if dragging
-  }
-  
-  const boundedX = Math.max(60, Math.min(window.innerWidth - 60, newX));
-  const boundedY = Math.max(100, Math.min(window.innerHeight - 60, newY));
-  setPosition({ x: boundedX, y: boundedY });
-};
-
-const handleDragEnd = () => {
-  setIsDragging(false);
-  clearTimeout(holdTimer.current);
-  
-  // Only open if we didn't drag and menu is closed
-  if (!dragMoved.current && !isOpen) {
-    buzz(40);
-    setIsOpen(true);
-  }
-};
+  const holdTimer = useRef(null);
 
   const buzz = (ms = 25) => {
     try { navigator.vibrate?.(ms); } catch {}
@@ -77,17 +34,51 @@ const handleDragEnd = () => {
     setSubMenu(subMenu === menu ? null : menu);
   };
 
-  
-  
+  const handleDragStart = (e) => {
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    dragStart.current = { x: clientX - position.x, y: clientY - position.y };
+    dragMoved.current = false;
+    setIsDragging(true);
     
-    // Keep within bounds
+    // Start hold timer — if held 500ms without moving, close menu
+    holdTimer.current = setTimeout(() => {
+      if (!dragMoved.current && isOpen) {
+        buzz(40);
+        setIsOpen(false);
+        setSubMenu(null);
+      }
+    }, 500);
+  };
+
+  const handleDragMove = (e) => {
+    if (!isDragging) return;
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    const newX = clientX - dragStart.current.x;
+    const newY = clientY - dragStart.current.y;
+    
+    if (Math.abs(newX - position.x) > 10 || Math.abs(newY - position.y) > 10) {
+      dragMoved.current = true;
+      clearTimeout(holdTimer.current);
+    }
+    
     const boundedX = Math.max(60, Math.min(window.innerWidth - 60, newX));
     const boundedY = Math.max(100, Math.min(window.innerHeight - 60, newY));
     setPosition({ x: boundedX, y: boundedY });
   };
 
-  
-  // Main menu items
+  const handleDragEnd = () => {
+    setIsDragging(false);
+    clearTimeout(holdTimer.current);
+    
+    // Only open if we didn't drag and menu is closed
+    if (!dragMoved.current && !isOpen) {
+      buzz(40);
+      setIsOpen(true);
+    }
+  };
+
   const mainItems = [
     { id: 'nmap', icon: '📡', label: 'NMAP', color: COLORS.primary, action: () => tap('nmap') },
     { id: 'map', icon: '🗺', label: 'MAP', color: COLORS.secondary, action: () => { buzz(25); onToggleMap(); setIsOpen(false); } },
@@ -102,7 +93,7 @@ const handleDragEnd = () => {
   const unhackedTargets = discoveredNodes.filter(n => !n.hacked);
   const botnetNodes = discoveredNodes.filter(n => n.hasSliver);
 
-  const getPosition = (index, total, radius = 85) => {
+  const getPosition = (index, total, radius = 110) => {
     const angle = (index / total) * 2 * Math.PI - Math.PI / 2;
     return {
       x: Math.cos(angle) * radius,
@@ -216,7 +207,7 @@ const handleDragEnd = () => {
     centerLabel: {
       position: 'absolute',
       left: '50%',
-      top: '-160px',
+      top: '-140px',
       transform: 'translateX(-50%)',
       fontSize: '11px',
       fontWeight: 'bold',
@@ -282,34 +273,34 @@ const handleDragEnd = () => {
             </>
           )}
           
-         {subMenu === 'botnet' && (
-  <>
-    {botnetNodes.length === 0 ? (
-      <div style={{ ...styles.subItem({ x: 0, y: -60 }, COLORS.textDim, 0), opacity: 1, transform: 'translate(-50%, -50%) scale(1)' }}>
-        <span style={styles.subLabel}>NO BOTS</span>
-        <span style={styles.subDetail}>Deploy SLIVER first</span>
-      </div>
-    ) : (
-      <>
-        <div style={styles.subItem({ x: -80, y: -120 }, COLORS.danger, 0)} onClick={() => { onFillInput('hping3 '); setIsOpen(false); setSubMenu(null); }}>
-          <span style={styles.subLabel}>⚡ HPING3</span>
-        </div>
-        <div style={styles.subItem({ x: 80, y: -120 }, COLORS.warning, 50)} onClick={() => { onFillInput('mimikatz '); setIsOpen(false); setSubMenu(null); }}>
-          <span style={styles.subLabel}>🔑 MIMIKATZ</span>
-        </div>
-        {botnetNodes.slice(0, 6).map((node, i) => {
-          const pos = getPosition(i, Math.min(botnetNodes.length, 6), 100);
-          return (
-            <div key={node.ip} style={styles.subItem(pos, COLORS.secondary, i * 40 + 100)} onClick={() => tap(`nmap ${node.ip}`)}>
-              <span style={styles.subLabel}>🤖 {node.name.slice(0, 8)}</span>
-              <span style={styles.subDetail}>{node.ip.slice(-8)}</span>
-            </div>
-          );
-        })}
-      </>
-    )}
-  </>
-)}
+          {subMenu === 'botnet' && (
+            <>
+              {botnetNodes.length === 0 ? (
+                <div style={{ ...styles.subItem({ x: 0, y: -60 }, COLORS.textDim, 0), opacity: 1, transform: 'translate(-50%, -50%) scale(1)' }}>
+                  <span style={styles.subLabel}>NO BOTS</span>
+                  <span style={styles.subDetail}>Deploy SLIVER first</span>
+                </div>
+              ) : (
+                <>
+                  <div style={styles.subItem({ x: -80, y: -120 }, COLORS.danger, 0)} onClick={() => { onFillInput('hping3 '); setIsOpen(false); setSubMenu(null); }}>
+                    <span style={styles.subLabel}>⚡ HPING3</span>
+                  </div>
+                  <div style={styles.subItem({ x: 80, y: -120 }, COLORS.warning, 50)} onClick={() => { onFillInput('mimikatz '); setIsOpen(false); setSubMenu(null); }}>
+                    <span style={styles.subLabel}>🔑 MIMIKATZ</span>
+                  </div>
+                  {botnetNodes.slice(0, 6).map((node, i) => {
+                    const pos = getPosition(i, Math.min(botnetNodes.length, 6), 100);
+                    return (
+                      <div key={node.ip} style={styles.subItem(pos, COLORS.secondary, i * 40 + 100)} onClick={() => tap(`nmap ${node.ip}`)}>
+                        <span style={styles.subLabel}>🤖 {node.name.slice(0, 8)}</span>
+                        <span style={styles.subDetail}>{node.ip.slice(-8)}</span>
+                      </div>
+                    );
+                  })}
+                </>
+              )}
+            </>
+          )}
         </div>
       )}
       

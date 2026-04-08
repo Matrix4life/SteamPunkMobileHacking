@@ -287,8 +287,8 @@ const RadialMenu = ({
       <span style={styles.subLabel}>🤖 {node.name.slice(0, 8)}</span>
       <span style={styles.subDetail}>{node.ip.slice(-8)}</span>
     </div>
-                  ))}
-                </>
+                  );
+})}
               )}
             </>
           )}

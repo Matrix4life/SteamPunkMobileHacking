@@ -593,6 +593,19 @@ export default function MobileTouchUI({
         <>
           <div style={{ ...S.label, fontSize: '12px', color: COLORS.ip }}>{selectedNode.name}</div>
           <div style={{ color: COLORS.textDim, fontSize: '11px', marginBottom: '6px', paddingLeft: '2px' }}>{selectedNode.ip} • {selectedNode.sec} SEC</div>
+          <div style={{ color: COLORS.textDim, fontSize: '11px', marginBottom: '6px', paddingLeft: '2px' }}>
+  {selectedNode.ip} • {selectedNode.sec} SEC • {selectedNode.exp?.toUpperCase()}
+</div>
+        {selectedNode.hasSliver && (
+  <div style={{ color: COLORS.secondary, fontSize: '10px', fontWeight: 'bold', marginBottom: '8px', padding: '4px 8px', background: `${COLORS.secondary}20`, borderRadius: '4px', display: 'inline-block' }}>
+    🤖 SLIVER C2 ACTIVE
+  </div>
+)}
+{selectedNode.isProxy && (
+  <div style={{ color: COLORS.primary, fontSize: '10px', fontWeight: 'bold', marginBottom: '8px', marginLeft: '6px', padding: '4px 8px', background: `${COLORS.primary}20`, borderRadius: '4px', display: 'inline-block' }}>
+    🛡 PROXY NODE
+  </div>
+)}  
           <div style={S.row}>
   <button onClick={() => tap(`nmap ${selectedNode.ip}`)} style={btn(COLORS.primary, true, true)}>📡 SCAN</button>
   <button 
@@ -668,7 +681,7 @@ export default function MobileTouchUI({
               )}
             </div>
           )}
-          <button onClick={() => { buzz(15); setSelectedIP(null); setPanel('targets'); }} style={{ ...btn(COLORS.textDim, false, false), marginTop: '4px' }}>← BACK</button>
+          <button onClick={() => { buzz(15); setSelectedIP(null); setPanel('targets'); }} style={{ ...btn(COLORS.textDim, false, false), marginTop: '8px' }}>← BACK</button>
         </>
       )}
     </div>

@@ -150,12 +150,36 @@ const STEAMBREACH = () => {
   
   const pair = actionPairs[Math.floor(Math.random() * actionPairs.length)];
   
-  let storyText = '';
-  try {
-    const prompt = `Write 2-3 sentences for a hacking game. You just breached ${orgName} (a ${orgType}). You found something explosive — corruption, cover-ups, stolen data, or crimes. Set up a moral dilemma. No markdown. Dark cyberpunk tone. Max 50 words.`;
-    storyText = await generateDirectorText(prompt, 'You are a noir narrative generator for a cyberpunk hacking game.');
-  } catch (e) {
-    storyText = `You've found encrypted files that ${orgName} never wanted anyone to see. The data reveals something they'd kill to keep buried.`;
+  // Fallback stories if AI fails or isn't configured
+  const fallbackStories = [
+    `You've found encrypted files that ${orgName} never wanted anyone to see. The data reveals something they'd kill to keep buried.`,
+    `Internal logs show ${orgName} has been covering up a massive data breach. Thousands of customers are affected and don't know it.`,
+    `A hidden folder contains evidence that ${orgName} executives have been embezzling funds. The paper trail leads straight to the top.`,
+    `Intercepted emails reveal ${orgName} is about to lay off half their staff while executives cash out stock options.`,
+    `You've stumbled onto proof that ${orgName} falsified safety reports. People could get hurt if this stays buried.`,
+  ];
+  
+  let storyText = fallbackStories[Math.floor(Math.random() * fallbackStories.length)];
+  
+  // Check if AI is configured
+  const config = JSON.parse(localStorage.getItem('steambreach_ai_config') || '{}');
+  if (config.apiKey && config.apiKey.trim() !== '') {
+    try {
+      // Add 8 second timeout
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('timeout')), 8000)
+      );
+      const prompt = `Write 2-3 sentences for a hacking game. You just breached ${orgName} (a ${orgType}). You found something explosive — corruption, cover-ups, stolen data, or crimes. Set up a moral dilemma. No markdown. Dark cyberpunk tone. Max 50 words.`;
+      
+      const aiPromise = generateDirectorText(prompt, 'You are a noir narrative generator for a cyberpunk hacking game.');
+      const result = await Promise.race([aiPromise, timeoutPromise]);
+      
+      if (result && !result.startsWith('ERROR')) {
+        storyText = result;
+      }
+    } catch (e) {
+      // Use fallback on any error
+    }
   }
 
   return {

@@ -2932,18 +2932,15 @@ return `[+] ${actionResult}\n[+] CHAOS +10 | ₿${payout.toLocaleString()} credi
 if (typeof rawData === 'string' && rawData.includes('[STORY_TRIGGER]') && !world[targetIP]?.storyCompleted) {
   if (!isInside) return '[-] Must be inside a target node to read intercepts.';
   
-  // If story already active for this node, just show it
   if (activeStory && activeStory.ip === targetIP) {
     return `[INTERCEPTED TRANSMISSION — ${fileName}]\n\n${activeStory.story}\n\n[1] ${activeStory.good_action}\n[2] ${activeStory.evil_action}\n\n[*] Type 'resolve 1' or 'resolve 2' to choose.`;
   }
   
-  // Generate new story
   const story = await generateStory(targetIP, world[targetIP]);
   setActiveStory(story);
   
   return `[INTERCEPTED TRANSMISSION — ${fileName}]\n\n${story.story}\n\n[1] ${story.good_action}\n[2] ${story.evil_action}\n\n[*] Type 'resolve 1' or 'resolve 2' to choose.`;
 }
-
     // 4. Handle High-Tier Locks safely
     if (typeof rawData === 'string' && rawData.startsWith('[LOCKED]')) {
       if (privilege !== 'root') return `cat: ${fileName}: Permission denied. Root required.`;

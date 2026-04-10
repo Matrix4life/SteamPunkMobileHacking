@@ -672,3 +672,233 @@ Return ONLY raw JSON:
     return fallbackContract;
   }
 };
+
+
+// ═══════════════════════════════════════════════════════════════
+// WIFI CONTRACT GENERATION
+// ═══════════════════════════════════════════════════════════════
+
+export const WIFI_CONTRACT_TYPES = {
+  wifi_recon: {
+    label: 'WIRELESS RECON',
+    desc: 'Identify and catalog all wireless networks at target location',
+    objectiveTypes: ['scan'],
+    rewardMult: 0.5,
+    heatMult: 0.3,
+  },
+  wifi_capture: {
+    label: 'HANDSHAKE CAPTURE',
+    desc: 'Capture WPA2 handshake from target network without connecting',
+    objectiveTypes: ['scan', 'focus', 'deauth'],
+    rewardMult: 1.0,
+    heatMult: 0.6,
+  },
+  wifi_breach: {
+    label: 'WIRELESS BREACH',
+    desc: 'Full WiFi infiltration - crack password and access internal network',
+    objectiveTypes: ['scan', 'focus', 'deauth', 'crack', 'connect'],
+    rewardMult: 2.0,
+    heatMult: 1.0,
+  },
+  wifi_plant: {
+    label: 'INTERNAL PLANT',
+    desc: 'Connect via WiFi and deploy C2 beacon on internal infrastructure',
+    objectiveTypes: ['scan', 'focus', 'deauth', 'crack', 'connect', 'beacon'],
+    rewardMult: 2.5,
+    heatMult: 1.5,
+  },
+  wifi_silent: {
+    label: 'GHOST PROTOCOL',
+    desc: 'Complete WiFi breach with zero heat generated',
+    objectiveTypes: ['scan', 'focus', 'deauth', 'crack', 'connect'],
+    constraints: { maxHeat: 0 },
+    rewardMult: 3.0,
+    heatMult: 0,
+  }
+};
+
+export const generateWiFiContract = (wifiNetwork, currentRep, directorModifiers = {}) => {
+  // Determine contract type based on reputation and randomness
+  const types = Object.keys(WIFI_CONTRACT_TYPES);
+  let availableTypes = types;
+  
+  // Filter by reputation
+  if (currentRep < 25) {
+    availableTypes = ['wifi_recon', 'wifi_capture'];
+  } else if (currentRep < 75) {
+    availableTypes = ['wifi_capture', 'wifi_breach'];
+  } else if (currentRep < 150) {
+    availableTypes = ['wifi_breach', 'wifi_plant'];
+  } else {
+    availableTypes = ['wifi_plant', 'wifi_silent'];
+  }
+  
+  const selectedType = availableTypes[Math.floor(Math.random() * availableTypes.length)];
+  const contractDef = WIFI_CONTRACT_TYPES[selectedType];
+  
+  // Build objectives based on contract type
+  const objectiveLabels = {
+    scan: 'Scan wireless networks',
+    focus: 'Focus capture on target BSSID',
+    deauth: 'Capture WPA handshake via deauth',
+    crack: 'Crack WiFi password',
+    connect: 'Connect to internal network',
+    beacon: 'Deploy C2 beacon on internal server'
+  };
+  
+  const objectives = contractDef.objectiveTypes.map((type, idx) => ({
+    id: `wifi_obj_${idx}`,
+    type: type,
+    label: objectiveLabels[type],
+    completed: false,
+    wifiObjective: true
+  }));
+  
+  // Calculate reward based on network value and difficulty
+  const baseReward = wifiNetwork.target ? 15000 : 5000;
+  const difficultyMult = directorModifiers.wifiDifficulty === 'hard' ? 1.5 : 
+                         directorModifiers.wifiDifficulty === 'extreme' ? 2.0 : 1.0;
+  const reward = Math.floor(baseReward * contractDef.rewardMult * difficultyMult);
+  
+  // Rep reward
+  const repReward = Math.floor((5 + Math.random() * 15) * contractDef.rewardMult);
+  
+  // Time limit and heat cap
+  const timeLimit = selectedType === 'wifi_silent' ? 180 : 
+                    selectedType === 'wifi_plant' ? 300 :
+                    selectedType === 'wifi_breach' ? 360 : 420;
+  const heatCap = contractDef.constraints?.maxHeat ?? (selectedType === 'wifi_recon' ? 90 : 60);
+  
+  return {
+    id: `WIFI-${Date.now().toString(36).toUpperCase()}`,
+    type: selectedType,
+    isWifiContract: true,
+    targetNetwork: wifiNetwork.essid,
+    targetBssid: wifiNetwork.bssid,
+    targetName: `${wifiNetwork.essid} Network`,
+    desc: contractDef.desc,
+    briefing: `[FIXER] Got a wireless job for you. Target is ${wifiNetwork.essid}. ${wifiNetwork.enc} encryption, ${wifiNetwork.clients} active clients. ${wifiNetwork.target ? 'High-value corporate network - big payday if you can get inside.' : 'Standard residential network.'}`,
+    objectives: objectives,
+    reward: reward,
+    repReward: repReward,
+    timeLimit: timeLimit,
+    heatCap: heatCap,
+    probability: Math.floor(60 + Math.random() * 30),
+    active: false,
+    completed: false,
+    startTime: null,
+    riskLabel: selectedType === 'wifi_silent' ? 'EXTREME' : 
+               selectedType === 'wifi_plant' ? 'HIGH' : 
+               selectedType === 'wifi_breach' ? 'MODERATE' : 'LOW'
+  };
+};
+
+// WiFi Story Hooks
+export const WIFI_STORY_HOOKS = [
+  {
+    id: 'slack_intercept',
+    weight: 0.3,
+    file: 'intercepted_slack.log',
+    generate: (networkName) => ({
+      content: \`[INTERCEPTED SLACK DM - UNENCRYPTED]
+    
+CFO → CEO: "The auditors are asking about the Cayman transfers again."
+CEO → CFO: "Stall them. Delete the Q3 backup tapes."
+CFO → CEO: "Already done. But IT keeps copies on 10.0.0.30..."
+CEO → CFO: "Handle it. I don't care how."
+
+[END INTERCEPT - captured via \${networkName}]\`,
+      choices: [
+        { id: 'signal', label: 'Leak to journalists', reward: 5000, rep: 15, alignment: 'signal' },
+        { id: 'chaos', label: 'Blackmail executives', reward: 50000, rep: -10, alignment: 'chaos' }
+      ]
+    })
+  },
+  {
+    id: 'credentials_dump',
+    weight: 0.4,
+    file: 'cached_creds.txt',
+    generate: (networkName) => ({
+      content: \`[BROWSER CREDENTIAL DUMP - ChromePass v2.1]
+    
+Site: internal.\${networkName.toLowerCase().replace(/[^a-z]/g, '')}.local
+User: admin@company.corp
+Pass: Hr@dm1n2025!
+
+Site: payroll.\${networkName.toLowerCase().replace(/[^a-z]/g, '')}.local  
+User: payroll_svc
+Pass: Summer2025!
+
+[2 credentials extracted via \${networkName}]\`,
+      choices: [
+        { id: 'signal', label: 'Report security flaw anonymously', reward: 2000, rep: 10, alignment: 'signal' },
+        { id: 'neutral', label: 'Sell on darknet', reward: 15000, rep: 0, alignment: 'neutral' }
+      ]
+    })
+  },
+  {
+    id: 'whistleblower',
+    weight: 0.15,
+    file: 'draft_email.eml',
+    generate: (networkName) => ({
+      content: \`[RECOVERED EMAIL DRAFT - UNSENT]
+
+From: j.chen@\${networkName.toLowerCase().replace(/[^a-z]/g, '')}.corp
+To: tips@sec.gov
+Subject: [DRAFT] Regarding accounting irregularities
+
+I've been with the company for 12 years. I can't stay silent anymore.
+The offshore shell companies, the falsified expense reports...
+
+I have documents. I'm scared but I need to do the right thing.
+
+[DRAFT SAVED - captured via \${networkName}]\`,
+      choices: [
+        { id: 'signal', label: 'Help the whistleblower', reward: 0, rep: 25, alignment: 'signal' },
+        { id: 'chaos', label: 'Sell identity to security', reward: 30000, rep: -20, alignment: 'chaos' }
+      ]
+    })
+  },
+  {
+    id: 'medical_records',
+    weight: 0.15,
+    file: 'patient_db_export.csv',
+    generate: (networkName) => ({
+      content: \`[DATABASE EXPORT - MEDICAL RECORDS]
+
+Patients: 4,521
+SSN records: 4,521  
+Insurance: 4,102
+Diagnosis codes: 12,847
+
+WARNING: HIPAA-PROTECTED DATA
+Estimated black market value: $180,000
+
+[Exported via \${networkName} breach]\`,
+      choices: [
+        { id: 'signal', label: 'Delete and report breach', reward: 0, rep: 30, alignment: 'signal' },
+        { id: 'neutral', label: 'Leave it alone', reward: 0, rep: 0, alignment: 'neutral' },
+        { id: 'chaos', label: 'Sell to identity thieves', reward: 45000, rep: -30, alignment: 'chaos' }
+      ]
+    })
+  }
+];
+
+export const selectWiFiStoryHook = (networkName) => {
+  const totalWeight = WIFI_STORY_HOOKS.reduce((sum, h) => sum + h.weight, 0);
+  let roll = Math.random() * totalWeight;
+  
+  for (const hook of WIFI_STORY_HOOKS) {
+    roll -= hook.weight;
+    if (roll <= 0) {
+      return {
+        ...hook,
+        ...hook.generate(networkName)
+      };
+    }
+  }
+  
+  // Fallback
+  const fallback = WIFI_STORY_HOOKS[0];
+  return { ...fallback, ...fallback.generate(networkName) };
+};

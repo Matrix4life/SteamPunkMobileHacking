@@ -800,14 +800,14 @@ export const WIFI_STORY_HOOKS = [
     weight: 0.3,
     file: 'intercepted_slack.log',
     generate: (networkName) => ({
-      content: \`[INTERCEPTED SLACK DM - UNENCRYPTED]
+      content: `[INTERCEPTED SLACK DM - UNENCRYPTED]
     
 CFO → CEO: "The auditors are asking about the Cayman transfers again."
 CEO → CFO: "Stall them. Delete the Q3 backup tapes."
 CFO → CEO: "Already done. But IT keeps copies on 10.0.0.30..."
 CEO → CFO: "Handle it. I don't care how."
 
-[END INTERCEPT - captured via \${networkName}]\`,
+[END INTERCEPT - captured via ${networkName}]`,
       choices: [
         { id: 'signal', label: 'Leak to journalists', reward: 5000, rep: 15, alignment: 'signal' },
         { id: 'chaos', label: 'Blackmail executives', reward: 50000, rep: -10, alignment: 'chaos' }
@@ -819,17 +819,17 @@ CEO → CFO: "Handle it. I don't care how."
     weight: 0.4,
     file: 'cached_creds.txt',
     generate: (networkName) => ({
-      content: \`[BROWSER CREDENTIAL DUMP - ChromePass v2.1]
+      content: `[BROWSER CREDENTIAL DUMP - ChromePass v2.1]
     
-Site: internal.\${networkName.toLowerCase().replace(/[^a-z]/g, '')}.local
+Site: internal.${networkName.toLowerCase().replace(/[^a-z]/g, '')}.local
 User: admin@company.corp
 Pass: Hr@dm1n2025!
 
-Site: payroll.\${networkName.toLowerCase().replace(/[^a-z]/g, '')}.local  
+Site: payroll.${networkName.toLowerCase().replace(/[^a-z]/g, '')}.local  
 User: payroll_svc
 Pass: Summer2025!
 
-[2 credentials extracted via \${networkName}]\`,
+[2 credentials extracted via ${networkName}]`,
       choices: [
         { id: 'signal', label: 'Report security flaw anonymously', reward: 2000, rep: 10, alignment: 'signal' },
         { id: 'neutral', label: 'Sell on darknet', reward: 15000, rep: 0, alignment: 'neutral' }
@@ -841,9 +841,9 @@ Pass: Summer2025!
     weight: 0.15,
     file: 'draft_email.eml',
     generate: (networkName) => ({
-      content: \`[RECOVERED EMAIL DRAFT - UNSENT]
+      content: `[RECOVERED EMAIL DRAFT - UNSENT]
 
-From: j.chen@\${networkName.toLowerCase().replace(/[^a-z]/g, '')}.corp
+From: j.chen@${networkName.toLowerCase().replace(/[^a-z]/g, '')}.corp
 To: tips@sec.gov
 Subject: [DRAFT] Regarding accounting irregularities
 
@@ -852,7 +852,7 @@ The offshore shell companies, the falsified expense reports...
 
 I have documents. I'm scared but I need to do the right thing.
 
-[DRAFT SAVED - captured via \${networkName}]\`,
+[DRAFT SAVED - captured via ${networkName}]`,
       choices: [
         { id: 'signal', label: 'Help the whistleblower', reward: 0, rep: 25, alignment: 'signal' },
         { id: 'chaos', label: 'Sell identity to security', reward: 30000, rep: -20, alignment: 'chaos' }
@@ -864,7 +864,7 @@ I have documents. I'm scared but I need to do the right thing.
     weight: 0.15,
     file: 'patient_db_export.csv',
     generate: (networkName) => ({
-      content: \`[DATABASE EXPORT - MEDICAL RECORDS]
+      content: `[DATABASE EXPORT - MEDICAL RECORDS]
 
 Patients: 4,521
 SSN records: 4,521  
@@ -874,7 +874,7 @@ Diagnosis codes: 12,847
 WARNING: HIPAA-PROTECTED DATA
 Estimated black market value: $180,000
 
-[Exported via \${networkName} breach]\`,
+[Exported via ${networkName} breach]`,
       choices: [
         { id: 'signal', label: 'Delete and report breach', reward: 0, rep: 30, alignment: 'signal' },
         { id: 'neutral', label: 'Leave it alone', reward: 0, rep: 0, alignment: 'neutral' },

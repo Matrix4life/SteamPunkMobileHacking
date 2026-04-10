@@ -6,6 +6,7 @@ const DEFAULT_DIRECTOR = {
     commandCount: 0, failedCommands: 0, exploitsLanded: 0, exploitsFailed: 0,
     rootsObtained: 0, nodesLooted: 0, timesTraced: 0, timesHoneypotted: 0,
     contractsCompleted: 0, contractsFailed: 0, moneyEarned: 0,
+    wifiBreaches: 0, wifiContractsCompleted: 0,
     sessionStartTime: Date.now(), lastEvalTime: Date.now(),
     commandTimestamps: [], exploitTimestamps: [], rootTimestamps: [],
   },
@@ -14,8 +15,28 @@ const DEFAULT_DIRECTOR = {
     proxyCapBonus: 0, traceSpeedMult: 1.0, honeypotChance: 0.15,
     tierWeights: { low: 0.33, mid: 0.34, high: 0.33 },
     blueTeamMult: 1.0, contractTimeMult: 1.0, hintCooldown: 0,
+    // WiFi difficulty modifiers
+    wifiDifficulty: 'medium',
+    wifiIdsActive: false,
+    wifiDeauthDetection: 0.15,
+    wifiCrackTimeMult: 1.0,
   },
   narrativeQueue: [], lastNarrativeTime: 0,
+};
+
+// WiFi Difficulty Settings based on skill score
+const WIFI_DIFFICULTY_TIERS = {
+  easy: { idsActive: false, deauthDetection: 0.05, crackTimeMult: 0.7, passwordStrength: 'weak' },
+  medium: { idsActive: false, deauthDetection: 0.15, crackTimeMult: 1.0, passwordStrength: 'medium' },
+  hard: { idsActive: true, deauthDetection: 0.35, crackTimeMult: 1.5, passwordStrength: 'strong' },
+  extreme: { idsActive: true, deauthDetection: 0.60, crackTimeMult: 2.5, passwordStrength: 'uncrackable' }
+};
+
+const getWifiDifficulty = (skillScore) => {
+  if (skillScore >= 50) return 'extreme';
+  if (skillScore >= 25) return 'hard';
+  if (skillScore >= -15) return 'medium';
+  return 'easy';
 };
 
 const evaluatePlayerSkill = (metrics) => {
@@ -55,6 +76,14 @@ const evaluatePlayerSkill = (metrics) => {
 
 const computeDifficultyModifiers = (skillScore, inventory) => {
   const mods = { ...DEFAULT_DIRECTOR.modifiers };
+
+  // WiFi difficulty scales with player skill
+  const wifiDiff = getWifiDifficulty(skillScore);
+  const wifiSettings = WIFI_DIFFICULTY_TIERS[wifiDiff];
+  mods.wifiDifficulty = wifiDiff;
+  mods.wifiIdsActive = wifiSettings.idsActive;
+  mods.wifiDeauthDetection = wifiSettings.deauthDetection;
+  mods.wifiCrackTimeMult = wifiSettings.crackTimeMult;
 
   if (skillScore >= 40) {
     mods.proxyCapBonus = -1; mods.traceSpeedMult = 1.3; mods.honeypotChance = 0.25;
@@ -158,3 +187,6 @@ export {
   pickWeightedTier,
   generateDirectorNarrative,
 };
+
+
+export { WIFI_DIFFICULTY_TIERS, getWifiDifficulty };

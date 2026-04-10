@@ -38,6 +38,17 @@ const COMMAND_REGISTRY = [
   { cmd: 'curl <ip>', desc: 'Exploit HTTP/LFI vulnerability', category: 'RECON & ACCESS' },
   { cmd: 'ssh <email@ip> <password>', desc: 'Authenticate with stolen credentials — bypasses IDS logging', category: 'PRIVILEGE ESCALATION' },
 
+  // --- WIFI HACKING ---
+  { cmd: 'iwconfig', desc: 'Show wireless interface status (monitor/managed mode)', category: 'WIFI HACKING' },
+  { cmd: 'airmon-ng start wlan0', desc: 'Enable monitor mode — capture all wireless traffic', category: 'WIFI HACKING' },
+  { cmd: 'airodump-ng wlan0mon', desc: 'Scan for WiFi networks in range', category: 'WIFI HACKING' },
+  { cmd: 'airodump-ng --bssid <MAC> -c <CH> -w capture wlan0mon', desc: 'Focus capture on target network', category: 'WIFI HACKING' },
+  { cmd: 'aireplay-ng --deauth 10 -a <BSSID> -c <CLIENT> wlan0mon', desc: 'Deauth attack — force WPA handshake capture', category: 'WIFI HACKING' },
+  { cmd: 'aircrack-ng -w <wordlist> capture-01.cap', desc: 'Crack WPA/WPA2 password from captured handshake', category: 'WIFI HACKING' },
+  { cmd: 'nmcli dev wifi connect <SSID> password <pass>', desc: 'Connect to WiFi network with cracked password', category: 'WIFI HACKING' },
+  { cmd: 'wireshark', desc: 'Analyze captured packets — find credentials and traffic', category: 'WIFI HACKING' },
+  { cmd: 'wifistatus', desc: 'Show current WiFi attack progress', category: 'WIFI HACKING' },
+
   // --- PRIVILEGE ESCALATION ---
   { cmd: 'pwnkit', desc: 'Escalate www-data → root via CVE-2021-4034. Trace +15%', category: 'PRIVILEGE ESCALATION' },
   { cmd: 'ssh <ip> <pass>', desc: 'Authenticate with stolen credentials — bypasses IDS logging', category: 'PRIVILEGE ESCALATION' },

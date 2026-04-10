@@ -47,6 +47,7 @@ const COMMAND_REGISTRY = [
   { cmd: 'aircrack-ng -w <wordlist> capture-01.cap', desc: 'Crack WPA/WPA2 password from captured handshake', category: 'WIFI HACKING' },
   { cmd: 'nmcli dev wifi connect <SSID> password <pass>', desc: 'Connect to WiFi network with cracked password', category: 'WIFI HACKING' },
   { cmd: 'wireshark', desc: 'Analyze captured packets — find credentials and traffic', category: 'WIFI HACKING' },
+  { cmd: 'wardrive', desc: 'Mobile WiFi scanning — discover networks while driving', category: 'WIFI HACKING' },
   { cmd: 'wifistatus', desc: 'Show current WiFi attack progress', category: 'WIFI HACKING' },
 
   // --- PRIVILEGE ESCALATION ---

@@ -55,20 +55,22 @@ import ContractBoard from './components/ContractBoard';
 import MarketBoard from './components/MarketBoard';
 import DarknetShop from './components/DarknetShop';
 import UnifiedMarket from './components/UnifiedMarket';
+import {
+  syncWifiWithWorld,
+  generateWardriveDiscovery,
+  generateAmbientNetworks,
+  calculateWardriveSpeed,
+  WARDRIVE_CONFIG,
+  ENCRYPTION_DIFFICULTY,
+} from './wifi/wifiGeneration';
 import { PARTS_BY_ID, getSellPrice, getRigEffects, generateUnifiedMarket, generateBTCPrice, formatBTC } from './constants/rigParts';
 import { useMobile } from './hooks/useMobile';
 import MobileTouchUI from './components/MobileTouchUI';
 import { initNative, hapticLight, hapticMedium, hapticSuccess, hapticError } from './native';
 
 // ─── WIFI HACKING MODULE ───
-const WIFI_NETS = [
-  { bssid:"A4:CF:12:8B:3E:01", ch:6, pwr:-42, enc:"WPA2", essid:"STEAMWORKS-CORP", clients:7, target:true },
-  { bssid:"00:1A:2B:3C:4D:5E", ch:1, pwr:-68, enc:"WPA2", essid:"Linksys_Guest", clients:2 },
-  { bssid:"F8:E4:3B:72:9A:CD", ch:11, pwr:-55, enc:"WPA2", essid:"NEIGHBOR-5G", clients:3 },
-  { bssid:"DC:A6:32:00:11:22", ch:6, pwr:-71, enc:"WEP", essid:"OldPrinter_Net", clients:0 },
-  { bssid:"88:71:B1:CC:DD:EE", ch:1, pwr:-63, enc:"WPA2", essid:"FBI_Surveillance_Van", clients:1 },
-  { bssid:"7C:D1:C3:AA:BB:CC", ch:11, pwr:-78, enc:"OPEN", essid:"Free_Public_WiFi", clients:12 },
-];
+// WiFi networks are now dynamically generated - see wifiNetworks state and src/wifi/wifiGeneration.js
+// Legacy static clients kept for backward compatibility
 const WIFI_CLIENTS = [
   { mac:"4C:EB:42:DE:AD:01", pwr:-35, frames:1847, dev:"iPhone 14 (CEO)", bssid:"A4:CF:12:8B:3E:01" },
   { mac:"78:2B:CB:BE:EF:02", pwr:-41, frames:923, dev:"MacBook Pro (CFO)", bssid:"A4:CF:12:8B:3E:01" },
@@ -153,6 +155,11 @@ const STEAMBREACH = () => {
     connected: false,  // Connected to target network
     targetBssid: null, // Currently targeted network
   });
+  
+  // Dynamic WiFi networks (replaces static WIFI_NETS)
+  const [wifiNetworks, setWifiNetworks] = useState([]);
+  const [isWardriving, setIsWardriving] = useState(false);
+  const wardriveIntervalRef = useRef(null);
 
   const rigFx = getRigEffects(rig);
   const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
@@ -1540,6 +1547,17 @@ const verifyContract = (ip, objectiveType) => {
         // 2. We just change the active region view.
         setCurrentRegion(targetRegion);
         setMarketPrices(generateMarketPrices(currentRegion));
+        
+        // Reset WiFi state for new region (different networks)
+        setWifiNetworks([]);
+        setWifiState({ mon: false, scanned: false, focused: false, capFile: false, hshake: false, cracked: false, pwd: null, connected: false, targetBssid: null });
+        if (isWardriving) {
+          if (wardriveIntervalRef.current) {
+            clearInterval(wardriveIntervalRef.current);
+            wardriveIntervalRef.current = null;
+          }
+          setIsWardriving(false);
+        }
         
         let encounterText = '';
         if (Math.random() < 0.15) {
@@ -3240,27 +3258,47 @@ phy0    wlan0           ath9k_htc       Qualcomm Atheros AR9271
 [*] Enable monitor mode first: airmon-ng start wlan0`;
         }
 
+        // Generate WiFi networks if empty (first scan in region)
+        let nets = wifiNetworks;
+        if (nets.length === 0) {
+          const synced = syncWifiWithWorld(world, currentRegion, [], directorRef.current?.modifiers);
+          synced.forEach(n => n.discovered = true);
+          setWifiNetworks(synced);
+          nets = synced;
+        }
+        
+        const targetNet = nets.find(n => n.target) || nets[0];
+        const getClients = (bssid) => {
+          const net = nets.find(n => n.bssid === bssid);
+          return net?.clients || WIFI_CLIENTS.filter(c => c.bssid === bssid);
+        };
+
         // ═══ ARCADE MODE: Auto-scan or auto-focus on target ═══
         if (gameMode === 'arcade') {
           if (!wifiState.scanned) {
             let output = `\n CH  6 ][ Elapsed: 12s ][ ${new Date().toTimeString().slice(0,8)}\n\n BSSID              PWR  Beacons  #Data   #/s  CH   ENC    ESSID\n`;
-            WIFI_NETS.forEach(n => {
-              output += ` ${n.bssid}  ${String(n.pwr).padStart(3)}     ${String(Math.floor(Math.random() * 2000 + 500)).padStart(4)}    ${String(Math.floor(Math.random() * 5000)).padStart(4)}    ${String(Math.floor(Math.random()*50)).padStart(2)}  ${String(n.ch).padStart(2)}   ${n.enc.padEnd(6)} ${n.essid}\n`;
+            nets.filter(n => n.discovered).forEach(n => {
+              const pwr = n.signal || n.pwr || -50;
+              const ch = n.channel || n.ch || 6;
+              output += ` ${n.bssid}  ${String(pwr).padStart(3)}     ${String(Math.floor(Math.random() * 2000 + 500)).padStart(4)}    ${String(Math.floor(Math.random() * 5000)).padStart(4)}    ${String(Math.floor(Math.random()*50)).padStart(2)}  ${String(ch).padStart(2)}   ${(n.enc || 'WPA2').padEnd(6)} ${n.essid}\n`;
             });
             setWifiState(prev => ({ ...prev, scanned: true }));
             playSuccess();
-            return output + `\n[+] Found ${WIFI_NETS.length} networks — ARCADE MODE auto-identified targets\n[!] HIGH VALUE: STEAMWORKS-CORP (WPA2)\n[*] Run 'airodump-ng' again to focus capture on target`;
+            const targets = nets.filter(n => n.target);
+            const targetHint = targetNet ? `[!] HIGH VALUE: ${targetNet.essid} (${targetNet.enc || 'WPA2'})` : '';
+            return output + `\n[+] Found ${nets.filter(n => n.discovered).length} networks — ARCADE MODE auto-identified targets\n${targetHint}\n[*] Run 'airodump-ng' again to focus capture on target`;
           } else if (!wifiState.focused) {
-            const targetNet = WIFI_NETS.find(n => n.target);
-            const clients = WIFI_CLIENTS.filter(c => c.bssid === targetNet.bssid);
-            let output = `\n CH  6 ][ Elapsed: 45s ][ ${new Date().toTimeString().slice(0,8)}${wifiState.hshake ? ` ][ WPA handshake: ${targetNet.bssid}` : ''}\n\n BSSID              PWR  Beacons  #Data   CH   ENC    ESSID\n\n ${targetNet.bssid}  ${String(targetNet.pwr).padStart(3)}     1523    8847   ${String(targetNet.ch).padStart(2)}   ${targetNet.enc}    ${targetNet.essid}\n\n STATION            PWR   Frames  Device\n`;
-            clients.forEach(c => { output += ` ${c.mac}  ${String(c.pwr).padStart(3)}   ${String(c.frames).padStart(6)}  ${c.dev}\n`; });
+            if (!targetNet) return `[-] No target networks found. Run wardrive to discover more.`;
+            const clients = getClients(targetNet.bssid);
+            const pwr = targetNet.signal || targetNet.pwr || -42;
+            const ch = targetNet.channel || targetNet.ch || 6;
+            let output = `\n CH  ${ch} ][ Elapsed: 45s ][ ${new Date().toTimeString().slice(0,8)}${wifiState.hshake ? ` ][ WPA handshake: ${targetNet.bssid}` : ''}\n\n BSSID              PWR  Beacons  #Data   CH   ENC    ESSID\n\n ${targetNet.bssid}  ${String(pwr).padStart(3)}     1523    8847   ${String(ch).padStart(2)}   ${targetNet.enc || 'WPA2'}    ${targetNet.essid}\n\n STATION            PWR   Frames  Device\n`;
+            clients.forEach(c => { output += ` ${c.mac}  ${String(c.pwr || c.signal || -40).padStart(3)}   ${String(c.frames || 1000).padStart(6)}  ${c.dev || c.device || 'Unknown'}\n`; });
             setWifiState(prev => ({ ...prev, focused: true, capFile: true, targetBssid: targetNet.bssid }));
             playSuccess();
-            return output + `\n[+] ARCADE MODE — Auto-focused on STEAMWORKS-CORP\n[+] Capture file: capture-01.cap\n[*] Run 'aireplay-ng' to force handshake capture`;
+            return output + `\n[+] ARCADE MODE — Auto-focused on ${targetNet.essid}\n[+] Capture file: capture-01.cap\n[*] Run 'aireplay-ng' to force handshake capture`;
           } else {
-            const targetNet = WIFI_NETS.find(n => n.target);
-            return `[*] Already capturing on ${targetNet.essid}\n[*] ${wifiState.hshake ? 'Handshake captured! Run aircrack-ng to crack.' : 'Waiting for handshake. Run aireplay-ng to force it.'}`;
+            return `[*] Already capturing on ${targetNet?.essid || 'target'}\n[*] ${wifiState.hshake ? 'Handshake captured! Run aircrack-ng to crack.' : 'Waiting for handshake. Run aireplay-ng to force it.'}`;
           }
         }
 
@@ -3269,26 +3307,32 @@ phy0    wlan0           ath9k_htc       Qualcomm Atheros AR9271
           if (!arg1 || !['scan', 'focus'].includes(arg1)) {
             return `[-] airodump-ng: Specify mode:
     airodump-ng scan    — Scan all networks in range
-    airodump-ng focus   — Focus capture on target (STEAMWORKS-CORP)`;
+    airodump-ng focus   — Focus capture on target`;
           }
           
           if (arg1 === 'scan') {
             let output = `\n CH  6 ][ Elapsed: 12s ][ ${new Date().toTimeString().slice(0,8)}\n\n BSSID              PWR  Beacons  #Data   #/s  CH   ENC    ESSID\n`;
-            WIFI_NETS.forEach(n => {
-              output += ` ${n.bssid}  ${String(n.pwr).padStart(3)}     ${String(Math.floor(Math.random() * 2000 + 500)).padStart(4)}    ${String(Math.floor(Math.random() * 5000)).padStart(4)}    ${String(Math.floor(Math.random()*50)).padStart(2)}  ${String(n.ch).padStart(2)}   ${n.enc.padEnd(6)} ${n.essid}\n`;
+            nets.filter(n => n.discovered).forEach(n => {
+              const pwr = n.signal || n.pwr || -50;
+              const ch = n.channel || n.ch || 6;
+              const badge = n.target ? ' ★' : '';
+              output += ` ${n.bssid}  ${String(pwr).padStart(3)}     ${String(Math.floor(Math.random() * 2000 + 500)).padStart(4)}    ${String(Math.floor(Math.random() * 5000)).padStart(4)}    ${String(Math.floor(Math.random()*50)).padStart(2)}  ${String(ch).padStart(2)}   ${(n.enc || 'WPA2').padEnd(6)} ${n.essid}${badge}\n`;
             });
             setWifiState(prev => ({ ...prev, scanned: true }));
             playSuccess();
-            return output + `\n[+] Found ${WIFI_NETS.length} networks\n[!] Target: STEAMWORKS-CORP (WPA2, Ch6, BSSID: A4:CF:12:8B:3E:01)\n[*] Focus capture: airodump-ng focus`;
+            const targetHint = targetNet ? `[!] Target: ${targetNet.essid} (${targetNet.enc || 'WPA2'}, Ch${targetNet.channel || targetNet.ch || 6}, BSSID: ${targetNet.bssid})` : '';
+            return output + `\n[+] Found ${nets.filter(n => n.discovered).length} networks\n${targetHint}\n[*] Focus capture: airodump-ng focus`;
           } else {
             if (!wifiState.scanned) return `[-] Scan first: airodump-ng scan`;
-            const targetNet = WIFI_NETS.find(n => n.target);
-            const clients = WIFI_CLIENTS.filter(c => c.bssid === targetNet.bssid);
-            let output = `\n CH  6 ][ Elapsed: 45s ][ ${new Date().toTimeString().slice(0,8)}${wifiState.hshake ? ` ][ WPA handshake: ${targetNet.bssid}` : ''}\n\n BSSID              PWR  Beacons  #Data   CH   ENC    ESSID\n\n ${targetNet.bssid}  ${String(targetNet.pwr).padStart(3)}     1523    8847   ${String(targetNet.ch).padStart(2)}   ${targetNet.enc}    ${targetNet.essid}\n\n STATION            PWR   Frames  Device\n`;
-            clients.forEach(c => { output += ` ${c.mac}  ${String(c.pwr).padStart(3)}   ${String(c.frames).padStart(6)}  ${c.dev}\n`; });
+            if (!targetNet) return `[-] No target found. Discover targets with wardrive.`;
+            const clients = getClients(targetNet.bssid);
+            const pwr = targetNet.signal || targetNet.pwr || -42;
+            const ch = targetNet.channel || targetNet.ch || 6;
+            let output = `\n CH  ${ch} ][ Elapsed: 45s ][ ${new Date().toTimeString().slice(0,8)}${wifiState.hshake ? ` ][ WPA handshake: ${targetNet.bssid}` : ''}\n\n BSSID              PWR  Beacons  #Data   CH   ENC    ESSID\n\n ${targetNet.bssid}  ${String(pwr).padStart(3)}     1523    8847   ${String(ch).padStart(2)}   ${targetNet.enc || 'WPA2'}    ${targetNet.essid}\n\n STATION            PWR   Frames  Device\n`;
+            clients.forEach(c => { output += ` ${c.mac}  ${String(c.pwr || c.signal || -40).padStart(3)}   ${String(c.frames || 1000).padStart(6)}  ${c.dev || c.device || 'Unknown'}\n`; });
             setWifiState(prev => ({ ...prev, focused: true, capFile: true, targetBssid: targetNet.bssid }));
             playSuccess();
-            return output + `\n[+] Focused capture on STEAMWORKS-CORP\n[+] Capture file: capture-01.cap\n[*] Force handshake: aireplay-ng deauth`;
+            return output + `\n[+] Focused capture on ${targetNet.essid}\n[+] Capture file: capture-01.cap\n[*] Force handshake: aireplay-ng deauth`;
           }
         }
 
@@ -3309,32 +3353,38 @@ Options:
 
 Examples:
   airodump-ng wlan0mon
-  airodump-ng --bssid A4:CF:12:8B:3E:01 -c 6 -w capture wlan0mon`;
+  airodump-ng --bssid ${targetNet?.bssid || 'AA:BB:CC:DD:EE:FF'} -c 6 -w capture wlan0mon`;
         }
         
         if (hasBssid && targetBssid) {
-          const targetNet = WIFI_NETS.find(n => n.bssid === targetBssid);
-          if (!targetNet) return `[!] No network found with BSSID ${targetBssid}`;
-          const clients = WIFI_CLIENTS.filter(c => c.bssid === targetBssid);
-          let output = `\n CH ${String(targetNet.ch).padStart(2)} ][ Elapsed: 45s ][ ${new Date().toTimeString().slice(0,8)}${wifiState.hshake ? ` ][ WPA handshake: ${targetBssid}` : ''}\n\n BSSID              PWR  Beacons  #Data   #/s  CH   ENC    CIPHER  AUTH  ESSID\n\n ${targetBssid}  ${String(targetNet.pwr).padStart(3)}     1523    8847   124  ${String(targetNet.ch).padStart(2)}   ${targetNet.enc}    CCMP    PSK   ${targetNet.essid}\n\n STATION            PWR   Rate    Lost   Frames  Notes\n`;
-          clients.forEach(c => { output += ` ${c.mac}  ${String(c.pwr).padStart(3)}   54e-24e     0   ${String(c.frames).padStart(6)}  ${c.dev}\n`; });
+          const foundNet = nets.find(n => n.bssid === targetBssid);
+          if (!foundNet) return `[!] No network found with BSSID ${targetBssid}`;
+          const clients = getClients(targetBssid);
+          const pwr = foundNet.signal || foundNet.pwr || -42;
+          const ch = foundNet.channel || foundNet.ch || 6;
+          let output = `\n CH ${String(ch).padStart(2)} ][ Elapsed: 45s ][ ${new Date().toTimeString().slice(0,8)}${wifiState.hshake ? ` ][ WPA handshake: ${targetBssid}` : ''}\n\n BSSID              PWR  Beacons  #Data   #/s  CH   ENC    CIPHER  AUTH  ESSID\n\n ${targetBssid}  ${String(pwr).padStart(3)}     1523    8847   124  ${String(ch).padStart(2)}   ${foundNet.enc || 'WPA2'}    CCMP    PSK   ${foundNet.essid}\n\n STATION            PWR   Rate    Lost   Frames  Notes\n`;
+          clients.forEach(c => { output += ` ${c.mac}  ${String(c.pwr || c.signal || -40).padStart(3)}   54e-24e     0   ${String(c.frames || 1000).padStart(6)}  ${c.dev || c.device || 'Unknown'}\n`; });
           if (hasWrite) {
             setWifiState(prev => ({ ...prev, focused: true, capFile: true, targetBssid: targetBssid }));
-            output += `\n[+] Focused capture active — writing to capture-01.cap\n[*] Monitoring ${clients.length} clients on ${targetNet.essid}`;
+            output += `\n[+] Focused capture active — writing to capture-01.cap\n[*] Monitoring ${clients.length} clients on ${foundNet.essid}`;
           }
           playSuccess();
           return output;
         }
         
         let output = `\n CH  6 ][ Elapsed: 12s ][ ${new Date().toTimeString().slice(0,8)}\n\n BSSID              PWR  Beacons  #Data   #/s  CH   ENC    CIPHER  AUTH  ESSID\n\n`;
-        WIFI_NETS.forEach(n => {
+        nets.filter(n => n.discovered).forEach(n => {
           const beacons = Math.floor(Math.random() * 2000 + 500);
           const data = Math.floor(Math.random() * 5000);
-          output += ` ${n.bssid}  ${String(n.pwr).padStart(3)}     ${String(beacons).padStart(4)}    ${String(data).padStart(4)}    ${Math.floor(Math.random()*50).toString().padStart(2)}  ${String(n.ch).padStart(2)}   ${n.enc.padEnd(6)} CCMP    PSK   ${n.essid}\n`;
+          const pwr = n.signal || n.pwr || -50;
+          const ch = n.channel || n.ch || 6;
+          const badge = n.target ? ' ★' : '';
+          output += ` ${n.bssid}  ${String(pwr).padStart(3)}     ${String(beacons).padStart(4)}    ${String(data).padStart(4)}    ${Math.floor(Math.random()*50).toString().padStart(2)}  ${String(ch).padStart(2)}   ${(n.enc || 'WPA2').padEnd(6)} CCMP    PSK   ${n.essid}${badge}\n`;
         });
         if (!wifiState.scanned) {
           setWifiState(prev => ({ ...prev, scanned: true }));
-          output += `\n[+] Found ${WIFI_NETS.length} networks in range\n[!] Target identified: STEAMWORKS-CORP (WPA2, Ch6, -42dBm)\n[*] Focus capture: airodump-ng --bssid A4:CF:12:8B:3E:01 -c 6 -w capture wlan0mon`;
+          const targetHint = targetNet ? `[!] Target identified: ${targetNet.essid} (${targetNet.enc || 'WPA2'}, Ch${targetNet.channel || targetNet.ch || 6}, ${targetNet.signal || targetNet.pwr || -42}dBm)\n[*] Focus capture: airodump-ng --bssid ${targetNet.bssid} -c ${targetNet.channel || targetNet.ch || 6} -w capture wlan0mon` : '';
+          output += `\n[+] Found ${nets.filter(n => n.discovered).length} networks in range\n${targetHint}`;
         }
         playSuccess();
         return output;
@@ -3542,28 +3592,173 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
       },
 
       wifistatus: async () => {
+        const nets = wifiNetworks;
+        const targetNet = nets.find(n => n.target) || nets[0];
         const modeHints = {
           arcade: { mon: 'airmon-ng', scan: 'airodump-ng', focus: 'airodump-ng', deauth: 'aireplay-ng', crack: 'aircrack-ng', connect: 'nmcli' },
           field: { mon: 'airmon-ng start', scan: 'airodump-ng scan', focus: 'airodump-ng focus', deauth: 'aireplay-ng deauth', crack: 'aircrack-ng crack', connect: 'nmcli connect' },
-          operator: { mon: 'airmon-ng start wlan0', scan: 'airodump-ng wlan0mon', focus: 'airodump-ng --bssid A4:CF:12:8B:3E:01 -c 6 -w capture wlan0mon', deauth: 'aireplay-ng --deauth 10 -a A4:CF:12:8B:3E:01 -c 4C:EB:42:DE:AD:01 wlan0mon', crack: 'aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap', connect: `nmcli dev wifi connect STEAMWORKS-CORP password ${wifiState.pwd || '<password>'}` },
+          operator: { mon: 'airmon-ng start wlan0', scan: 'airodump-ng wlan0mon', focus: `airodump-ng --bssid ${targetNet?.bssid || 'AA:BB:CC:DD:EE:FF'} -c ${targetNet?.channel || targetNet?.ch || 6} -w capture wlan0mon`, deauth: `aireplay-ng --deauth 10 -a ${targetNet?.bssid || 'AA:BB:CC:DD:EE:FF'} wlan0mon`, crack: 'aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap', connect: `nmcli dev wifi connect ${targetNet?.essid || 'TARGET'} password ${wifiState.pwd || '<password>'}` },
         };
         const hints = modeHints[gameMode];
+        const targetName = targetNet?.essid || 'TARGET';
         let status = `╔═══════════════════════════════════════════════════════════╗\n║     WIRELESS ATTACK STATUS — ${gameMode.toUpperCase().padEnd(8)} MODE            ║\n╠═══════════════════════════════════════════════════════════╣\n`;
         status += `║  Monitor Mode: ${wifiState.mon ? '✓ ENABLED' : '✗ DISABLED'}                               ║\n`;
-        status += `║  Networks Scanned: ${wifiState.scanned ? '✓ YES' : '✗ NO'}                                 ║\n`;
-        status += `║  Target Focused: ${wifiState.focused ? '✓ STEAMWORKS-CORP' : '✗ NONE'}                      ║\n`;
+        status += `║  Networks Found: ${String(nets.filter(n => n.discovered).length).padEnd(3)}                                    ║\n`;
+        status += `║  Target Focused: ${wifiState.focused ? `✓ ${targetName.substring(0,20).padEnd(20)}` : '✗ NONE                    '}║\n`;
         status += `║  Handshake: ${wifiState.hshake ? '✓ CAPTURED' : '✗ NOT CAPTURED'}                            ║\n`;
         status += `║  Password: ${wifiState.cracked ? '✓ CRACKED' : '✗ UNKNOWN'}                                 ║\n`;
         status += `║  Connected: ${wifiState.connected ? '✓ YES (10.0.0.187)' : '✗ NO'}                          ║\n`;
+        status += `║  Wardriving: ${isWardriving ? '✓ ACTIVE' : '✗ INACTIVE'}                              ║\n`;
         status += `╚═══════════════════════════════════════════════════════════╝\n`;
         if (!wifiState.mon) status += `\n[*] Next: ${hints.mon}`;
-        else if (!wifiState.scanned) status += `\n[*] Next: ${hints.scan}`;
+        else if (!wifiState.scanned) status += `\n[*] Next: ${hints.scan} (or 'wardrive' to discover more)`;
         else if (!wifiState.focused) status += `\n[*] Next: ${hints.focus}`;
         else if (!wifiState.hshake) status += `\n[*] Next: ${hints.deauth}`;
         else if (!wifiState.cracked) status += `\n[*] Next: ${hints.crack}`;
         else if (!wifiState.connected) status += `\n[*] Next: ${hints.connect}`;
         else status += `\n[+] WIFI INFILTRATION COMPLETE — Internal network accessible!`;
         return status;
+      },
+
+      // ═══════════════════════════════════════════════════════════════════
+      // WARDRIVE — Mobile WiFi Scanning
+      // ═══════════════════════════════════════════════════════════════════
+      wardrive: async () => {
+        if (!wifiState.mon) {
+          return `[-] Monitor mode not enabled.\n[*] Run 'airmon-ng start' first to enable passive scanning.`;
+        }
+        
+        // Toggle off if already wardriving
+        if (isWardriving) {
+          if (wardriveIntervalRef.current) {
+            clearInterval(wardriveIntervalRef.current);
+            wardriveIntervalRef.current = null;
+          }
+          setIsWardriving(false);
+          playBlip();
+          
+          const discovered = wifiNetworks.filter(n => n.discovered).length;
+          const targets = wifiNetworks.filter(n => n.discovered && n.target).length;
+          
+          return `[!] WARDRIVE SESSION ENDED
+
+╔════════════════════════════════════════════╗
+║           SESSION STATISTICS               ║
+╠════════════════════════════════════════════╣
+║  Networks Discovered: ${String(discovered).padEnd(18)}║
+║  High-Value Targets:  ${String(targets).padEnd(18)}║
+║  Heat Generated:      +${String((discovered * WARDRIVE_CONFIG.heatPerNetwork).toFixed(1) + '%').padEnd(17)}║
+╚════════════════════════════════════════════╝
+
+[*] View networks: Open map → 📶 WIFI button
+[*] Scan specific target: airodump-ng focus`;
+        }
+        
+        // ═══ START WARDRIVING ═══
+        const hasVan = inventory.includes('wardrive_van');
+        const hasDrone = inventory.includes('wardrive_drone');
+        const hasYagi = inventory.includes('yagi_antenna');
+        const hasParabolic = inventory.includes('parabolic_antenna');
+        
+        const vehicle = hasDrone ? 'drone' : (hasVan ? 'van' : 'car');
+        const antenna = hasParabolic ? 'parabolic' : (hasYagi ? 'yagi' : 'stock');
+        const discoveryRate = calculateWardriveSpeed(vehicle, antenna);
+        
+        setIsWardriving(true);
+        setHeat(h => Math.min(h + 2, 100));
+        playBeacon();
+        
+        // Generate initial networks if empty
+        if (wifiNetworks.length === 0) {
+          const initial = generateAmbientNetworks(currentRegion, 6, directorRef.current?.modifiers);
+          initial.forEach(n => n.discovered = true);
+          setWifiNetworks(initial);
+        }
+        
+        // Set up discovery interval
+        const interval = setInterval(() => {
+          setWifiNetworks(prevNets => {
+            // Check max networks
+            if (prevNets.filter(n => n.discovered).length >= WARDRIVE_CONFIG.maxNetworksPerRun) {
+              clearInterval(wardriveIntervalRef.current);
+              wardriveIntervalRef.current = null;
+              setIsWardriving(false);
+              setTerminal(prev => [...prev, { 
+                type: 'out', 
+                text: `[!] WARDRIVE AUTO-STOPPED — Maximum networks reached (${WARDRIVE_CONFIG.maxNetworksPerRun})`, 
+                isNew: true 
+              }]);
+              playBlip();
+              return prevNets;
+            }
+            
+            // Detection check
+            const detectionChance = WARDRIVE_CONFIG.detectionChance[currentRegion] || 0.1;
+            if (Math.random() < detectionChance * (heat / 100)) {
+              setHeat(h => Math.min(h + 5, 100));
+              setTerminal(prev => [...prev, { 
+                type: 'out', 
+                text: `[!] WARNING: Mobile scanning detected! Blue Team alerted. Heat +5%`, 
+                isNew: true 
+              }]);
+              playHeatSpike();
+            }
+            
+            // Discover new network
+            const newNet = generateWardriveDiscovery(currentRegion, prevNets, directorRef.current?.modifiers);
+            
+            if (newNet.isUpdate) {
+              // Update existing network signal
+              const updated = prevNets.map(n => 
+                n.bssid === newNet.bssid ? { ...n, signal: newNet.signal } : n
+              );
+              setTerminal(prev => [...prev, { 
+                type: 'out', 
+                text: `[*] Signal update: ${newNet.essid} now at ${newNet.signal}dBm`, 
+                isNew: true 
+              }]);
+              return updated;
+            } else {
+              // Check if already discovered
+              const exists = prevNets.some(n => n.essid === newNet.essid);
+              if (!exists) {
+                setHeat(h => Math.min(h + WARDRIVE_CONFIG.heatPerNetwork, 100));
+                
+                const targetBadge = newNet.target ? ' [HIGH VALUE]' : '';
+                setTerminal(prev => [...prev, { 
+                  type: 'out', 
+                  text: `[+] NEW: ${newNet.essid}${targetBadge}\n    BSSID: ${newNet.bssid} | Ch${newNet.channel} | ${newNet.signal}dBm | ${newNet.enc}`, 
+                  isNew: true 
+                }]);
+                
+                if (newNet.target) {
+                  playSuccess();
+                } else {
+                  playBlip();
+                }
+                
+                return [...prevNets, newNet];
+              }
+            }
+            return prevNets;
+          });
+        }, discoveryRate);
+        
+        wardriveIntervalRef.current = interval;
+        
+        return `
+╔═══════════════════════════════════════════════════════════════╗
+║                    WARDRIVE MODE ACTIVATED                     ║
+╠═══════════════════════════════════════════════════════════════╣
+║  Vehicle:    ${vehicle.toUpperCase().padEnd(45)}║
+║  Antenna:    ${antenna.toUpperCase().padEnd(45)}║
+║  Scan Rate:  ${(discoveryRate / 1000).toFixed(1)}s per network${' '.repeat(33)}║
+║  Region:     ${currentRegion.toUpperCase().padEnd(45)}║
+╠═══════════════════════════════════════════════════════════════╣
+║  [!] Passively scanning for wireless networks...              ║
+║  [*] New targets will appear in real-time                     ║
+║  [*] Type 'wardrive' again to stop                            ║
+╚═══════════════════════════════════════════════════════════════╝`;
       },
 
       // WiFi story choice handler
@@ -4073,7 +4268,7 @@ if (screen === 'soundmanager') {
           money={money}
           isMobile={isMobile}
           wifiState={wifiState}
-          wifiNetworks={WIFI_NETS}
+          wifiNetworks={wifiNetworks}
           onWifiNetworkSelect={(net) => {
             setTerminal(prev => [...prev, { type: 'out', text: `[*] Target: ${net.essid} (${net.bssid}, Ch${net.ch})`, isNew: true }]);
           }}

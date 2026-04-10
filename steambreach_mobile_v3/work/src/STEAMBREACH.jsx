@@ -2530,6 +2530,7 @@ return `[+] ${actionResult}\n[+] CHAOS +10 | ₿${payout.toLocaleString()} credi
           let newNodes = [];
           for (let i = 0; i < infectCount; i++) {
             const newNode = generateNewTarget(null, targetIP, directorRef.current?.modifiers, world[targetIP]);
+            newNode.data.region = currentRegion;
             newNodes.push(newNode);
             setWorld(prev => ({ ...prev, [newNode.ip]: newNode.data }));
             setBotnet(prev => [...prev, newNode.ip]);
@@ -2556,6 +2557,7 @@ return `[+] ${actionResult}\n[+] CHAOS +10 | ₿${payout.toLocaleString()} credi
           let newNodes = [];
           for (let i = 0; i < infectCount; i++) {
             const newNode = generateNewTarget(null, targetIP, directorRef.current?.modifiers, world[targetIP]);
+            newNode.data.region = currentRegion;
             newNodes.push(newNode);
             setWorld(prev => ({ ...prev, [newNode.ip]: newNode.data }));
             if (payloadType !== 'wiper') setBotnet(prev => [...prev, newNode.ip]);
@@ -2582,6 +2584,7 @@ return `[+] ${actionResult}\n[+] CHAOS +10 | ₿${payout.toLocaleString()} credi
         let newNodes = [];
         for (let i = 0; i < infectCount; i++) {
           const newNode = generateNewTarget(null, targetIP, directorRef.current?.modifiers, world[targetIP]);
+          newNode.data.region = currentRegion;
           newNodes.push(newNode);
           setWorld(prev => ({ ...prev, [newNode.ip]: newNode.data }));
           setBotnet(prev => [...prev, newNode.ip]);
@@ -2610,6 +2613,7 @@ return `[+] ${actionResult}\n[+] CHAOS +10 | ₿${payout.toLocaleString()} credi
           let newNodes = [];
           for (let i = 0; i < infectCount; i++) {
             const newNode = generateNewTarget(null, targetIP, directorRef.current?.modifiers, world[targetIP]);
+            newNode.data.region = currentRegion;
             newNodes.push(newNode);
             setWorld(prev => ({ ...prev, [newNode.ip]: newNode.data }));
             setBotnet(prev => [...prev, newNode.ip]);
@@ -2645,6 +2649,7 @@ return `[+] ${actionResult}\n[+] CHAOS +10 | ₿${payout.toLocaleString()} credi
           let newNodes = [];
           for (let i = 0; i < infectCount; i++) {
             const newNode = generateNewTarget(null, targetIP, directorRef.current?.modifiers, world[targetIP]);
+            newNode.data.region = currentRegion;
             newNodes.push(newNode);
             setWorld(prev => ({ ...prev, [newNode.ip]: newNode.data }));
             setBotnet(prev => [...prev, newNode.ip]);
@@ -2666,6 +2671,7 @@ return `[+] ${actionResult}\n[+] CHAOS +10 | ₿${payout.toLocaleString()} credi
         let newNodes = [];
         for (let i = 0; i < infectCount; i++) {
           const newNode = generateNewTarget(null, targetIP, directorRef.current?.modifiers, world[targetIP]);
+          newNode.data.region = currentRegion;
           newNodes.push(newNode);
           setWorld(prev => ({ ...prev, [newNode.ip]: newNode.data }));
           setBotnet(prev => [...prev, newNode.ip]);
@@ -4056,7 +4062,7 @@ if (screen === 'soundmanager') {
         </div>
       )}
 
-      {showHelpMenu && <HelpPanel onClose={() => setShowHelpMenu(false)} devMode={devMode} COLORS={COLORS} />}
+      {showHelpMenu && <HelpPanel onClose={() => setShowHelpMenu(false)} devMode={devMode} gameMode={gameMode} />}
 
       {!(isMobile && isKeyboardOpen) && (
       <div style={{ display: 'flex', gap: '8px', margin: '6px 0', flexDirection: isMobile ? 'column' : 'row' }}>
@@ -4072,7 +4078,6 @@ if (screen === 'soundmanager') {
             setTerminal(prev => [...prev, { type: 'out', text: `[*] Target: ${net.essid} (${net.bssid}, Ch${net.ch})`, isNew: true }]);
           }}
         />
-
         <RigDisplay 
           rig={rig} // <-- Pass the actual installed hardware
           inventory={inventory} heat={heat} isProcessing={isProcessing} expanded={mapExpanded} toggleExpand={() => setMapExpanded(e => !e)}

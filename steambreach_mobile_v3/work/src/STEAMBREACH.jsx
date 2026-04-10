@@ -4066,10 +4066,13 @@ if (screen === 'soundmanager') {
           consumables={consumables}
           money={money}
           isMobile={isMobile}
-          wifiState={wifiState}                    // ← ADDED
-          wifiNetworks={WIFI_NETS}                 // ← ADDED
-          onWifiNetworkSelect={(net) => { ... }}   // ← ADDED
+          wifiState={wifiState}
+          wifiNetworks={WIFI_NETS}
+          onWifiNetworkSelect={(net) => {
+            setTerminal(prev => [...prev, { type: 'out', text: `[*] Target: ${net.essid} (${net.bssid}, Ch${net.ch})`, isNew: true }]);
+          }}
         />
+
         <RigDisplay 
           rig={rig} // <-- Pass the actual installed hardware
           inventory={inventory} heat={heat} isProcessing={isProcessing} expanded={mapExpanded} toggleExpand={() => setMapExpanded(e => !e)}

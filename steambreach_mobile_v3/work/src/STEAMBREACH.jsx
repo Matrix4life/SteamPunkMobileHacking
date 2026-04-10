@@ -4066,6 +4066,9 @@ if (screen === 'soundmanager') {
           consumables={consumables}
           money={money}
           isMobile={isMobile}
+          wifiState={wifiState}                    // ← ADDED
+          wifiNetworks={WIFI_NETS}                 // ← ADDED
+          onWifiNetworkSelect={(net) => { ... }}   // ← ADDED
         />
         <RigDisplay 
           rig={rig} // <-- Pass the actual installed hardware

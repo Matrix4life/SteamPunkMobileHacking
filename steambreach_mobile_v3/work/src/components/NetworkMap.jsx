@@ -10,11 +10,17 @@ export default function NetworkMap({
   consumables = { decoy: 0, burner: 0, zeroday: 0 },
   money = 0,
   isMobile = false,
-  contracts = [], // <-- Added contracts
-  activeContract = null // <-- Added activeContract
+  contracts = [],
+  activeContract = null,
+  // WiFi Integration
+  wifiState = {},
+  wifiNetworks = [],
+  onWifiNetworkSelect = null
 }) {
   const svgRef = useRef(null);
   const [hoveredNode, setHoveredNode] = useState(null);
+  const [showWifiLayer, setShowWifiLayer] = useState(false);
+  const [hoveredWifi, setHoveredWifi] = useState(null);
   
   // --- CAMERA & INTERACTION STATE ---
   const [cam, setCam] = useState({ x: 0, y: 0, z: 1 });
@@ -476,6 +482,116 @@ export default function NetworkMap({
       }}>
         {expanded ? 'X CLOSE MAP' : '▼ OPEN MAP'}
       </button>
+
+      {/* WiFi Layer Toggle */}
+      {expanded && wifiNetworks.length > 0 && (
+        <button onClick={(e) => { e.stopPropagation(); setShowWifiLayer(!showWifiLayer); }} style={{
+          position: 'absolute', top: isMobile ? '12px' : '6px', left: isMobile ? '12px' : '8px', 
+          background: showWifiLayer ? `${COLORS.secondary}30` : 'rgba(0,0,0,0.8)', 
+          border: `1px solid ${showWifiLayer ? COLORS.secondary : COLORS.borderActive}`,
+          color: showWifiLayer ? COLORS.secondary : COLORS.textDim, 
+          fontSize: isMobile ? '13px' : '10px', cursor: 'pointer', fontFamily: 'inherit', zIndex: 15, 
+          padding: isMobile ? '10px 16px' : '4px 8px', borderRadius: '3px', fontWeight: 'bold', letterSpacing: '1px',
+          WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation',
+        }}>
+          📶 {showWifiLayer ? 'NODES' : 'WIFI'}
+        </button>
+      )}
+
+      {/* WiFi Networks Overlay */}
+      {expanded && showWifiLayer && wifiNetworks.length > 0 && (
+        <div style={{ position: 'absolute', top: isMobile ? '60px' : '40px', left: '10px', right: '10px', zIndex: 13, pointerEvents: 'auto' }}>
+          <div style={{ 
+            background: 'rgba(0,0,0,0.9)', 
+            border: `1px solid ${COLORS.secondary}40`, 
+            borderRadius: '4px', 
+            padding: '12px',
+            maxHeight: isMobile ? '60vh' : '250px',
+            overflowY: 'auto'
+          }}>
+            <div style={{ fontSize: '10px', color: COLORS.secondary, letterSpacing: '2px', marginBottom: '10px', borderBottom: `1px solid ${COLORS.secondary}30`, paddingBottom: '6px' }}>
+              📶 WIRELESS NETWORKS IN RANGE ({wifiNetworks.length})
+            </div>
+            {wifiNetworks.map((net, idx) => (
+              <div 
+                key={idx}
+                onClick={() => onWifiNetworkSelect && onWifiNetworkSelect(net)}
+                onMouseEnter={() => setHoveredWifi(idx)}
+                onMouseLeave={() => setHoveredWifi(null)}
+                style={{
+                  padding: '8px 10px',
+                  marginBottom: '6px',
+                  background: hoveredWifi === idx ? `${COLORS.secondary}15` : 'transparent',
+                  border: `1px solid ${net.breached ? COLORS.secondary : wifiState.targetBssid === net.bssid ? COLORS.warning : COLORS.border}40`,
+                  borderRadius: '3px',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ color: net.breached ? COLORS.secondary : COLORS.text, fontWeight: 'bold', fontSize: '12px' }}>
+                    {net.breached ? '✓ ' : ''}{net.essid}
+                  </span>
+                  <span style={{ 
+                    color: net.enc === 'OPEN' ? COLORS.secondary : net.enc === 'WEP' ? COLORS.warning : COLORS.text, 
+                    fontSize: '10px' 
+                  }}>
+                    {net.enc}
+                  </span>
+                </div>
+                <div style={{ fontSize: '9px', color: COLORS.textDim, marginTop: '4px', display: 'flex', justifyContent: 'space-between' }}>
+                  <span>BSSID: {net.bssid}</span>
+                  <span>CH:{net.ch} | {net.pwr}dBm</span>
+                </div>
+                {net.target && (
+                  <div style={{ 
+                    marginTop: '6px', 
+                    padding: '3px 6px', 
+                    background: COLORS.danger, 
+                    color: COLORS.bgDark, 
+                    fontSize: '9px', 
+                    fontWeight: 'bold',
+                    display: 'inline-block',
+                    borderRadius: '2px'
+                  }}>
+                    HIGH VALUE TARGET
+                  </div>
+                )}
+                {wifiState.connected && net.bssid === wifiState.targetBssid && (
+                  <div style={{ 
+                    marginTop: '6px', 
+                    padding: '3px 6px', 
+                    background: COLORS.secondary, 
+                    color: COLORS.bgDark, 
+                    fontSize: '9px', 
+                    fontWeight: 'bold',
+                    display: 'inline-block',
+                    borderRadius: '2px'
+                  }}>
+                    CONNECTED - INTERNAL ACCESS
+                  </div>
+                )}
+              </div>
+            ))}
+            {wifiState.connected && (
+              <div style={{ 
+                marginTop: '10px', 
+                padding: '10px', 
+                background: `${COLORS.secondary}10`, 
+                border: `1px solid ${COLORS.secondary}40`,
+                borderRadius: '4px'
+              }}>
+                <div style={{ fontSize: '10px', color: COLORS.secondary, letterSpacing: '1px', marginBottom: '6px' }}>
+                  ⚡ INTERNAL NETWORK ACCESS
+                </div>
+                <div style={{ fontSize: '11px', color: COLORS.text }}>
+                  You're inside the corporate network via WiFi. Internal nodes are now visible on the main map.
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {expanded && hoveredNode && world[hoveredNode] && (
         <div style={{

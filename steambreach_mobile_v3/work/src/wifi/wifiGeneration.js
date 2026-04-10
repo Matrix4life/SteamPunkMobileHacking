@@ -135,51 +135,152 @@ export const generatePassword = (securityLevel = 'medium') => {
 };
 
 // ───────────────────────────────────────────────────────────────────────────
-// CLIENT DEVICE GENERATION
+// CLIENT DEVICE GENERATION WITH PHISHABLE EMPLOYEES
 // ───────────────────────────────────────────────────────────────────────────
 
 const CLIENT_DEVICES = {
   highValue: [
-    'iPhone 15 Pro (CEO)', 'MacBook Pro (CFO)', 'ThinkPad X1 (CISO)',
-    'Surface Pro (VP Sales)', 'iPad Pro (Board Member)', 'Galaxy S24 (CTO)'
+    { device: 'iPhone 15 Pro', role: 'CEO', phishable: true },
+    { device: 'MacBook Pro', role: 'CFO', phishable: true },
+    { device: 'ThinkPad X1', role: 'CISO', phishable: true },
+    { device: 'Surface Pro', role: 'VP Sales', phishable: true },
+    { device: 'iPad Pro', role: 'Board Member', phishable: true },
+    { device: 'Galaxy S24', role: 'CTO', phishable: true },
+    { device: 'MacBook Pro', role: 'IT Admin', phishable: true },
+    { device: 'ThinkPad', role: 'Network Engineer', phishable: true },
   ],
   standard: [
-    'iPhone 14', 'MacBook Air', 'ThinkPad', 'Dell Latitude', 'HP EliteBook',
-    'Surface Laptop', 'Galaxy S23', 'Pixel 8', 'iPad Air', 'Chromebook'
+    { device: 'iPhone 14', role: 'Employee', phishable: true },
+    { device: 'MacBook Air', role: 'Analyst', phishable: true },
+    { device: 'ThinkPad', role: 'Developer', phishable: true },
+    { device: 'Dell Latitude', role: 'Contractor', phishable: false },
+    { device: 'HP EliteBook', role: 'Manager', phishable: true },
+    { device: 'Surface Laptop', role: 'Intern', phishable: false },
+    { device: 'Galaxy S23', role: 'Sales Rep', phishable: true },
+    { device: 'Pixel 8', role: 'HR Specialist', phishable: true },
   ],
   iot: [
-    'Security Cam #1', 'Smart Thermostat', 'Badge Reader', 'IP Phone',
-    'Printer (HP)', 'Smart TV', 'Conference Room Display', 'Access Point'
+    { device: 'Security Cam #1', role: null, phishable: false },
+    { device: 'Smart Thermostat', role: null, phishable: false },
+    { device: 'Badge Reader', role: null, phishable: false },
+    { device: 'IP Phone', role: null, phishable: false },
+    { device: 'Printer (HP)', role: null, phishable: false },
+    { device: 'Smart TV', role: null, phishable: false },
+    { device: 'Conference Room Display', role: null, phishable: false },
   ],
 };
 
-export const generateClients = (networkType = 'corporate', count = null) => {
+const FIRST_NAMES = [
+  'James', 'Maria', 'Robert', 'Jennifer', 'Michael', 'Linda', 'William', 'Elizabeth',
+  'David', 'Susan', 'Richard', 'Jessica', 'Joseph', 'Sarah', 'Thomas', 'Karen',
+  'Charles', 'Nancy', 'Daniel', 'Lisa', 'Marcus', 'Angela', 'Steven', 'Michelle',
+  'Kevin', 'Amanda', 'Brian', 'Stephanie', 'George', 'Rebecca', 'Edward', 'Laura',
+  'Ivan', 'Natasha', 'Viktor', 'Olga', 'Chen', 'Wei', 'Yuki', 'Kenji', 'Hans', 'Ingrid'
+];
+
+const LAST_NAMES = [
+  'Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis',
+  'Rodriguez', 'Martinez', 'Hernandez', 'Lopez', 'Gonzalez', 'Wilson', 'Anderson',
+  'Thomas', 'Taylor', 'Moore', 'Jackson', 'Martin', 'Lee', 'Thompson', 'White',
+  'Harris', 'Clark', 'Lewis', 'Robinson', 'Walker', 'Young', 'King', 'Wright',
+  'Petrov', 'Volkov', 'Ivanov', 'Zhang', 'Wang', 'Tanaka', 'Mueller', 'Schmidt'
+];
+
+const generatePersonName = () => {
+  const first = FIRST_NAMES[Math.floor(Math.random() * FIRST_NAMES.length)];
+  const last = LAST_NAMES[Math.floor(Math.random() * LAST_NAMES.length)];
+  return { first, last, full: `${first} ${last}` };
+};
+
+const generateEmail = (name, orgName) => {
+  const domain = orgName
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '')
+    .substring(0, 12) + '.com';
+  const formats = [
+    `${name.first.toLowerCase()}.${name.last.toLowerCase()}`,
+    `${name.first.toLowerCase()[0]}${name.last.toLowerCase()}`,
+    `${name.first.toLowerCase()}${name.last.toLowerCase()[0]}`,
+    `${name.last.toLowerCase()}`,
+  ];
+  const format = formats[Math.floor(Math.random() * formats.length)];
+  return `${format}@${domain}`;
+};
+
+export const generateClients = (networkType = 'corporate', count = null, orgName = 'Corp') => {
   const numClients = count || Math.floor(Math.random() * 8) + 2;
   const clients = [];
   
-  // High-value targets for corporate networks
-  if (networkType === 'corporate' && Math.random() < 0.7) {
-    const hvDevice = CLIENT_DEVICES.highValue[Math.floor(Math.random() * CLIENT_DEVICES.highValue.length)];
+  // High-value targets for corporate networks (guaranteed at least one phishable)
+  if (networkType === 'corporate') {
+    // Always add at least one high-value phishable target
+    const hvTemplate = CLIENT_DEVICES.highValue[Math.floor(Math.random() * CLIENT_DEVICES.highValue.length)];
+    const hvName = generatePersonName();
     clients.push({
       mac: generateBSSID(),
-      device: hvDevice,
+      device: `${hvTemplate.device} (${hvTemplate.role})`,
+      role: hvTemplate.role,
+      name: hvName.full,
+      email: generateEmail(hvName, orgName),
       signal: -30 - Math.floor(Math.random() * 15),
       frames: Math.floor(Math.random() * 3000) + 500,
       highValue: true,
+      phishable: true,
     });
+    
+    // Maybe add another high-value target
+    if (Math.random() < 0.5) {
+      const hv2Template = CLIENT_DEVICES.highValue[Math.floor(Math.random() * CLIENT_DEVICES.highValue.length)];
+      const hv2Name = generatePersonName();
+      clients.push({
+        mac: generateBSSID(),
+        device: `${hv2Template.device} (${hv2Template.role})`,
+        role: hv2Template.role,
+        name: hv2Name.full,
+        email: generateEmail(hv2Name, orgName),
+        signal: -35 - Math.floor(Math.random() * 15),
+        frames: Math.floor(Math.random() * 2500) + 400,
+        highValue: true,
+        phishable: true,
+      });
+    }
   }
   
-  // Standard devices
+  // Fill remaining slots with standard devices and IoT
   const remaining = numClients - clients.length;
   for (let i = 0; i < remaining; i++) {
-    const pool = Math.random() < 0.3 ? CLIENT_DEVICES.iot : CLIENT_DEVICES.standard;
-    clients.push({
-      mac: generateBSSID(),
-      device: pool[Math.floor(Math.random() * pool.length)],
-      signal: -35 - Math.floor(Math.random() * 40),
-      frames: Math.floor(Math.random() * 2000) + 100,
-      highValue: false,
-    });
+    const isIoT = Math.random() < 0.3;
+    const pool = isIoT ? CLIENT_DEVICES.iot : CLIENT_DEVICES.standard;
+    const template = pool[Math.floor(Math.random() * pool.length)];
+    
+    if (isIoT || !template.phishable) {
+      // IoT device - no person attached
+      clients.push({
+        mac: generateBSSID(),
+        device: template.device,
+        role: null,
+        name: null,
+        email: null,
+        signal: -40 - Math.floor(Math.random() * 40),
+        frames: Math.floor(Math.random() * 2000) + 100,
+        highValue: false,
+        phishable: false,
+      });
+    } else {
+      // Person with device
+      const personName = generatePersonName();
+      clients.push({
+        mac: generateBSSID(),
+        device: `${template.device} (${template.role})`,
+        role: template.role,
+        name: personName.full,
+        email: generateEmail(personName, orgName),
+        signal: -35 - Math.floor(Math.random() * 35),
+        frames: Math.floor(Math.random() * 2000) + 100,
+        highValue: false,
+        phishable: true,
+      });
+    }
   }
   
   return clients;
@@ -216,6 +317,9 @@ export const generateNetworkFromOrg = (orgData, nodeIP, region, directorModifier
   const channels = [1, 6, 11, 36, 40, 44, 48, 149, 153, 157, 161];
   const channel = channels[Math.floor(Math.random() * channels.length)];
   
+  // WPA3 needs strong password (only obtainable via social engineering)
+  const passwordStrength = encryption === 'WPA3' ? 'strong' : (encryption === 'WEP' ? 'weak' : 'medium');
+  
   return {
     essid,
     bssid: generateBSSID(),
@@ -223,13 +327,13 @@ export const generateNetworkFromOrg = (orgData, nodeIP, region, directorModifier
     signal,
     enc: encryption,
     encDetails: ENCRYPTION_DIFFICULTY[encryption],
-    clients: generateClients('corporate'),
+    clients: generateClients('corporate', null, essid),
     linkedNodeIP: nodeIP,
     linkedOrg: orgName,
     target: true,
     discovered: false,
     breached: false,
-    password: encryption !== 'OPEN' ? generatePassword(encryption === 'WEP' ? 'weak' : 'medium') : null,
+    password: encryption !== 'OPEN' ? generatePassword(passwordStrength) : null,
     internalNodes: [
       { ip: `${nodeIP.split('.').slice(0, 3).join('.')}.20`, type: 'File Server' },
       { ip: `${nodeIP.split('.').slice(0, 3).join('.')}.30`, type: 'Database' },
@@ -251,6 +355,7 @@ export const generateAmbientNetworks = (region, count = 5, directorModifiers = {
   for (let i = 0; i < targetCount; i++) {
     const prefix = template.prefixes[Math.floor(Math.random() * template.prefixes.length)];
     const suffix = template.suffixes[Math.floor(Math.random() * template.suffixes.length)];
+    const essid = `${prefix}${suffix}`;
     
     // Weighted encryption selection
     const roll = Math.random();
@@ -271,19 +376,20 @@ export const generateAmbientNetworks = (region, count = 5, directorModifiers = {
     
     const [minSig, maxSig] = template.signalRange;
     const channels = [1, 6, 11, 36, 40, 44, 48];
+    const passwordStrength = encryption === 'WPA3' ? 'strong' : (encryption === 'WEP' ? 'weak' : 'medium');
     
     networks.push({
-      essid: `${prefix}${suffix}`,
+      essid,
       bssid: generateBSSID(),
       channel: channels[Math.floor(Math.random() * channels.length)],
       signal: minSig + Math.floor(Math.random() * (maxSig - minSig)),
       enc: encryption,
       encDetails: ENCRYPTION_DIFFICULTY[encryption],
-      clients: generateClients('corporate'),
+      clients: generateClients('corporate', null, essid),
       target: true,
       discovered: false,
       breached: false,
-      password: encryption !== 'OPEN' ? generatePassword(encryption === 'WEP' ? 'weak' : 'medium') : null,
+      password: encryption !== 'OPEN' ? generatePassword(passwordStrength) : null,
       linkedNodeIP: null, // Ambient - not linked to specific node
       linkedOrg: prefix,
     });
@@ -302,7 +408,7 @@ export const generateAmbientNetworks = (region, count = 5, directorModifiers = {
       signal: -50 - Math.floor(Math.random() * 35),
       enc: encryption,
       encDetails: ENCRYPTION_DIFFICULTY[encryption],
-      clients: generateClients('civilian', Math.floor(Math.random() * 5) + 1),
+      clients: generateClients('civilian', Math.floor(Math.random() * 3) + 1, essid),
       target: false,
       discovered: false,
       breached: false,
@@ -370,6 +476,7 @@ export const generateWardriveDiscovery = (region, existingNetworks = [], directo
   if (isTarget) {
     const prefix = template.prefixes[Math.floor(Math.random() * template.prefixes.length)];
     const suffix = template.suffixes[Math.floor(Math.random() * template.suffixes.length)];
+    const essid = `${prefix}${suffix}`;
     
     let encryption = 'WPA2';
     const roll = Math.random();
@@ -382,18 +489,20 @@ export const generateWardriveDiscovery = (region, existingNetworks = [], directo
       }
     }
     
+    const passwordStrength = encryption === 'WPA3' ? 'strong' : (encryption === 'WEP' ? 'weak' : 'medium');
+    
     return {
-      essid: `${prefix}${suffix}`,
+      essid,
       bssid: generateBSSID(),
       channel: [1, 6, 11, 36, 44, 149][Math.floor(Math.random() * 6)],
       signal: -60 - Math.floor(Math.random() * 25),
       enc: encryption,
       encDetails: ENCRYPTION_DIFFICULTY[encryption],
-      clients: generateClients('corporate'),
+      clients: generateClients('corporate', null, essid),
       target: true,
       discovered: true,
       breached: false,
-      password: encryption !== 'OPEN' ? generatePassword(encryption === 'WEP' ? 'weak' : 'medium') : null,
+      password: encryption !== 'OPEN' ? generatePassword(passwordStrength) : null,
       linkedNodeIP: null,
       linkedOrg: prefix,
       isNew: true,
@@ -410,7 +519,7 @@ export const generateWardriveDiscovery = (region, existingNetworks = [], directo
       signal: -55 - Math.floor(Math.random() * 30),
       enc: encryption,
       encDetails: ENCRYPTION_DIFFICULTY[encryption],
-      clients: generateClients('civilian', Math.floor(Math.random() * 3) + 1),
+      clients: generateClients('civilian', Math.floor(Math.random() * 3) + 1, essid),
       target: false,
       discovered: true,
       breached: false,

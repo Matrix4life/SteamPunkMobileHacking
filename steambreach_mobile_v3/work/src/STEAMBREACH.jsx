@@ -3286,7 +3286,7 @@ phy0    wlan0           ath9k_htc       Qualcomm Atheros AR9271
               return `[-] Network "${arg1}" not found.\n[*] Available: ${available}`;
             }
             
-            const clients = getClients(selectedNet.bssid);
+            const clients = selectedNet.clients || getClients(selectedNet.bssid);
             const pwr = selectedNet.signal || selectedNet.pwr || -42;
             const ch = selectedNet.channel || selectedNet.ch || 6;
             const encLabel = selectedNet.enc || 'WPA2';
@@ -3303,7 +3303,19 @@ phy0    wlan0           ath9k_htc       Qualcomm Atheros AR9271
             if (encLabel === 'OPEN') {
               output += `\n[!] OPEN NETWORK — No password required!\n[*] Run 'nmcli' to connect directly`;
             } else if (encLabel === 'WPA3' || encLabel === 'WPA3-SAE') {
-              output += `\n[!] WPA3 ENCRYPTION — Cannot crack with aircrack-ng\n[*] Need insider credentials or social engineering`;
+              // Show phishable clients for WPA3
+              const phishableClients = clients.filter(c => c.phishable && c.email);
+              output += `\n[!] WPA3 ENCRYPTION — Cannot crack with aircrack-ng`;
+              if (phishableClients.length > 0) {
+                output += `\n\n[*] CONNECTED USERS (phishable):`;
+                phishableClients.forEach(c => {
+                  output += `\n    ${c.name || 'Unknown'} <${c.email}> — ${c.role || 'Employee'}`;
+                });
+                output += `\n\n[*] Social engineer for password: wifiphish <email>`;
+                output += `\n[*] Example: wifiphish ${phishableClients[0].email}`;
+              } else {
+                output += `\n[*] No phishable targets connected. Try again later.`;
+              }
             } else {
               output += `\n[+] Capture file: capture-01.cap\n[*] Run 'aireplay-ng' to force handshake capture`;
             }
@@ -3322,11 +3334,13 @@ phy0    wlan0           ath9k_htc       Qualcomm Atheros AR9271
             playSuccess();
             const openNets = nets.filter(n => n.discovered && n.enc === 'OPEN');
             const wpa2Nets = nets.filter(n => n.discovered && (n.enc === 'WPA2' || n.enc === 'WEP'));
+            const wpa3Nets = nets.filter(n => n.discovered && (n.enc === 'WPA3' || n.enc === 'WPA3-SAE'));
             let hint = `\n[+] Found ${nets.filter(n => n.discovered).length} networks\n`;
             hint += `[*] SELECT TARGET: airodump-ng <network_name>\n`;
             hint += `[*] Example: airodump-ng DC_Metro_Public\n`;
             if (openNets.length > 0) hint += `[!] OPEN NETWORKS (no password): ${openNets.map(n => n.essid).join(', ')}\n`;
-            if (wpa2Nets.length > 0) hint += `[!] CRACKABLE (WPA2/WEP): ${wpa2Nets.slice(0,3).map(n => n.essid).join(', ')}${wpa2Nets.length > 3 ? '...' : ''}`;
+            if (wpa2Nets.length > 0) hint += `[!] CRACKABLE (WPA2/WEP): ${wpa2Nets.slice(0,3).map(n => n.essid).join(', ')}${wpa2Nets.length > 3 ? '...' : ''}\n`;
+            if (wpa3Nets.length > 0) hint += `[!] WPA3 (need social engineering): ${wpa3Nets.slice(0,3).map(n => n.essid).join(', ')}`;
             return output + hint;
           } else if (!wifiState.focused) {
             // Already scanned but no target selected — prompt for selection
@@ -3832,6 +3846,151 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
 ║  [*] New targets will appear in real-time                     ║
 ║  [*] Type 'wardrive' again to stop                            ║
 ╚═══════════════════════════════════════════════════════════════╝`;
+      },
+
+      // ═══════════════════════════════════════════════════════════════════
+      // WIFIPHISH — Social engineer WiFi credentials from connected clients
+      // ═══════════════════════════════════════════════════════════════════
+      wifiphish: async () => {
+        const nets = wifiNetworks;
+        const targetNet = nets.find(n => n.bssid === wifiState.targetBssid) || nets.find(n => n.target);
+        
+        if (!targetNet) {
+          return `[-] No target network selected.\n[*] First select a target: airodump-ng <network_name>`;
+        }
+        
+        const clients = targetNet.clients || [];
+        const phishableClients = clients.filter(c => c.phishable && c.email);
+        
+        if (!arg1) {
+          if (phishableClients.length === 0) {
+            return `[-] No phishable clients on ${targetNet.essid}.\n[*] Try a different network or wait for new clients to connect.`;
+          }
+          
+          let output = `[*] WIFIPHISH — Social Engineering Attack\n\n`;
+          output += `[*] Target Network: ${targetNet.essid} (${targetNet.enc})\n\n`;
+          output += `[*] PHISHABLE CLIENTS:\n`;
+          phishableClients.forEach(c => {
+            const hvBadge = c.highValue ? ' [HIGH VALUE]' : '';
+            output += `    ${c.name} <${c.email}>${hvBadge}\n        ${c.role} — ${c.device}\n\n`;
+          });
+          output += `[*] Usage: wifiphish <email>\n`;
+          output += `[*] Example: wifiphish ${phishableClients[0].email}`;
+          return output;
+        }
+        
+        // Find the target client
+        const targetClient = phishableClients.find(c => 
+          c.email.toLowerCase() === arg1.toLowerCase() ||
+          c.email.toLowerCase().includes(arg1.toLowerCase())
+        );
+        
+        if (!targetClient) {
+          return `[-] No client with email "${arg1}" found on ${targetNet.essid}.\n[*] Run 'wifiphish' to see available targets.`;
+        }
+        
+        // Start the phishing attack
+        setIsProcessing(true);
+        setTerminal(prev => [...prev, { 
+          type: 'out', 
+          text: `[*] Initiating social engineering attack on ${targetClient.name}...`, 
+          isNew: true 
+        }]);
+        await new Promise(r => setTimeout(r, 1000));
+        
+        setTerminal(prev => [...prev, { 
+          type: 'out', 
+          text: `[*] Crafting phishing email: "IT Security: WiFi Password Reset Required"...`, 
+          isNew: true 
+        }]);
+        await new Promise(r => setTimeout(r, 1500));
+        
+        // Success chance based on role
+        const roleSuccessRates = {
+          'CEO': 0.3,
+          'CFO': 0.35,
+          'CISO': 0.2,  // Security-aware
+          'CTO': 0.25,
+          'IT Admin': 0.15,  // Very security-aware
+          'Network Engineer': 0.1,  // Most security-aware
+          'Board Member': 0.5,
+          'VP Sales': 0.55,
+          'Manager': 0.5,
+          'Employee': 0.6,
+          'Analyst': 0.55,
+          'Developer': 0.35,
+          'Sales Rep': 0.65,
+          'HR Specialist': 0.6,
+          'Intern': 0.7,  // Most susceptible
+        };
+        
+        const baseRate = roleSuccessRates[targetClient.role] || 0.5;
+        const heatPenalty = heat > 50 ? (heat - 50) * 0.005 : 0;
+        const successChance = Math.max(0.1, baseRate - heatPenalty);
+        const success = Math.random() < successChance;
+        
+        if (success) {
+          setTerminal(prev => [...prev, { 
+            type: 'out', 
+            text: `[*] ${targetClient.name} clicked the link...`, 
+            isNew: true 
+          }]);
+          await new Promise(r => setTimeout(r, 1000));
+          
+          setTerminal(prev => [...prev, { 
+            type: 'out', 
+            text: `[+] TARGET ENTERED CREDENTIALS!`, 
+            isNew: true 
+          }]);
+          await new Promise(r => setTimeout(r, 500));
+          
+          // Set the cracked password
+          setWifiState(prev => ({ ...prev, cracked: true, pwd: targetNet.password }));
+          setHeat(h => Math.min(h + 5, 100));
+          setReputation(r => r + 10);
+          playSuccess();
+          setIsProcessing(false);
+          
+          return `
+╔═══════════════════════════════════════════════════════════════╗
+║              SOCIAL ENGINEERING SUCCESS!                       ║
+╠═══════════════════════════════════════════════════════════════╣
+║  Target:    ${targetClient.name.substring(0,40).padEnd(40)}   ║
+║  Role:      ${(targetClient.role || 'Employee').padEnd(40)}   ║
+║  Network:   ${targetNet.essid.substring(0,40).padEnd(40)}   ║
+╠═══════════════════════════════════════════════════════════════╣
+║  CREDENTIALS CAPTURED:                                         ║
+║  Password:  ${targetNet.password.padEnd(40)}   ║
+╚═══════════════════════════════════════════════════════════════╝
+
+[+] Password saved! Run 'nmcli' to connect.
+[+] Heat +5%, Reputation +10`;
+        } else {
+          // Failed - target got suspicious
+          setHeat(h => Math.min(h + 10, 100));
+          playFailure();
+          setIsProcessing(false);
+          
+          const failReasons = [
+            `${targetClient.name} reported the email to IT Security!`,
+            `${targetClient.name} recognized the phishing attempt.`,
+            `${targetClient.name} called the helpdesk to verify — they're onto you.`,
+            `${targetClient.name} forwarded the email to the security team.`,
+          ];
+          const reason = failReasons[Math.floor(Math.random() * failReasons.length)];
+          
+          return `
+[-] PHISHING ATTEMPT FAILED!
+
+[!] ${reason}
+[!] Heat +10%
+
+[*] Tips:
+    • High-value targets (CEO, CISO) are more security-aware
+    • Interns and Sales Reps are more susceptible
+    • High heat makes targets more suspicious
+    • Try a different target on this network`;
+        }
       },
 
       // WiFi story choice handler

@@ -33,6 +33,9 @@ import {
 import {
   invokeBlueTeamAI,
   generateAIContract,
+  generateWiFiContract,
+  selectWiFiStoryHook,
+  WIFI_CONTRACT_TYPES,
   generateInterceptedComms,
 } from './ai/agents';
 import {
@@ -136,6 +139,7 @@ const STEAMBREACH = () => {
   const [activeStory, setActiveStory] = useState(null);
   const alignment = Math.max(-100, Math.min(100, morality.signal - morality.chaos));
   const [pendingInteraction, setPendingInteraction] = useState(null);
+  const [pendingWifiChoice, setPendingWifiChoice] = useState(null);
 
   // WiFi Hacking State
   const [wifiState, setWifiState] = useState({
@@ -3131,6 +3135,9 @@ ${wantedTier === 'MANHUNT' ? '[!!!] REDUCE HEAT IMMEDIATELY. Your entire network
 
       // ═══════════════════════════════════════════════════════
       // WIFI HACKING MODULE - Wireless Network Infiltration
+      // ARCADE: Just type command name
+      // FIELD: Specify key flags (start/stop, scan/focus, etc.)
+      // OPERATOR: Full real-world syntax required
       // ═══════════════════════════════════════════════════════
 
       iwconfig: async () => {
@@ -3148,6 +3155,41 @@ ${wantedTier === 'MANHUNT' ? '[!!!] REDUCE HEAT IMMEDIATELY. Your entire network
       },
 
       'airmon-ng': async () => {
+        // ═══ ARCADE MODE: Just type 'airmon-ng' to toggle monitor mode ═══
+        if (gameMode === 'arcade') {
+          if (wifiState.mon) {
+            setWifiState({ mon: false, scanned: false, focused: false, capFile: false, hshake: false, cracked: false, pwd: null, connected: false, targetBssid: null });
+            return `[+] Monitor mode disabled. Interface returned to managed mode.`;
+          }
+          setWifiState(prev => ({ ...prev, mon: true }));
+          playSuccess();
+          return `[+] ARCADE MODE — Monitor mode auto-enabled on wlan0mon
+[*] Capturing all wireless traffic in range.
+[*] Run 'airodump-ng' to scan for networks.`;
+        }
+
+        // ═══ FIELD MODE: Requires start/stop flag ═══
+        if (gameMode === 'field') {
+          if (!arg1 || !['start', 'stop'].includes(arg1)) {
+            return `[-] airmon-ng: Specify action:
+    airmon-ng start   — Enable monitor mode
+    airmon-ng stop    — Disable monitor mode`;
+          }
+          
+          if (arg1 === 'start') {
+            if (wifiState.mon) return `[!] Already in monitor mode.`;
+            setWifiState(prev => ({ ...prev, mon: true }));
+            playSuccess();
+            return `[+] Monitor mode enabled on wlan0mon
+[*] Run 'airodump-ng scan' to scan for networks.`;
+          } else {
+            if (!wifiState.mon) return `[!] Not in monitor mode.`;
+            setWifiState({ mon: false, scanned: false, focused: false, capFile: false, hshake: false, cracked: false, pwd: null, connected: false, targetBssid: null });
+            return `[+] Monitor mode disabled.`;
+          }
+        }
+
+        // ═══ OPERATOR MODE: Full syntax required ═══
         if (!arg1) {
           return `Usage: airmon-ng <start|stop> <interface>
   
@@ -3172,7 +3214,6 @@ phy0    wlan0           ath9k_htc       Qualcomm Atheros AR9271
                 (mac80211 station mode vif disabled for [phy0]wlan0)
 
 [+] Monitor mode enabled on wlan0mon
-[*] You can now capture all wireless traffic in range.
 [*] Run 'airodump-ng wlan0mon' to scan for networks.`;
         }
         
@@ -3182,7 +3223,8 @@ phy0    wlan0           ath9k_htc       Qualcomm Atheros AR9271
           return `[+] Monitor mode disabled. Interface returned to managed mode.`;
         }
         
-        return `Usage: airmon-ng <start|stop> <interface>`;
+        return `[-] Invalid syntax. Usage: airmon-ng <start|stop> <interface>
+[*] Example: airmon-ng start wlan0`;
       },
 
       'airodump-ng': async () => {
@@ -3191,88 +3233,151 @@ phy0    wlan0           ath9k_htc       Qualcomm Atheros AR9271
           return `[!] Error: Not in monitor mode.
 [*] Enable monitor mode first: airmon-ng start wlan0`;
         }
-        
-        // Check for focused capture on target
+
+        // ═══ ARCADE MODE: Auto-scan or auto-focus on target ═══
+        if (gameMode === 'arcade') {
+          if (!wifiState.scanned) {
+            let output = `\n CH  6 ][ Elapsed: 12s ][ ${new Date().toTimeString().slice(0,8)}\n\n BSSID              PWR  Beacons  #Data   #/s  CH   ENC    ESSID\n`;
+            WIFI_NETS.forEach(n => {
+              output += ` ${n.bssid}  ${String(n.pwr).padStart(3)}     ${String(Math.floor(Math.random() * 2000 + 500)).padStart(4)}    ${String(Math.floor(Math.random() * 5000)).padStart(4)}    ${String(Math.floor(Math.random()*50)).padStart(2)}  ${String(n.ch).padStart(2)}   ${n.enc.padEnd(6)} ${n.essid}\n`;
+            });
+            setWifiState(prev => ({ ...prev, scanned: true }));
+            playSuccess();
+            return output + `\n[+] Found ${WIFI_NETS.length} networks — ARCADE MODE auto-identified targets\n[!] HIGH VALUE: STEAMWORKS-CORP (WPA2)\n[*] Run 'airodump-ng' again to focus capture on target`;
+          } else if (!wifiState.focused) {
+            const targetNet = WIFI_NETS.find(n => n.target);
+            const clients = WIFI_CLIENTS.filter(c => c.bssid === targetNet.bssid);
+            let output = `\n CH  6 ][ Elapsed: 45s ][ ${new Date().toTimeString().slice(0,8)}${wifiState.hshake ? ` ][ WPA handshake: ${targetNet.bssid}` : ''}\n\n BSSID              PWR  Beacons  #Data   CH   ENC    ESSID\n\n ${targetNet.bssid}  ${String(targetNet.pwr).padStart(3)}     1523    8847   ${String(targetNet.ch).padStart(2)}   ${targetNet.enc}    ${targetNet.essid}\n\n STATION            PWR   Frames  Device\n`;
+            clients.forEach(c => { output += ` ${c.mac}  ${String(c.pwr).padStart(3)}   ${String(c.frames).padStart(6)}  ${c.dev}\n`; });
+            setWifiState(prev => ({ ...prev, focused: true, capFile: true, targetBssid: targetNet.bssid }));
+            playSuccess();
+            return output + `\n[+] ARCADE MODE — Auto-focused on STEAMWORKS-CORP\n[+] Capture file: capture-01.cap\n[*] Run 'aireplay-ng' to force handshake capture`;
+          } else {
+            const targetNet = WIFI_NETS.find(n => n.target);
+            return `[*] Already capturing on ${targetNet.essid}\n[*] ${wifiState.hshake ? 'Handshake captured! Run aircrack-ng to crack.' : 'Waiting for handshake. Run aireplay-ng to force it.'}`;
+          }
+        }
+
+        // ═══ FIELD MODE: Requires scan/focus flag ═══
+        if (gameMode === 'field') {
+          if (!arg1 || !['scan', 'focus'].includes(arg1)) {
+            return `[-] airodump-ng: Specify mode:
+    airodump-ng scan    — Scan all networks in range
+    airodump-ng focus   — Focus capture on target (STEAMWORKS-CORP)`;
+          }
+          
+          if (arg1 === 'scan') {
+            let output = `\n CH  6 ][ Elapsed: 12s ][ ${new Date().toTimeString().slice(0,8)}\n\n BSSID              PWR  Beacons  #Data   #/s  CH   ENC    ESSID\n`;
+            WIFI_NETS.forEach(n => {
+              output += ` ${n.bssid}  ${String(n.pwr).padStart(3)}     ${String(Math.floor(Math.random() * 2000 + 500)).padStart(4)}    ${String(Math.floor(Math.random() * 5000)).padStart(4)}    ${String(Math.floor(Math.random()*50)).padStart(2)}  ${String(n.ch).padStart(2)}   ${n.enc.padEnd(6)} ${n.essid}\n`;
+            });
+            setWifiState(prev => ({ ...prev, scanned: true }));
+            playSuccess();
+            return output + `\n[+] Found ${WIFI_NETS.length} networks\n[!] Target: STEAMWORKS-CORP (WPA2, Ch6, BSSID: A4:CF:12:8B:3E:01)\n[*] Focus capture: airodump-ng focus`;
+          } else {
+            if (!wifiState.scanned) return `[-] Scan first: airodump-ng scan`;
+            const targetNet = WIFI_NETS.find(n => n.target);
+            const clients = WIFI_CLIENTS.filter(c => c.bssid === targetNet.bssid);
+            let output = `\n CH  6 ][ Elapsed: 45s ][ ${new Date().toTimeString().slice(0,8)}${wifiState.hshake ? ` ][ WPA handshake: ${targetNet.bssid}` : ''}\n\n BSSID              PWR  Beacons  #Data   CH   ENC    ESSID\n\n ${targetNet.bssid}  ${String(targetNet.pwr).padStart(3)}     1523    8847   ${String(targetNet.ch).padStart(2)}   ${targetNet.enc}    ${targetNet.essid}\n\n STATION            PWR   Frames  Device\n`;
+            clients.forEach(c => { output += ` ${c.mac}  ${String(c.pwr).padStart(3)}   ${String(c.frames).padStart(6)}  ${c.dev}\n`; });
+            setWifiState(prev => ({ ...prev, focused: true, capFile: true, targetBssid: targetNet.bssid }));
+            playSuccess();
+            return output + `\n[+] Focused capture on STEAMWORKS-CORP\n[+] Capture file: capture-01.cap\n[*] Force handshake: aireplay-ng deauth`;
+          }
+        }
+
+        // ═══ OPERATOR MODE: Full syntax required ═══
         const hasBssid = args.includes('--bssid');
-        const hasChannel = args.includes('-c');
         const hasWrite = args.includes('-w');
         const bssidIdx = args.indexOf('--bssid');
         const targetBssid = bssidIdx !== -1 ? args[bssidIdx + 1] : null;
+        const lastArg = args[args.length - 1];
+        
+        if (lastArg !== 'wlan0mon') {
+          return `[-] Missing interface. Usage: airodump-ng [options] wlan0mon
+  
+Options:
+  --bssid <MAC>   Focus on specific access point
+  -c <channel>    Lock to specific channel
+  -w <prefix>     Write capture to file
+
+Examples:
+  airodump-ng wlan0mon
+  airodump-ng --bssid A4:CF:12:8B:3E:01 -c 6 -w capture wlan0mon`;
+        }
         
         if (hasBssid && targetBssid) {
           const targetNet = WIFI_NETS.find(n => n.bssid === targetBssid);
           if (!targetNet) return `[!] No network found with BSSID ${targetBssid}`;
-          
           const clients = WIFI_CLIENTS.filter(c => c.bssid === targetBssid);
-          
-          let output = `
- CH ${String(targetNet.ch).padStart(2)} ][ Elapsed: 45s ][ ${new Date().toTimeString().slice(0,8)}${wifiState.hshake ? ` ][ WPA handshake: ${targetBssid}` : ''}
-
- BSSID              PWR  Beacons  #Data   #/s  CH   ENC    CIPHER  AUTH  ESSID
-
- ${targetBssid}  ${String(targetNet.pwr).padStart(3)}     1523    8847   124  ${String(targetNet.ch).padStart(2)}   ${targetNet.enc}    CCMP    PSK   ${targetNet.essid}
-
- STATION            PWR   Rate    Lost   Frames  Notes
-`;
-          clients.forEach(c => {
-            output += ` ${c.mac}  ${String(c.pwr).padStart(3)}   54e-24e     0   ${String(c.frames).padStart(6)}  ${c.dev}\n`;
-          });
-          
+          let output = `\n CH ${String(targetNet.ch).padStart(2)} ][ Elapsed: 45s ][ ${new Date().toTimeString().slice(0,8)}${wifiState.hshake ? ` ][ WPA handshake: ${targetBssid}` : ''}\n\n BSSID              PWR  Beacons  #Data   #/s  CH   ENC    CIPHER  AUTH  ESSID\n\n ${targetBssid}  ${String(targetNet.pwr).padStart(3)}     1523    8847   124  ${String(targetNet.ch).padStart(2)}   ${targetNet.enc}    CCMP    PSK   ${targetNet.essid}\n\n STATION            PWR   Rate    Lost   Frames  Notes\n`;
+          clients.forEach(c => { output += ` ${c.mac}  ${String(c.pwr).padStart(3)}   54e-24e     0   ${String(c.frames).padStart(6)}  ${c.dev}\n`; });
           if (hasWrite) {
             setWifiState(prev => ({ ...prev, focused: true, capFile: true, targetBssid: targetBssid }));
-            output += `\n[+] Focused capture active — writing to capture-01.cap
-[*] Monitoring ${clients.length} clients on ${targetNet.essid}
-[*] Use aireplay-ng to force a handshake capture`;
+            output += `\n[+] Focused capture active — writing to capture-01.cap\n[*] Monitoring ${clients.length} clients on ${targetNet.essid}`;
           }
-          
           playSuccess();
           return output;
         }
         
-        // General network scan
-        let output = `
- CH  6 ][ Elapsed: 12s ][ ${new Date().toTimeString().slice(0,8)}
-
- BSSID              PWR  Beacons  #Data   #/s  CH   ENC    CIPHER  AUTH  ESSID
-
-`;
+        let output = `\n CH  6 ][ Elapsed: 12s ][ ${new Date().toTimeString().slice(0,8)}\n\n BSSID              PWR  Beacons  #Data   #/s  CH   ENC    CIPHER  AUTH  ESSID\n\n`;
         WIFI_NETS.forEach(n => {
           const beacons = Math.floor(Math.random() * 2000 + 500);
           const data = Math.floor(Math.random() * 5000);
           output += ` ${n.bssid}  ${String(n.pwr).padStart(3)}     ${String(beacons).padStart(4)}    ${String(data).padStart(4)}    ${Math.floor(Math.random()*50).toString().padStart(2)}  ${String(n.ch).padStart(2)}   ${n.enc.padEnd(6)} CCMP    PSK   ${n.essid}\n`;
         });
-        
         if (!wifiState.scanned) {
           setWifiState(prev => ({ ...prev, scanned: true }));
-          output += `
-[+] Found ${WIFI_NETS.length} networks in range
-[!] Target identified: STEAMWORKS-CORP (WPA2, Ch6, -42dBm) — HIGH VALUE
-[*] Weak network detected: OldPrinter_Net using WEP (easily crackable)
-[*] Suspicious: FBI_Surveillance_Van — possibly honeypot
-
-[*] Focus capture: airodump-ng --bssid A4:CF:12:8B:3E:01 -c 6 -w capture wlan0mon`;
+          output += `\n[+] Found ${WIFI_NETS.length} networks in range\n[!] Target identified: STEAMWORKS-CORP (WPA2, Ch6, -42dBm)\n[*] Focus capture: airodump-ng --bssid A4:CF:12:8B:3E:01 -c 6 -w capture wlan0mon`;
         }
-        
         playSuccess();
         return output;
       },
 
       'aireplay-ng': async () => {
-        if (!wifiState.mon) {
-          playFailure();
-          return `[!] Monitor mode required. Run 'airmon-ng start wlan0' first.`;
+        if (!wifiState.mon) { playFailure(); return `[!] Monitor mode required. Run 'airmon-ng start wlan0' first.`; }
+        if (!wifiState.focused) { playFailure(); return `[!] Start focused capture first.\n[*] Run: airodump-ng --bssid A4:CF:12:8B:3E:01 -c 6 -w capture wlan0mon`; }
+
+        // ═══ ARCADE MODE: Just type 'aireplay-ng' to auto-deauth ═══
+        if (gameMode === 'arcade') {
+          if (wifiState.hshake) return `[*] Handshake already captured. Run 'aircrack-ng' to crack it.`;
+          setIsProcessing(true);
+          const targetClient = WIFI_CLIENTS[0];
+          setTerminal(prev => [...prev, { type: 'out', text: `[*] ARCADE MODE — Auto-targeting ${targetClient.dev}\n[*] Sending deauth packets...`, isNew: true }]);
+          await new Promise(r => setTimeout(r, 1500));
+          setWifiState(prev => ({ ...prev, hshake: true }));
+          setIsProcessing(false);
+          playSuccess();
+          setHeat(h => Math.min(h + 3, 100));
+          return `[+] Client disconnected: ${targetClient.dev}\n[+] Client reassociated — WPA handshake CAPTURED!\n[+] Saved to: capture-01.cap\n[*] Run 'aircrack-ng' to crack the password.`;
         }
-        
-        if (!wifiState.focused) {
-          playFailure();
-          return `[!] Start focused capture first:
-    airodump-ng --bssid A4:CF:12:8B:3E:01 -c 6 -w capture wlan0mon`;
+
+        // ═══ FIELD MODE: Requires deauth flag ═══
+        if (gameMode === 'field') {
+          if (!arg1 || arg1 !== 'deauth') {
+            return `[-] aireplay-ng: Specify attack type:
+    aireplay-ng deauth          — Deauth all clients (broadcast)
+    aireplay-ng deauth <MAC>    — Deauth specific client
+    
+[*] Available clients:
+${WIFI_CLIENTS.slice(0, 4).map(c => `    ${c.mac}  ${c.dev}`).join('\n')}`;
+          }
+          if (wifiState.hshake) return `[*] Handshake already captured. Run 'aircrack-ng crack' to crack.`;
+          const targetMac = arg2 || 'FF:FF:FF:FF:FF:FF';
+          const client = WIFI_CLIENTS.find(c => c.mac === targetMac);
+          setIsProcessing(true);
+          setTerminal(prev => [...prev, { type: 'out', text: `[*] Sending deauth to ${targetMac}...`, isNew: true }]);
+          await new Promise(r => setTimeout(r, 1500));
+          setWifiState(prev => ({ ...prev, hshake: true }));
+          setIsProcessing(false);
+          playSuccess();
+          setHeat(h => Math.min(h + 5, 100));
+          return `[+] Deauth sent!${client ? `\n[+] Device: ${client.dev}` : ''}\n[+] Client reassociated — WPA handshake CAPTURED!\n[+] Saved to: capture-01.cap\n[*] Crack: aircrack-ng crack`;
         }
-        
+
+        // ═══ OPERATOR MODE: Full syntax required ═══
         const hasDeauth = args.includes('--deauth');
         const hasBssid = args.includes('-a');
-        const hasClient = args.includes('-c');
-        
         if (!hasDeauth) {
           return `Usage: aireplay-ng --deauth <count> -a <BSSID> [-c <CLIENT>] <interface>
 
@@ -3280,235 +3385,233 @@ phy0    wlan0           ath9k_htc       Qualcomm Atheros AR9271
   -a bssid        : Access Point MAC address
   -c client       : Target client MAC (optional, broadcast if omitted)
 
-Example: aireplay-ng --deauth 10 -a A4:CF:12:8B:3E:01 -c 4C:EB:42:DE:AD:01 wlan0mon`;
+Example: aireplay-ng --deauth 10 -a A4:CF:12:8B:3E:01 -c 4C:EB:42:DE:AD:01 wlan0mon
+
+[*] Available clients on target:
+${WIFI_CLIENTS.slice(0, 4).map(c => `    ${c.mac}  ${c.dev}`).join('\n')}`;
         }
-        
         const bssidIdx = args.indexOf('-a');
         const targetBssid = bssidIdx !== -1 ? args[bssidIdx + 1] : null;
         const clientIdx = args.indexOf('-c');
         const targetClient = clientIdx !== -1 ? args[clientIdx + 1] : 'FF:FF:FF:FF:FF:FF';
-        
-        if (!targetBssid) return `[!] Missing target BSSID. Use -a <BSSID>`;
-        
+        if (!targetBssid || !hasBssid) return `[!] Missing target BSSID. Use -a <BSSID>`;
         const client = WIFI_CLIENTS.find(c => c.mac === targetClient);
         const deauthCount = parseInt(args[args.indexOf('--deauth') + 1]) || 10;
-        
         setIsProcessing(true);
         setTerminal(prev => [...prev, { type: 'out', text: `[*] Sending ${deauthCount} directed DeAuth (code 7). STMAC: [${targetClient}]`, isNew: true }]);
-        
         await new Promise(r => setTimeout(r, 1500));
-        
         let output = ``;
-        for (let i = 0; i < Math.min(deauthCount, 6); i++) {
-          output += `  [${i+1}|${deauthCount}] DeAuth → [${targetClient}]  ACK\n`;
-        }
-        
-        output += `
-  [+] Client disconnected!`;
+        for (let i = 0; i < Math.min(deauthCount, 6); i++) { output += `  [${i+1}|${deauthCount}] DeAuth → [${targetClient}]  ACK\n`; }
+        output += `\n  [+] Client disconnected!`;
         if (client) output += `\n  [*] Device: ${client.dev}`;
-        output += `
-  [*] Waiting for reconnect...
-  [+] Client reassociated — WPA 4-way handshake CAPTURED!
-  [+] Handshake saved to: capture-01.cap
-
-[*] Crack the password: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
-        
+        output += `\n  [*] Waiting for reconnect...\n  [+] Client reassociated — WPA 4-way handshake CAPTURED!\n  [+] Handshake saved to: capture-01.cap\n\n[*] Crack: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
         setWifiState(prev => ({ ...prev, hshake: true }));
         setIsProcessing(false);
         playSuccess();
         setHeat(h => Math.min(h + 5, 100));
-        
         return output;
       },
 
       'aircrack-ng': async () => {
-        if (!wifiState.hshake) {
-          playFailure();
-          return `[!] No handshake captured. Use aireplay-ng --deauth to capture one first.
+        if (!wifiState.hshake) { playFailure(); return `[!] No handshake captured. Use aireplay-ng to capture one first.`; }
+        if (wifiState.cracked) { return `[*] Password already cracked: ${wifiState.pwd}\n[*] Connect: nmcli dev wifi connect STEAMWORKS-CORP password ${wifiState.pwd}`; }
 
-Usage: aircrack-ng -w <wordlist> <capture.cap>
-
-Wordlists:
-  /usr/share/wordlists/rockyou.txt
-  /usr/share/wordlists/common.txt
-  /usr/share/wordlists/darkweb2017.txt`;
+        // ═══ ARCADE MODE: Just type 'aircrack-ng' to auto-crack ═══
+        if (gameMode === 'arcade') {
+          setIsProcessing(true);
+          setTerminal(prev => [...prev, { type: 'out', text: `[*] ARCADE MODE — Auto-cracking with rockyou.txt...`, isNew: true }]);
+          await new Promise(r => setTimeout(r, 2000));
+          const crackedPwd = 'St3@mW0rks_W1F1!';
+          setWifiState(prev => ({ ...prev, cracked: true, pwd: crackedPwd }));
+          setIsProcessing(false);
+          playSuccess();
+          return `\n                           KEY FOUND! [ ${crackedPwd} ]\n\n[+] Password cracked: ${crackedPwd}\n[*] Connect: nmcli`;
         }
-        
+
+        // ═══ FIELD MODE: Requires crack flag ═══
+        if (gameMode === 'field') {
+          if (!arg1 || arg1 !== 'crack') { return `[-] aircrack-ng: Specify action:\n    aircrack-ng crack    — Crack WPA2 using rockyou.txt wordlist`; }
+          setIsProcessing(true);
+          setTerminal(prev => [...prev, { type: 'out', text: `[*] Cracking with rockyou.txt...\n      [00:00:04] 18442 keys tested (4610 k/s)`, isNew: true }]);
+          await new Promise(r => setTimeout(r, 2000));
+          const crackedPwd = 'St3@mW0rks_W1F1!';
+          setWifiState(prev => ({ ...prev, cracked: true, pwd: crackedPwd }));
+          setIsProcessing(false);
+          playSuccess();
+          return `\n                           KEY FOUND! [ ${crackedPwd} ]\n\n[+] Password cracked: ${crackedPwd}\n[*] Connect: nmcli connect`;
+        }
+
+        // ═══ OPERATOR MODE: Full syntax required ═══
         const hasWordlist = args.includes('-w');
-        if (!hasWordlist) {
+        const capFile = args.find(a => a.endsWith('.cap'));
+        if (!hasWordlist || !capFile) {
           return `Usage: aircrack-ng -w <wordlist> <capture.cap>
 
 Wordlists:
   /usr/share/wordlists/rockyou.txt      (14 million passwords)
   /usr/share/wordlists/common.txt       (100k common passwords)
-  /usr/share/wordlists/darkweb2017.txt  (1.4 billion leaked)`;
+
+Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
         }
-        
         setIsProcessing(true);
-        setTerminal(prev => [...prev, { type: 'out', text: `
-                               Aircrack-ng 1.7
-
-      [00:00:00] 0/9822768 keys tested (0.00 k/s)
-
-      Time left: --
-
-                          Current passphrase: `, isNew: true }]);
-        
+        setTerminal(prev => [...prev, { type: 'out', text: `\n                               Aircrack-ng 1.7\n\n      [00:00:00] 0/9822768 keys tested (0.00 k/s)`, isNew: true }]);
         await new Promise(r => setTimeout(r, 1000));
-        
-        const steps = [
-          { keys: 18442, time: '00:00:04', speed: 4610 },
-          { keys: 37291, time: '00:00:08', speed: 4661 },
-          { keys: 49823, time: '00:00:11', speed: 4529 },
-          { keys: 62847, time: '00:00:14', speed: 4489 },
-        ];
-        
+        const steps = [{ keys: 18442, time: '00:00:04', speed: 4610 },{ keys: 37291, time: '00:00:08', speed: 4661 },{ keys: 49823, time: '00:00:11', speed: 4529 }];
         for (const step of steps) {
           setTerminal(prev => [...prev, { type: 'out', text: `      [${step.time}] ${step.keys} keys tested (${step.speed} k/s)`, isNew: false }]);
           await new Promise(r => setTimeout(r, 800));
         }
-        
         const crackedPwd = 'St3@mW0rks_W1F1!';
         setWifiState(prev => ({ ...prev, cracked: true, pwd: crackedPwd }));
         setIsProcessing(false);
         playSuccess();
-        
-        return `
-                               Aircrack-ng 1.7
-
-
-                           KEY FOUND! [ ${crackedPwd} ]
-
-
-      Master Key     : A4 29 C1 7E 3B 90 D2 4F 18 6A B7 E5 33 CC 01 8D
-                       E1 F2 A3 B4 C5 D6 E7 F8 19 2A 3B 4C 5D 6E 7F 80
-
-      Transient Key  : 2C FD A1 77 88 99 4E 3B 7A C0 D5 62 18 F9 A3 47
-                       11 22 33 44 55 66 77 88 99 AA BB CC DD EE FF 00
-
-      EAPOL HMAC     : 9A 8B 7C 6D 5E 4F 3A 2B 1C 0D EF FE DC CB BA A9
-
-[+] Password cracked: ${crackedPwd}
-[*] Connect to network: nmcli dev wifi connect STEAMWORKS-CORP password ${crackedPwd}`;
+        return `\n                               Aircrack-ng 1.7\n\n\n                           KEY FOUND! [ ${crackedPwd} ]\n\n\n      Master Key     : A4 29 C1 7E 3B 90 D2 4F 18 6A B7 E5 33 CC 01 8D\n      EAPOL HMAC     : 9A 8B 7C 6D 5E 4F 3A 2B 1C 0D EF FE DC CB BA A9\n\n[+] Password cracked: ${crackedPwd}\n[*] Connect: nmcli dev wifi connect STEAMWORKS-CORP password ${crackedPwd}`;
       },
 
       nmcli: async () => {
-        if (!wifiState.cracked) {
-          return `Usage: nmcli dev wifi connect <SSID> password <password>
-[!] You need to crack a WiFi password first.`;
+        if (!wifiState.cracked) { return `Usage: nmcli dev wifi connect <SSID> password <password>\n[!] You need to crack a WiFi password first.`; }
+        if (wifiState.connected) { return `[*] Already connected to STEAMWORKS-CORP (10.0.0.187)\n[*] Gateway: 10.0.0.1\n[*] Internal hosts are accessible via nmap.`; }
+
+        const spawnInternalNodes = () => {
+          const newTargets = [
+            { ip: '10.0.0.20', org: 'STEAMWORKS-CORP File Server' },
+            { ip: '10.0.0.30', org: 'STEAMWORKS-CORP Database' },
+            { ip: '10.0.0.50', org: 'STEAMWORKS-CORP Domain Controller' },
+          ];
+          newTargets.forEach(t => {
+            if (!world[t.ip]) {
+              const newNode = generateNewTarget(t.ip, currentRegion, director.modifiers, 'mid');
+              newNode.data.org = { orgName: t.org, industry: 'Corporate', employees: [] };
+              setWorld(prev => ({ ...prev, [t.ip]: newNode }));
+            }
+          });
+        };
+
+        // ═══ ARCADE MODE: Just type 'nmcli' to auto-connect ═══
+        if (gameMode === 'arcade') {
+          setIsProcessing(true);
+          setTerminal(prev => [...prev, { type: 'out', text: `[*] ARCADE MODE — Auto-connecting to STEAMWORKS-CORP...`, isNew: true }]);
+          await new Promise(r => setTimeout(r, 1500));
+          setWifiState(prev => ({ ...prev, connected: true }));
+          spawnInternalNodes();
+          setIsProcessing(false);
+          playSuccess();
+          return `[+] Connected to STEAMWORKS-CORP!\n[+] IP: 10.0.0.187 | Gateway: 10.0.0.1\n\n[!] New targets added to network map:\n    • 10.0.0.20 — File Server\n    • 10.0.0.30 — Database Server\n    • 10.0.0.50 — Domain Controller`;
         }
-        
-        if (wifiState.connected) {
-          return `[*] Already connected to STEAMWORKS-CORP (10.0.0.187)
-[*] Gateway: 10.0.0.1
-[*] Internal hosts are accessible via nmap.`;
+
+        // ═══ FIELD MODE: Requires connect flag ═══
+        if (gameMode === 'field') {
+          if (!arg1 || arg1 !== 'connect') { return `[-] nmcli: Specify action:\n    nmcli connect    — Connect to STEAMWORKS-CORP with cracked password`; }
+          setIsProcessing(true);
+          setTerminal(prev => [...prev, { type: 'out', text: `[*] Connecting to STEAMWORKS-CORP...`, isNew: true }]);
+          await new Promise(r => setTimeout(r, 1500));
+          setWifiState(prev => ({ ...prev, connected: true }));
+          spawnInternalNodes();
+          setIsProcessing(false);
+          playSuccess();
+          return `[+] Connected to STEAMWORKS-CORP!\n[+] IP: 10.0.0.187\n\n[!] New targets:\n    • 10.0.0.20 — File Server\n    • 10.0.0.30 — Database\n    • 10.0.0.50 — Domain Controller`;
         }
-        
+
+        // ═══ OPERATOR MODE: Full syntax required ═══
+        const connectIdx = args.indexOf('connect');
+        const passwordIdx = args.indexOf('password');
+        if (connectIdx === -1 || !args[connectIdx + 1]) { return `Usage: nmcli dev wifi connect <SSID> password <password>\n\nExample: nmcli dev wifi connect STEAMWORKS-CORP password ${wifiState.pwd}`; }
+        const ssid = args[connectIdx + 1];
+        const password = passwordIdx !== -1 ? args[passwordIdx + 1] : null;
+        if (!password) { return `[-] Missing password. Usage: nmcli dev wifi connect ${ssid} password <password>`; }
+        if (password !== wifiState.pwd) { playFailure(); return `[-] Connection failed: incorrect password.`; }
         setIsProcessing(true);
-        setTerminal(prev => [...prev, { type: 'out', text: `[*] Connecting to STEAMWORKS-CORP...
-[*] Security: WPA2-PSK
-[*] Password: ${wifiState.pwd}`, isNew: true }]);
-        
+        setTerminal(prev => [...prev, { type: 'out', text: `[*] Connecting to ${ssid}...\n[*] Security: WPA2-PSK\n[*] Password: ${password}`, isNew: true }]);
         await new Promise(r => setTimeout(r, 2000));
-        
         setWifiState(prev => ({ ...prev, connected: true }));
+        spawnInternalNodes();
         setIsProcessing(false);
         playSuccess();
-        
-        // Generate some internal network nodes when connected via WiFi
-        const newTargets = [
-          { ip: '10.0.0.20', org: 'STEAMWORKS-CORP File Server' },
-          { ip: '10.0.0.30', org: 'STEAMWORKS-CORP Database' },
-          { ip: '10.0.0.50', org: 'STEAMWORKS-CORP Domain Controller' },
-        ];
-        
-        newTargets.forEach(t => {
-          if (!world[t.ip]) {
-            const newNode = generateNewTarget(t.ip, currentRegion, director.modifiers, 'mid');
-            newNode.data.org = { orgName: t.org, industry: 'Corporate', employees: [] };
-            setWorld(prev => ({ ...prev, [t.ip]: newNode }));
-          }
-        });
-        
-        return `
-  [+] Authenticating... ✓
-  [+] Obtaining IP via DHCP... ✓
-
-  ╔════════════════════════════════════════╗
-  ║     CONNECTED TO STEAMWORKS-CORP       ║
-  ╠════════════════════════════════════════╣
-  ║  IP Address : 10.0.0.187               ║
-  ║  Gateway    : 10.0.0.1                 ║
-  ║  DNS        : 10.0.0.1, 8.8.8.8        ║
-  ║  Subnet     : 255.255.255.0            ║
-  ╚════════════════════════════════════════╝
-
-  [+] ⚡ Inside STEAMWORKS-CORP corporate network!
-  [+] Internal hosts now reachable. Run 'nmap' to discover them.
-  
-  [!] New targets added to network map:
-      • 10.0.0.20 — File Server
-      • 10.0.0.30 — Database Server
-      • 10.0.0.50 — Domain Controller`;
+        return `\n  [+] Authenticating... ✓\n  [+] Obtaining IP via DHCP... ✓\n\n  ╔════════════════════════════════════════╗\n  ║     CONNECTED TO ${ssid.toUpperCase().padEnd(14)}     ║\n  ╠════════════════════════════════════════╣\n  ║  IP Address : 10.0.0.187               ║\n  ║  Gateway    : 10.0.0.1                 ║\n  ╚════════════════════════════════════════╝\n\n  [+] ⚡ Inside STEAMWORKS-CORP corporate network!\n  [!] New targets added to network map:\n      • 10.0.0.20 — File Server\n      • 10.0.0.30 — Database Server\n      • 10.0.0.50 — Domain Controller`;
       },
 
       wireshark: async () => {
-        if (!wifiState.capFile) {
-          return `[!] No capture file available.
-[*] Create one with: airodump-ng --bssid <BSSID> -c <CH> -w capture wlan0mon`;
-        }
-        
-        let output = `
-╔═══════════════════════════════════════════════════════════╗
-║               WIRESHARK - Network Analyzer                ║
-╠═══════════════════════════════════════════════════════════╣
-║  Capture File: capture-01.cap                             ║
-║  File Size: 48.2 MB                                       ║
-║  Duration: 00:12:34                                       ║
-╠═══════════════════════════════════════════════════════════╣
-║  Total Packets: 48,231                                    ║
-║  Beacon Frames: 12,847 (26.6%)                            ║
-║  Data Frames: 31,298 (64.9%)                              ║
-║  EAPOL Frames: ${wifiState.hshake ? '4 ✓ (Handshake captured)' : '0'}                              ║
-╠═══════════════════════════════════════════════════════════╣
-║  TRAFFIC ANALYSIS:                                        ║
-║  • HTTP requests to 10.0.0.20 (unencrypted!)              ║
-║  • DNS queries: internal.steamworks.local                 ║
-║  • LLMNR broadcasts (potential poisoning target)          ║
-║  • SMB traffic on port 445                                ║
-${wifiState.hshake ? '║  • WPA2 4-way handshake: COMPLETE                         ║' : '║  • WPA2 handshake: NOT CAPTURED                           ║'}
-╚═══════════════════════════════════════════════════════════╝`;
-
-        if (!wifiState.hshake) {
-          output += `\n[*] Force handshake: aireplay-ng --deauth 10 -a <BSSID> -c <CLIENT> wlan0mon`;
-        }
-        
-        return output;
+        if (!wifiState.capFile) { return `[!] No capture file available.\n[*] Create one with: airodump-ng --bssid <BSSID> -c <CH> -w capture wlan0mon`; }
+        return `\n╔═══════════════════════════════════════════════════════════╗\n║               WIRESHARK - Network Analyzer                ║\n╠═══════════════════════════════════════════════════════════╣\n║  Capture File: capture-01.cap                             ║\n║  Total Packets: 48,231                                    ║\n║  EAPOL Frames: ${wifiState.hshake ? '4 ✓ (Handshake captured)' : '0'}                              ║\n╠═══════════════════════════════════════════════════════════╣\n║  TRAFFIC ANALYSIS:                                        ║\n║  • HTTP requests to 10.0.0.20 (unencrypted!)              ║\n║  • DNS queries: internal.steamworks.local                 ║\n║  • SMB traffic on port 445                                ║\n${wifiState.hshake ? '║  • WPA2 4-way handshake: COMPLETE                         ║' : '║  • WPA2 handshake: NOT CAPTURED                           ║'}\n╚═══════════════════════════════════════════════════════════╝`;
       },
 
       wifistatus: async () => {
-        const status = [];
-        status.push(`╔═══════════════════════════════════════════════════════════╗`);
-        status.push(`║              WIRELESS ATTACK STATUS                       ║`);
-        status.push(`╠═══════════════════════════════════════════════════════════╣`);
-        status.push(`║  Monitor Mode: ${wifiState.mon ? '✓ ENABLED (wlan0mon)' : '✗ DISABLED'}                        `);
-        status.push(`║  Networks Scanned: ${wifiState.scanned ? '✓ YES' : '✗ NO'}                                 `);
-        status.push(`║  Target Focused: ${wifiState.focused ? '✓ ' + wifiState.targetBssid : '✗ NONE'}           `);
-        status.push(`║  Capture File: ${wifiState.capFile ? '✓ capture-01.cap' : '✗ NONE'}                        `);
-        status.push(`║  Handshake: ${wifiState.hshake ? '✓ CAPTURED' : '✗ NOT CAPTURED'}                            `);
-        status.push(`║  Password: ${wifiState.cracked ? '✓ CRACKED: ' + wifiState.pwd : '✗ UNKNOWN'}               `);
-        status.push(`║  Connected: ${wifiState.connected ? '✓ YES (10.0.0.187)' : '✗ NO'}                          `);
-        status.push(`╚═══════════════════════════════════════════════════════════╝`);
+        const modeHints = {
+          arcade: { mon: 'airmon-ng', scan: 'airodump-ng', focus: 'airodump-ng', deauth: 'aireplay-ng', crack: 'aircrack-ng', connect: 'nmcli' },
+          field: { mon: 'airmon-ng start', scan: 'airodump-ng scan', focus: 'airodump-ng focus', deauth: 'aireplay-ng deauth', crack: 'aircrack-ng crack', connect: 'nmcli connect' },
+          operator: { mon: 'airmon-ng start wlan0', scan: 'airodump-ng wlan0mon', focus: 'airodump-ng --bssid A4:CF:12:8B:3E:01 -c 6 -w capture wlan0mon', deauth: 'aireplay-ng --deauth 10 -a A4:CF:12:8B:3E:01 -c 4C:EB:42:DE:AD:01 wlan0mon', crack: 'aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap', connect: `nmcli dev wifi connect STEAMWORKS-CORP password ${wifiState.pwd || '<password>'}` },
+        };
+        const hints = modeHints[gameMode];
+        let status = `╔═══════════════════════════════════════════════════════════╗\n║     WIRELESS ATTACK STATUS — ${gameMode.toUpperCase().padEnd(8)} MODE            ║\n╠═══════════════════════════════════════════════════════════╣\n`;
+        status += `║  Monitor Mode: ${wifiState.mon ? '✓ ENABLED' : '✗ DISABLED'}                               ║\n`;
+        status += `║  Networks Scanned: ${wifiState.scanned ? '✓ YES' : '✗ NO'}                                 ║\n`;
+        status += `║  Target Focused: ${wifiState.focused ? '✓ STEAMWORKS-CORP' : '✗ NONE'}                      ║\n`;
+        status += `║  Handshake: ${wifiState.hshake ? '✓ CAPTURED' : '✗ NOT CAPTURED'}                            ║\n`;
+        status += `║  Password: ${wifiState.cracked ? '✓ CRACKED' : '✗ UNKNOWN'}                                 ║\n`;
+        status += `║  Connected: ${wifiState.connected ? '✓ YES (10.0.0.187)' : '✗ NO'}                          ║\n`;
+        status += `╚═══════════════════════════════════════════════════════════╝\n`;
+        if (!wifiState.mon) status += `\n[*] Next: ${hints.mon}`;
+        else if (!wifiState.scanned) status += `\n[*] Next: ${hints.scan}`;
+        else if (!wifiState.focused) status += `\n[*] Next: ${hints.focus}`;
+        else if (!wifiState.hshake) status += `\n[*] Next: ${hints.deauth}`;
+        else if (!wifiState.cracked) status += `\n[*] Next: ${hints.crack}`;
+        else if (!wifiState.connected) status += `\n[*] Next: ${hints.connect}`;
+        else status += `\n[+] WIFI INFILTRATION COMPLETE — Internal network accessible!`;
+        return status;
+      },
+
+      // WiFi story choice handler
+      wifi_choice: async () => {
+        if (!pendingWifiChoice) {
+          return `[-] No pending WiFi intercept data to analyze.`;
+        }
         
-        if (!wifiState.mon) status.push(`\n[*] Next step: airmon-ng start wlan0`);
-        else if (!wifiState.scanned) status.push(`\n[*] Next step: airodump-ng wlan0mon`);
-        else if (!wifiState.focused) status.push(`\n[*] Next step: airodump-ng --bssid A4:CF:12:8B:3E:01 -c 6 -w capture wlan0mon`);
-        else if (!wifiState.hshake) status.push(`\n[*] Next step: aireplay-ng --deauth 10 -a A4:CF:12:8B:3E:01 -c 4C:EB:42:DE:AD:01 wlan0mon`);
-        else if (!wifiState.cracked) status.push(`\n[*] Next step: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`);
-        else if (!wifiState.connected) status.push(`\n[*] Next step: nmcli dev wifi connect STEAMWORKS-CORP password ${wifiState.pwd}`);
-        else status.push(`\n[+] WIFI INFILTRATION COMPLETE — Internal network accessible!`);
+        if (!arg1 || !pendingWifiChoice.choices.find(c => c.id === arg1)) {
+          let choiceList = pendingWifiChoice.choices.map(c => 
+            `    wifi_choice ${c.id.padEnd(10)} — ${c.label}${c.reward ? ` (₿${c.reward.toLocaleString()})` : ''}`
+          ).join('\n');
+          return `[*] Intercepted data requires a decision:\n\n${choiceList}\n\n[*] Choose wisely. Your decision affects your alignment.`;
+        }
         
-        return status.join('\n');
+        const choice = pendingWifiChoice.choices.find(c => c.id === arg1);
+        if (!choice) return `[-] Invalid choice. Options: ${pendingWifiChoice.choices.map(c => c.id).join(', ')}`;
+        
+        // Apply rewards
+        if (choice.reward) setMoney(m => m + choice.reward);
+        if (choice.rep > 0) setReputation(r => r + choice.rep);
+        if (choice.rep < 0) setReputation(r => Math.max(0, r + choice.rep));
+        
+        // Apply alignment
+        if (choice.alignment === 'signal') {
+          setSignal(s => s + Math.abs(choice.rep || 5));
+        } else if (choice.alignment === 'chaos') {
+          setChaos(c => c + Math.abs(choice.rep || 5));
+        }
+        
+        playSuccess();
+        setPendingWifiChoice(null);
+        
+        let result = `[+] Decision logged: ${choice.label}`;
+        if (choice.reward) result += `\n[+] ₿${choice.reward.toLocaleString()} deposited`;
+        if (choice.rep > 0) result += `\n[+] +${choice.rep} REP`;
+        if (choice.rep < 0) result += `\n[-] ${choice.rep} REP`;
+        if (choice.alignment === 'signal') result += `\n[SIGNAL] Your actions echo in the resistance.`;
+        if (choice.alignment === 'chaos') result += `\n[CHAOS] The underworld takes note.`;
+        
+        return result;
+      },
+
+      // Cat command extension for WiFi files
+      wifi_cat: async () => {
+        if (!pendingWifiChoice) {
+          return null; // Let regular cat handle it
+        }
+        
+        const filename = arg1;
+        if (filename === pendingWifiChoice.file) {
+          return `[DECRYPTING: ${filename}]\n${'─'.repeat(50)}\n${pendingWifiChoice.content}\n${'─'.repeat(50)}\n\n[*] Type 'wifi_choice' to see available actions.`;
+        }
+        return null;
       },
 
       help: async () => {

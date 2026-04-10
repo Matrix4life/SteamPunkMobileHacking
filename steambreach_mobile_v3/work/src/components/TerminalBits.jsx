@@ -48,14 +48,17 @@ const MODE_COMMANDS = {
   // -----------------------------------------------------------------
   'WIFI HACKING': {
     arcade: [
+      { cmd: 'iwconfig', desc: 'Show wireless interface status' },
       { cmd: 'airmon-ng', desc: 'Toggle monitor mode on/off' },
       { cmd: 'airodump-ng', desc: 'Scan networks (run twice to auto-focus)' },
       { cmd: 'aireplay-ng', desc: 'Auto-deauth and capture handshake' },
       { cmd: 'aircrack-ng', desc: 'Auto-crack with rockyou.txt' },
       { cmd: 'nmcli', desc: 'Auto-connect with cracked password' },
+      { cmd: 'wireshark', desc: 'Analyze captured packets' },
       { cmd: 'wifistatus', desc: 'Show attack progress + next step' },
     ],
     field: [
+      { cmd: 'iwconfig', desc: 'Show wlan0/wlan0mon status' },
       { cmd: 'airmon-ng start', desc: 'Enable monitor mode' },
       { cmd: 'airmon-ng stop', desc: 'Disable monitor mode' },
       { cmd: 'airodump-ng scan', desc: 'Scan all networks in range' },
@@ -64,9 +67,11 @@ const MODE_COMMANDS = {
       { cmd: 'aireplay-ng deauth <MAC>', desc: 'Deauth specific client' },
       { cmd: 'aircrack-ng crack', desc: 'Crack with rockyou.txt wordlist' },
       { cmd: 'nmcli connect', desc: 'Connect with cracked password' },
+      { cmd: 'wireshark', desc: 'Analyze capture file' },
       { cmd: 'wifistatus', desc: 'Show attack progress + next step' },
     ],
     operator: [
+      { cmd: 'iwconfig', desc: 'Display wireless interface configuration' },
       { cmd: 'airmon-ng start wlan0', desc: 'Enable monitor mode on interface' },
       { cmd: 'airmon-ng stop wlan0mon', desc: 'Disable monitor mode' },
       { cmd: 'airodump-ng wlan0mon', desc: 'Passive scan all channels' },
@@ -74,6 +79,7 @@ const MODE_COMMANDS = {
       { cmd: 'aireplay-ng --deauth 10 -a <BSSID> -c <CLIENT> wlan0mon', desc: 'Targeted deauth attack' },
       { cmd: 'aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap', desc: 'Dictionary attack on handshake' },
       { cmd: 'nmcli dev wifi connect <SSID> password <PASS>', desc: 'Connect to cracked network' },
+      { cmd: 'wireshark', desc: 'Packet analysis on capture-01.cap' },
       { cmd: 'wifistatus', desc: 'Show current attack state' },
     ],
   },
@@ -89,6 +95,7 @@ const MODE_COMMANDS = {
       { cmd: 'sqlmap <ip>', desc: 'SQL injection (auto-flags)' },
       { cmd: 'msfconsole <ip>', desc: 'Exploit SMB (auto-payload)' },
       { cmd: 'curl <ip>', desc: 'LFI exploit (auto-path)' },
+      { cmd: 'spearphish <email@ip>', desc: 'Social engineer employee via AI chat' },
       { cmd: 'ettercap', desc: 'ARP poison + sniff comms' },
     ],
     field: [
@@ -100,6 +107,7 @@ const MODE_COMMANDS = {
       { cmd: 'sqlmap <ip> api', desc: 'SQL injection on API endpoint' },
       { cmd: 'msfconsole <ip>', desc: 'Exploit unpatched SMB' },
       { cmd: 'curl <ip>', desc: 'LFI path traversal' },
+      { cmd: 'spearphish <email@ip>', desc: 'Phish employee (AI chat)' },
       { cmd: 'ettercap', desc: 'ARP poison + sniff comms' },
     ],
     operator: [
@@ -109,6 +117,7 @@ const MODE_COMMANDS = {
       { cmd: 'sqlmap -u "http://<ip>/login" --forms --dump', desc: 'SQL injection + dump' },
       { cmd: 'msfconsole -x "use exploit/windows/smb/ms17_010; set RHOSTS <ip>; run"', desc: 'EternalBlue exploit' },
       { cmd: 'curl --path-as-is "http://<ip>/../../etc/passwd"', desc: 'LFI path traversal' },
+      { cmd: 'spearphish <email@ip>', desc: 'Social engineering via live AI chat' },
       { cmd: 'ettercap -T -M arp:remote /<gateway>// /<target>//', desc: 'MITM ARP poisoning' },
     ],
   },
@@ -248,7 +257,7 @@ const MODE_COMMANDS = {
       { cmd: 'buy <item> <qty>', desc: 'Buy commodity' },
       { cmd: 'sell <item> <qty>', desc: 'Sell commodity' },
       { cmd: 'shop', desc: 'Darknet software shop' },
-      { cmd: 'hardware', desc: 'Upgrade rig components' },
+      { cmd: 'hardware / rig', desc: 'Upgrade rig components' },
     ],
     field: [
       { cmd: 'use decoy', desc: 'Deploy trace decoy (-30%)' },
@@ -259,7 +268,7 @@ const MODE_COMMANDS = {
       { cmd: 'buy <item> <qty>', desc: 'Purchase at market price' },
       { cmd: 'sell <item> <qty>', desc: 'Sell from stash' },
       { cmd: 'shop', desc: 'Software marketplace' },
-      { cmd: 'hardware', desc: 'Hardware upgrades' },
+      { cmd: 'hardware / rig', desc: 'Hardware upgrades' },
     ],
     operator: [
       { cmd: 'use decoy', desc: 'Inject false trail (-30% trace)' },
@@ -270,7 +279,7 @@ const MODE_COMMANDS = {
       { cmd: 'buy <item> <qty>', desc: 'Purchase commodity' },
       { cmd: 'sell <item> <qty>', desc: 'Liquidate holdings' },
       { cmd: 'shop', desc: 'Browse tool marketplace' },
-      { cmd: 'hardware', desc: 'Upgrade operator rig' },
+      { cmd: 'hardware / rig', desc: 'Upgrade operator rig' },
     ],
   },
 

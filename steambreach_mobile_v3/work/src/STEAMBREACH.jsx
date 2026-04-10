@@ -3273,8 +3273,44 @@ phy0    wlan0           ath9k_htc       Qualcomm Atheros AR9271
           return net?.clients || WIFI_CLIENTS.filter(c => c.bssid === bssid);
         };
 
-        // ═══ ARCADE MODE: Auto-scan or auto-focus on target ═══
+        // ═══ ARCADE MODE: Auto-scan or manual target selection ═══
         if (gameMode === 'arcade') {
+          // Check if user specified a target network by name
+          if (arg1) {
+            const selectedNet = nets.find(n => 
+              n.essid.toLowerCase() === arg1.toLowerCase() || 
+              n.essid.toLowerCase().includes(arg1.toLowerCase())
+            );
+            if (!selectedNet) {
+              const available = nets.filter(n => n.discovered).map(n => n.essid).join(', ');
+              return `[-] Network "${arg1}" not found.\n[*] Available: ${available}`;
+            }
+            
+            const clients = getClients(selectedNet.bssid);
+            const pwr = selectedNet.signal || selectedNet.pwr || -42;
+            const ch = selectedNet.channel || selectedNet.ch || 6;
+            const encLabel = selectedNet.enc || 'WPA2';
+            
+            let output = `\n[+] TARGET SELECTED: ${selectedNet.essid}\n`;
+            output += `\n CH  ${ch} ][ Elapsed: 45s ][ ${new Date().toTimeString().slice(0,8)}\n\n BSSID              PWR  Beacons  #Data   CH   ENC    ESSID\n\n ${selectedNet.bssid}  ${String(pwr).padStart(3)}     1523    8847   ${String(ch).padStart(2)}   ${encLabel.padEnd(6)} ${selectedNet.essid}\n\n STATION            PWR   Frames  Device\n`;
+            clients.forEach(c => { output += ` ${c.mac}  ${String(c.pwr || c.signal || -40).padStart(3)}   ${String(c.frames || 1000).padStart(6)}  ${c.dev || c.device || 'Unknown'}\n`; });
+            
+            setWifiState(prev => ({ ...prev, scanned: true, focused: true, capFile: true, targetBssid: selectedNet.bssid }));
+            // Update the target in wifiNetworks
+            setWifiNetworks(prev => prev.map(n => ({ ...n, target: n.bssid === selectedNet.bssid })));
+            playSuccess();
+            
+            if (encLabel === 'OPEN') {
+              output += `\n[!] OPEN NETWORK — No password required!\n[*] Run 'nmcli' to connect directly`;
+            } else if (encLabel === 'WPA3' || encLabel === 'WPA3-SAE') {
+              output += `\n[!] WPA3 ENCRYPTION — Cannot crack with aircrack-ng\n[*] Need insider credentials or social engineering`;
+            } else {
+              output += `\n[+] Capture file: capture-01.cap\n[*] Run 'aireplay-ng' to force handshake capture`;
+            }
+            return output;
+          }
+          
+          // No arg — normal scan/focus flow
           if (!wifiState.scanned) {
             let output = `\n CH  6 ][ Elapsed: 12s ][ ${new Date().toTimeString().slice(0,8)}\n\n BSSID              PWR  Beacons  #Data   #/s  CH   ENC    ESSID\n`;
             nets.filter(n => n.discovered).forEach(n => {
@@ -3284,19 +3320,22 @@ phy0    wlan0           ath9k_htc       Qualcomm Atheros AR9271
             });
             setWifiState(prev => ({ ...prev, scanned: true }));
             playSuccess();
-            const targets = nets.filter(n => n.target);
-            const targetHint = targetNet ? `[!] HIGH VALUE: ${targetNet.essid} (${targetNet.enc || 'WPA2'})` : '';
-            return output + `\n[+] Found ${nets.filter(n => n.discovered).length} networks — ARCADE MODE auto-identified targets\n${targetHint}\n[*] Run 'airodump-ng' again to focus capture on target`;
+            const openNets = nets.filter(n => n.discovered && n.enc === 'OPEN');
+            const wpa2Nets = nets.filter(n => n.discovered && (n.enc === 'WPA2' || n.enc === 'WEP'));
+            let hint = `\n[+] Found ${nets.filter(n => n.discovered).length} networks\n`;
+            hint += `[*] SELECT TARGET: airodump-ng <network_name>\n`;
+            hint += `[*] Example: airodump-ng DC_Metro_Public\n`;
+            if (openNets.length > 0) hint += `[!] OPEN NETWORKS (no password): ${openNets.map(n => n.essid).join(', ')}\n`;
+            if (wpa2Nets.length > 0) hint += `[!] CRACKABLE (WPA2/WEP): ${wpa2Nets.slice(0,3).map(n => n.essid).join(', ')}${wpa2Nets.length > 3 ? '...' : ''}`;
+            return output + hint;
           } else if (!wifiState.focused) {
-            if (!targetNet) return `[-] No target networks found. Run wardrive to discover more.`;
-            const clients = getClients(targetNet.bssid);
-            const pwr = targetNet.signal || targetNet.pwr || -42;
-            const ch = targetNet.channel || targetNet.ch || 6;
-            let output = `\n CH  ${ch} ][ Elapsed: 45s ][ ${new Date().toTimeString().slice(0,8)}${wifiState.hshake ? ` ][ WPA handshake: ${targetNet.bssid}` : ''}\n\n BSSID              PWR  Beacons  #Data   CH   ENC    ESSID\n\n ${targetNet.bssid}  ${String(pwr).padStart(3)}     1523    8847   ${String(ch).padStart(2)}   ${targetNet.enc || 'WPA2'}    ${targetNet.essid}\n\n STATION            PWR   Frames  Device\n`;
-            clients.forEach(c => { output += ` ${c.mac}  ${String(c.pwr || c.signal || -40).padStart(3)}   ${String(c.frames || 1000).padStart(6)}  ${c.dev || c.device || 'Unknown'}\n`; });
-            setWifiState(prev => ({ ...prev, focused: true, capFile: true, targetBssid: targetNet.bssid }));
-            playSuccess();
-            return output + `\n[+] ARCADE MODE — Auto-focused on ${targetNet.essid}\n[+] Capture file: capture-01.cap\n[*] Run 'aireplay-ng' to force handshake capture`;
+            // Already scanned but no target selected — prompt for selection
+            const openNets = nets.filter(n => n.discovered && n.enc === 'OPEN');
+            const wpa2Nets = nets.filter(n => n.discovered && (n.enc === 'WPA2' || n.enc === 'WEP'));
+            let hint = `[*] SELECT TARGET: airodump-ng <network_name>\n\n`;
+            if (openNets.length > 0) hint += `OPEN (instant connect):\n  ${openNets.map(n => `  airodump-ng ${n.essid}`).join('\n')}\n\n`;
+            if (wpa2Nets.length > 0) hint += `CRACKABLE (WPA2/WEP):\n${wpa2Nets.slice(0,5).map(n => `  airodump-ng ${n.essid}`).join('\n')}`;
+            return hint;
           } else {
             return `[*] Already capturing on ${targetNet?.essid || 'target'}\n[*] ${wifiState.hshake ? 'Handshake captured! Run aircrack-ng to crack.' : 'Waiting for handshake. Run aireplay-ng to force it.'}`;
           }
@@ -3525,20 +3564,33 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
       },
 
       nmcli: async () => {
-        if (!wifiState.cracked) { return `Usage: nmcli dev wifi connect <SSID> password <password>\n[!] You need to crack a WiFi password first.`; }
-        if (wifiState.connected) { return `[*] Already connected to STEAMWORKS-CORP (10.0.0.187)\n[*] Gateway: 10.0.0.1\n[*] Internal hosts are accessible via nmap.`; }
+        const nets = wifiNetworks;
+        const currentTarget = nets.find(n => n.bssid === wifiState.targetBssid) || nets.find(n => n.target);
+        const targetName = currentTarget?.essid || 'TARGET';
+        const targetEnc = currentTarget?.enc || 'WPA2';
+        const isOpen = targetEnc === 'OPEN';
+        
+        // OPEN networks don't require cracking
+        if (!isOpen && !wifiState.cracked) { 
+          return `[!] No cracked password available.\n[*] For encrypted networks: Run the full attack chain first.\n[*] For OPEN networks: Select with 'airodump-ng <network_name>' then 'nmcli'`;
+        }
+        if (wifiState.connected) { 
+          return `[*] Already connected to ${targetName} (10.0.0.187)\n[*] Gateway: 10.0.0.1\n[*] Internal hosts are accessible via nmap.`; 
+        }
 
         const spawnInternalNodes = () => {
+          const orgName = currentTarget?.linkedOrg || currentTarget?.essid || 'WiFi-Network';
           const newTargets = [
-            { ip: '10.0.0.20', org: 'STEAMWORKS-CORP File Server' },
-            { ip: '10.0.0.30', org: 'STEAMWORKS-CORP Database' },
-            { ip: '10.0.0.50', org: 'STEAMWORKS-CORP Domain Controller' },
+            { ip: '10.0.0.20', org: `${orgName} File Server` },
+            { ip: '10.0.0.30', org: `${orgName} Database` },
+            { ip: '10.0.0.50', org: `${orgName} Domain Controller` },
           ];
           newTargets.forEach(t => {
             if (!world[t.ip]) {
-              const newNode = generateNewTarget(t.ip, currentRegion, director.modifiers, 'mid');
+              const newNode = generateNewTarget('mid', null, directorRef.current?.modifiers);
+              newNode.data.region = currentRegion;
               newNode.data.org = { orgName: t.org, industry: 'Corporate', employees: [] };
-              setWorld(prev => ({ ...prev, [t.ip]: newNode }));
+              setWorld(prev => ({ ...prev, [t.ip]: newNode.data }));
             }
           });
         };
@@ -3546,33 +3598,54 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
         // ═══ ARCADE MODE: Just type 'nmcli' to auto-connect ═══
         if (gameMode === 'arcade') {
           setIsProcessing(true);
-          setTerminal(prev => [...prev, { type: 'out', text: `[*] ARCADE MODE — Auto-connecting to STEAMWORKS-CORP...`, isNew: true }]);
+          const connectMsg = isOpen ? `[*] Connecting to OPEN network ${targetName}...` : `[*] ARCADE MODE — Auto-connecting to ${targetName}...`;
+          setTerminal(prev => [...prev, { type: 'out', text: connectMsg, isNew: true }]);
           await new Promise(r => setTimeout(r, 1500));
           setWifiState(prev => ({ ...prev, connected: true }));
           spawnInternalNodes();
           setIsProcessing(false);
           playSuccess();
-          return `[+] Connected to STEAMWORKS-CORP!\n[+] IP: 10.0.0.187 | Gateway: 10.0.0.1\n\n[!] New targets added to network map:\n    • 10.0.0.20 — File Server\n    • 10.0.0.30 — Database Server\n    • 10.0.0.50 — Domain Controller`;
+          return `[+] Connected to ${targetName}!\n[+] IP: 10.0.0.187 | Gateway: 10.0.0.1\n\n[!] New targets added to network map:\n    • 10.0.0.20 — File Server\n    • 10.0.0.30 — Database Server\n    • 10.0.0.50 — Domain Controller\n\n[*] Run 'nmap' to scan internal network`;
         }
 
         // ═══ FIELD MODE: Requires connect flag ═══
         if (gameMode === 'field') {
-          if (!arg1 || arg1 !== 'connect') { return `[-] nmcli: Specify action:\n    nmcli connect    — Connect to STEAMWORKS-CORP with cracked password`; }
+          if (!arg1 || arg1 !== 'connect') { return `[-] nmcli: Specify action:\n    nmcli connect    — Connect to ${targetName} with cracked password`; }
           setIsProcessing(true);
-          setTerminal(prev => [...prev, { type: 'out', text: `[*] Connecting to STEAMWORKS-CORP...`, isNew: true }]);
+          setTerminal(prev => [...prev, { type: 'out', text: `[*] Connecting to ${targetName}...`, isNew: true }]);
           await new Promise(r => setTimeout(r, 1500));
           setWifiState(prev => ({ ...prev, connected: true }));
           spawnInternalNodes();
           setIsProcessing(false);
           playSuccess();
-          return `[+] Connected to STEAMWORKS-CORP!\n[+] IP: 10.0.0.187\n\n[!] New targets:\n    • 10.0.0.20 — File Server\n    • 10.0.0.30 — Database\n    • 10.0.0.50 — Domain Controller`;
+          return `[+] Connected to ${targetName}!\n[+] IP: 10.0.0.187\n\n[!] New targets:\n    • 10.0.0.20 — File Server\n    • 10.0.0.30 — Database\n    • 10.0.0.50 — Domain Controller`;
         }
 
         // ═══ OPERATOR MODE: Full syntax required ═══
         const connectIdx = args.indexOf('connect');
         const passwordIdx = args.indexOf('password');
-        if (connectIdx === -1 || !args[connectIdx + 1]) { return `Usage: nmcli dev wifi connect <SSID> password <password>\n\nExample: nmcli dev wifi connect STEAMWORKS-CORP password ${wifiState.pwd}`; }
+        if (connectIdx === -1 || !args[connectIdx + 1]) { 
+          if (isOpen) {
+            return `Usage: nmcli dev wifi connect ${targetName}\n\n[*] OPEN network — no password required`;
+          }
+          return `Usage: nmcli dev wifi connect <SSID> password <password>\n\nExample: nmcli dev wifi connect ${targetName} password ${wifiState.pwd}`; 
+        }
         const ssid = args[connectIdx + 1];
+        const selectedNet = nets.find(n => n.essid.toLowerCase() === ssid.toLowerCase());
+        const selectedEnc = selectedNet?.enc || 'WPA2';
+        
+        // OPEN network in operator mode
+        if (selectedEnc === 'OPEN') {
+          setIsProcessing(true);
+          setTerminal(prev => [...prev, { type: 'out', text: `[*] Connecting to OPEN network ${ssid}...`, isNew: true }]);
+          await new Promise(r => setTimeout(r, 1500));
+          setWifiState(prev => ({ ...prev, connected: true, targetBssid: selectedNet?.bssid }));
+          spawnInternalNodes();
+          setIsProcessing(false);
+          playSuccess();
+          return `\n  [+] Associating with AP... ✓\n  [+] Obtaining IP via DHCP... ✓\n\n  ╔════════════════════════════════════════╗\n  ║     CONNECTED TO ${ssid.toUpperCase().substring(0,14).padEnd(14)}     ║\n  ╠════════════════════════════════════════╣\n  ║  IP Address : 10.0.0.187               ║\n  ║  Gateway    : 10.0.0.1                 ║\n  ║  Security   : OPEN (No encryption!)    ║\n  ╚════════════════════════════════════════╝\n\n  [!] WARNING: Traffic on this network is unencrypted!\n  [+] New targets added to network map`;
+        }
+        
         const password = passwordIdx !== -1 ? args[passwordIdx + 1] : null;
         if (!password) { return `[-] Missing password. Usage: nmcli dev wifi connect ${ssid} password <password>`; }
         if (password !== wifiState.pwd) { playFailure(); return `[-] Connection failed: incorrect password.`; }
@@ -3583,7 +3656,7 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
         spawnInternalNodes();
         setIsProcessing(false);
         playSuccess();
-        return `\n  [+] Authenticating... ✓\n  [+] Obtaining IP via DHCP... ✓\n\n  ╔════════════════════════════════════════╗\n  ║     CONNECTED TO ${ssid.toUpperCase().padEnd(14)}     ║\n  ╠════════════════════════════════════════╣\n  ║  IP Address : 10.0.0.187               ║\n  ║  Gateway    : 10.0.0.1                 ║\n  ╚════════════════════════════════════════╝\n\n  [+] ⚡ Inside STEAMWORKS-CORP corporate network!\n  [!] New targets added to network map:\n      • 10.0.0.20 — File Server\n      • 10.0.0.30 — Database Server\n      • 10.0.0.50 — Domain Controller`;
+        return `\n  [+] Authenticating... ✓\n  [+] Obtaining IP via DHCP... ✓\n\n  ╔════════════════════════════════════════╗\n  ║     CONNECTED TO ${ssid.toUpperCase().substring(0,14).padEnd(14)}     ║\n  ╠════════════════════════════════════════╣\n  ║  IP Address : 10.0.0.187               ║\n  ║  Gateway    : 10.0.0.1                 ║\n  ╚════════════════════════════════════════╝\n\n  [+] Inside ${ssid} network!\n  [!] New targets added to network map:\n      • 10.0.0.20 — File Server\n      • 10.0.0.30 — Database Server\n      • 10.0.0.50 — Domain Controller`;
       },
 
       wireshark: async () => {

@@ -55,6 +55,7 @@ const MODE_COMMANDS = {
       { cmd: 'aircrack-ng', desc: 'Auto-crack with rockyou.txt' },
       { cmd: 'nmcli', desc: 'Auto-connect with cracked password' },
       { cmd: 'wireshark', desc: 'Analyze captured packets' },
+      { cmd: 'wardrive', desc: 'Start/stop mobile WiFi scanning' },
       { cmd: 'wifistatus', desc: 'Show attack progress + next step' },
     ],
     field: [
@@ -68,6 +69,7 @@ const MODE_COMMANDS = {
       { cmd: 'aircrack-ng crack', desc: 'Crack with rockyou.txt wordlist' },
       { cmd: 'nmcli connect', desc: 'Connect with cracked password' },
       { cmd: 'wireshark', desc: 'Analyze capture file' },
+      { cmd: 'wardrive', desc: 'Toggle mobile WiFi recon' },
       { cmd: 'wifistatus', desc: 'Show attack progress + next step' },
     ],
     operator: [
@@ -80,6 +82,7 @@ const MODE_COMMANDS = {
       { cmd: 'aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap', desc: 'Dictionary attack on handshake' },
       { cmd: 'nmcli dev wifi connect <SSID> password <PASS>', desc: 'Connect to cracked network' },
       { cmd: 'wireshark', desc: 'Packet analysis on capture-01.cap' },
+      { cmd: 'wardrive', desc: 'Mobile passive scanning (monitor mode required)' },
       { cmd: 'wifistatus', desc: 'Show current attack state' },
     ],
   },

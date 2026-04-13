@@ -70,6 +70,7 @@ const ContractBoard = ({
 
   const selected = visibleContracts.find(c => c.id === selectedId) || null;
   const canAccept = !!(selected && !selected.active && !activeContract);
+  const canAbandonSelected = !!(selected && (!activeContract || activeContract.id === selected.id));
 
   useEffect(() => {
     if (mobile) return;
@@ -93,7 +94,7 @@ const ContractBoard = ({
         );
       } else if (e.key === 'Enter' && canAccept && isReady && selected) {
         acceptContract(selected.id);
-      } else if ((e.key === 'Delete' || e.key === 'Backspace') && selected && !selected.active) {
+      } else if ((e.key === 'Delete' || e.key === 'Backspace') && canAbandonSelected && selected) {
         removeContract(selected.id);
         setSelectedId(null);
       }
@@ -105,6 +106,7 @@ const ContractBoard = ({
     visibleContracts,
     selectedId,
     canAccept,
+    canAbandonSelected,
     returnToGame,
     acceptContract,
     removeContract,
@@ -280,7 +282,7 @@ const ContractBoard = ({
           </button>
         )}
 
-        {!selected.active && (
+        {canAbandonSelected && (
           <button
             onClick={() => { removeContract(selected.id); setSelectedId(null); }}
             style={{
@@ -293,11 +295,11 @@ const ContractBoard = ({
               WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation',
             }}
           >
-            ABANDON CONTRACT
+            {selected.active ? 'ABANDON ACTIVE CONTRACT' : 'ABANDON CONTRACT'}
           </button>
         )}
 
-        {activeContract && !selected.active && (
+        {activeContract && !selected.active && !canAbandonSelected && (
           <div style={{ color: COLORS.danger, fontSize: '12px', textAlign: 'center', marginBottom: '12px' }}>
             Complete or abandon active contract first.
           </div>
@@ -498,7 +500,7 @@ const ContractBoard = ({
                 </button>
               )}
 
-              {!selected.active && (
+              {canAbandonSelected && (
                 <button
                   onClick={() => { removeContract(selected.id); setSelectedId(null); }}
                   style={{
@@ -510,11 +512,11 @@ const ContractBoard = ({
                     letterSpacing: '1px', marginTop: canAccept ? '8px' : '16px', width: '100%',
                   }}
                 >
-                  [DEL] ABANDON CONTRACT
+                  {selected.active ? '[DEL] ABANDON ACTIVE CONTRACT' : '[DEL] ABANDON CONTRACT'}
                 </button>
               )}
 
-              {activeContract && !selected.active && (
+              {activeContract && !selected.active && !canAbandonSelected && (
                 <div style={{ color: COLORS.danger, marginTop: '16px', fontSize: '11px', textAlign: 'center' }}>
                   Complete or abandon active contract first.
                 </div>

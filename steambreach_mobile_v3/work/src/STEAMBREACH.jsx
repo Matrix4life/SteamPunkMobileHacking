@@ -1151,6 +1151,23 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
     setScreen('game');
     setTerminal(prev => [...prev, { type: 'out', text: `[FIXER] Contract ${id} accepted.\n[*] Target: ${activated.targetName} (${activated.targetIP})\n[*] Time limit: ${activated.timeLimit}s | Max heat: ${activated.heatCap}%\n[*] Reward: ₿${activated.reward.toLocaleString()} + ${activated.repReward} REP`, isNew: true }]);
   };
+  const declineContract = (id) => {
+    const contract = contracts.find(c => c.id === id);
+    if (!contract || contract.completed) return;
+
+    // Keep active-contract flow explicit and avoid silently dropping active jobs from the board.
+    if (activeContract && activeContract.id !== id) {
+      setTerminal(prev => [...prev, {
+        type: 'out',
+        text: `[-] Cannot abandon ${id} while ${activeContract.id} is active.\n[*] Complete or fail the active contract first.`,
+        isNew: true
+      }]);
+      return;
+    }
+
+    completeContractAndRemove(id);
+    setTerminal(prev => [...prev, { type: 'out', text: `[FIXER] Contract ${id} abandoned.`, isNew: true }]);
+  };
 const completeContractAndRemove = (id) => {
     // 1. Remove the contract from the board
     setContracts(prev => prev.filter(c => c.id !== id));
@@ -4663,7 +4680,13 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
   );
 
   if (screen === 'contracts') return (
-    <ContractBoard contracts={contracts} activeContract={activeContract} acceptContract={acceptContract} returnToGame={() => setScreen('game')} />
+    <ContractBoard
+      contracts={contracts}
+      activeContract={activeContract}
+      acceptContract={acceptContract}
+      declineContract={declineContract}
+      returnToGame={() => setScreen('game')}
+    />
   );
   
   if (screen === 'sounds') return (

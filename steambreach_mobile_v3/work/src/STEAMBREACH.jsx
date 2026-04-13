@@ -1153,7 +1153,11 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
   };
   const declineContract = (id) => {
     const contract = contracts.find(c => c.id === id);
-    if (!contract || contract.completed) return;
+    if (!contract || contract.completed) {
+      setTerminal(prev => [...prev, { type: 'out', text: `[-] Contract ${id} is no longer available.`, isNew: true }]);
+      setScreen('game');
+      return;
+    }
 
     // Keep active-contract flow explicit and avoid silently dropping active jobs from the board.
     if (activeContract && activeContract.id !== id) {
@@ -1162,11 +1166,13 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
         text: `[-] Cannot abandon ${id} while ${activeContract.id} is active.\n[*] Complete or fail the active contract first.`,
         isNew: true
       }]);
+      setScreen('game');
       return;
     }
 
     completeContractAndRemove(id);
     setTerminal(prev => [...prev, { type: 'out', text: `[FIXER] Contract ${id} abandoned.`, isNew: true }]);
+    setScreen('game');
   };
 const completeContractAndRemove = (id) => {
     // 1. Remove the contract from the board

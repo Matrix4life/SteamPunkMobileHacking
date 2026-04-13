@@ -510,7 +510,13 @@ export const generateAIContract = async (targetIP, nodeData, currentRep, arg4, a
     const node = ip === targetIP ? nodeData : world[ip];
     if (!node) continue;
 
-    const type = actionTypes[Math.floor(Math.random() * actionTypes.length)];
+   // Filter actions based on node security - rclone (breach) only works on high/elite
+const nodeSec = node?.sec || 'mid';
+const availableActions = actionTypes.filter(a => {
+  if (a === 'breach' && (nodeSec === 'low' || nodeSec === 'mid')) return false;
+  return true;
+});
+const type = availableActions[Math.floor(Math.random() * availableActions.length)];
     let targetFile = null;
 
     if (type === 'exfil') {

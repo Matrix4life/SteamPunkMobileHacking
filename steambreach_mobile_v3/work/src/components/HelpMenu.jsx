@@ -78,6 +78,15 @@ export default function HelpMenu({ onClose, COLORS }) {
             <span style={{ color: COLORS.primary }}>hardware / rig</span><span>Open hardware marketplace — buy and install rig components</span>
           </div>
 
+          <h3 style={{ color: COLORS.secondary }}>[ RIVALS & ZERO-DAYS ]</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: '185px 1fr', gap: '10px', marginBottom: '20px' }}>
+            <span style={{ color: COLORS.primary }}>rivals</span><span>List known rival hackers and their status</span>
+            <span style={{ color: COLORS.primary }}>dossier &lt;handle&gt;</span><span>Deep intel on a rival's wallet, security, and profile</span>
+            <span style={{ color: COLORS.primary }}>raid &lt;handle&gt;</span><span>Launch an attack against a rival for BTC/REP/zero-days</span>
+            <span style={{ color: COLORS.primary }}>taunt &lt;handle&gt;</span><span>Provoke a rival into hostility (higher retaliation risk)</span>
+            <span style={{ color: COLORS.primary }}>exploits</span><span>Show your zero-day collection and raid bonuses</span>
+          </div>
+
           <h3 style={{ color: COLORS.secondary }}>[ MORALITY ]</h3>
           <div style={{ display: 'grid', gridTemplateColumns: '185px 1fr', gap: '10px', marginBottom: '20px' }}>
             <span style={{ color: COLORS.primary }}>assist</span><span>When prompted: quietly help a civilian — raises SIGNAL score</span>

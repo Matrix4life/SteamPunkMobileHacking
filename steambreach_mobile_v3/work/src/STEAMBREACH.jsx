@@ -744,6 +744,46 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
     }
   }, [director.narrativeQueue, isProcessing, isInside]);
 
+  // ── RIVAL RETALIATION TICK ────────────────────────────────────────────────
+  useEffect(() => {
+    if (screen !== 'game' || !operator || rivals.length === 0) return;
+
+    const retaliationTick = setInterval(() => {
+      const candidates = rivals.filter(r => r.status !== 'destroyed' && (r.status === 'hostile' || r.relationship <= -20));
+      if (candidates.length === 0) return;
+
+      const attacker = candidates[Math.floor(Math.random() * candidates.length)];
+      const attack = rivalAttacksPlayer(attacker, { rep: reputation, btc: money, proxyCount: proxies.length });
+      if (!attack) return;
+
+      setRivals(prev => prev.map(r => (
+        r.id === attacker.id
+          ? { ...r, attackCount: (r.attackCount || 0) + 1, lastSeen: Date.now(), status: 'hostile' }
+          : r
+      )));
+
+      if (attack.success && attack.damage) {
+        const btcLost = Math.max(0, Math.min(money, attack.damage.btcLost || 0));
+        const heatGain = Math.max(0, attack.damage.heatGain || 0);
+        if (btcLost > 0) setMoney(m => Math.max(0, m - btcLost));
+        if (heatGain > 0) setHeat(h => Math.min(100, h + heatGain));
+        setTerminal(prev => [...prev, {
+          type: 'out',
+          text: `[RIVAL ALERT] ${attacker.handle} breached your infrastructure.\n[-] Wallet drained: ₿${btcLost.toLocaleString()}\n[!] Heat +${heatGain}%`,
+          isNew: true
+        }]);
+      } else {
+        setTerminal(prev => [...prev, {
+          type: 'out',
+          text: `[RIVAL ALERT] ${attacker.handle} attempted retaliation, but your defenses held.`,
+          isNew: true
+        }]);
+      }
+    }, 45000);
+
+    return () => clearInterval(retaliationTick);
+  }, [screen, operator, rivals, reputation, money, proxies.length]);
+
   const trackCommand = useCallback((cmd, success) => {
     setDirector(prev => {
       const m = { ...prev.metrics };

@@ -43,6 +43,16 @@ export default function HelpMenu({ onClose, COLORS }) {
             <span style={{ color: COLORS.primary }}>stash &lt;file&gt;</span><span>Route exfil through botnet node (+3% heat vs +10% direct)</span>
           </div>
 
+          <h3 style={{ color: COLORS.secondary }}>[ WIFI HACKING ]</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: '185px 1fr', gap: '10px', marginBottom: '20px' }}>
+            <span style={{ color: COLORS.primary }}>wifistatus</span><span>Show wireless progress + next step hint for your current game mode</span>
+            <span style={{ color: COLORS.primary }}>Arcade</span><span>airmon-ng → airodump-ng → aireplay-ng → aircrack-ng → nmcli</span>
+            <span style={{ color: COLORS.primary }}>Field</span><span>airmon-ng start → airodump-ng scan/focus → aireplay-ng deauth → aircrack-ng crack → nmcli connect</span>
+            <span style={{ color: COLORS.primary }}>Operator</span><span>Use full syntax with flags (wlan0mon / --bssid / --deauth / password)</span>
+            <span style={{ color: COLORS.primary }}>wardrive</span><span>Passive discovery mode; can post wireless contracts via fixer</span>
+            <span style={{ color: COLORS.primary }}>wifiphish &lt;email&gt;</span><span>Social-engineer WPA3 credentials from connected users</span>
+          </div>
+
           <h3 style={{ color: COLORS.secondary }}>[ PAYLOADS & MALWARE ]</h3>
           <div style={{ display: 'grid', gridTemplateColumns: '185px 1fr', gap: '10px', marginBottom: '20px' }}>
             <span style={{ color: COLORS.primary }}>msfvenom</span><span>Deploy viral payloads (root)</span>
@@ -81,9 +91,9 @@ export default function HelpMenu({ onClose, COLORS }) {
           <h3 style={{ color: COLORS.secondary }}>[ RIVALS & ZERO-DAYS ]</h3>
           <div style={{ display: 'grid', gridTemplateColumns: '185px 1fr', gap: '10px', marginBottom: '20px' }}>
             <span style={{ color: COLORS.primary }}>rivals</span><span>List known rival hackers and their status</span>
-            <span style={{ color: COLORS.primary }}>dossier &lt;handle&gt;</span><span>Deep intel on a rival's wallet, security, and profile</span>
-            <span style={{ color: COLORS.primary }}>raid &lt;handle&gt;</span><span>Launch an attack against a rival for BTC/REP/zero-days</span>
-            <span style={{ color: COLORS.primary }}>taunt &lt;handle&gt;</span><span>Provoke a rival into hostility (higher retaliation risk)</span>
+            <span style={{ color: COLORS.primary }}>Arcade</span><span>dossier / raid / taunt auto-select a rival if no handle is given</span>
+            <span style={{ color: COLORS.primary }}>Field</span><span>dossier &lt;handle&gt; / raid &lt;handle&gt; / taunt &lt;handle&gt;</span>
+            <span style={{ color: COLORS.primary }}>Operator</span><span>dossier --handle &lt;h&gt; / raid --target &lt;h&gt; / taunt --target &lt;h&gt;</span>
             <span style={{ color: COLORS.primary }}>exploits</span><span>Show your zero-day collection and raid bonuses</span>
           </div>
 

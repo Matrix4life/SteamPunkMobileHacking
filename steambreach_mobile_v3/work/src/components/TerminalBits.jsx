@@ -290,6 +290,33 @@ const MODE_COMMANDS = {
   },
 
   // -----------------------------------------------------------------
+  // RIVALS & ZERO-DAYS
+  // -----------------------------------------------------------------
+  'RIVALS & ZERO-DAYS': {
+    arcade: [
+      { cmd: 'rivals', desc: 'List known rivals and threat status' },
+      { cmd: 'dossier', desc: 'Auto-pick rival dossier (hostile first)' },
+      { cmd: 'raid', desc: 'Auto-target highest-value rival' },
+      { cmd: 'taunt', desc: 'Auto-provoke rival (raises retaliation risk)' },
+      { cmd: 'exploits', desc: 'Show zero-day collection and bonuses' },
+    ],
+    field: [
+      { cmd: 'rivals', desc: 'List known rivals and status' },
+      { cmd: 'dossier <handle>', desc: 'View detailed rival profile' },
+      { cmd: 'raid <handle>', desc: 'Attack rival for BTC/REP/zero-days' },
+      { cmd: 'taunt <handle>', desc: 'Force hostility and raise retaliation chance' },
+      { cmd: 'exploits', desc: 'List collected zero-days' },
+    ],
+    operator: [
+      { cmd: 'rivals', desc: 'List rival registry with status and node intel' },
+      { cmd: 'dossier --handle <h>', desc: 'Operator-mode dossier lookup' },
+      { cmd: 'raid --target <h>', desc: 'Operator-mode targeted rival attack' },
+      { cmd: 'taunt --target <h>', desc: 'Operator-mode provocation command' },
+      { cmd: 'exploits', desc: 'Zero-day inventory and category power' },
+    ],
+  },
+
+  // -----------------------------------------------------------------
   // SYSTEM & NAV
   // -----------------------------------------------------------------
   'SYSTEM & NAV': {
@@ -396,6 +423,7 @@ const CATEGORY_ORDER = [
   'PAYLOADS & MALWARE',
   'DATA & CRACKING',
   'ECONOMY & ITEMS',
+  'RIVALS & ZERO-DAYS',
   'SYSTEM & NAV',
   'MORALITY',
   'STORY EVENTS',
@@ -418,7 +446,7 @@ const HelpPanel = ({ onClose, devMode, gameMode = 'arcade' }) => {
   
   const [isDragging, setIsDragging] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState(
-    CATEGORY_ORDER.reduce((acc, cat) => ({ ...acc, [cat]: true }), {})
+    CATEGORY_ORDER.reduce((acc, cat) => ({ ...acc, [cat]: false }), {})
   );
   const dragOffset = useRef({ x: 0, y: 0 });
 
@@ -552,6 +580,9 @@ const HelpPanel = ({ onClose, devMode, gameMode = 'arcade' }) => {
           <span style={{ color: COLORS.textDim, fontSize: '10px', marginLeft: 'auto' }}>
             {modeInfo.desc}
           </span>
+        </div>
+        <div style={{ color: COLORS.textDim, fontSize: '10px', marginTop: '6px' }}>
+          Sections start collapsed. Click <span style={{ color: COLORS.primary }}>[ + ]</span> to expand.
         </div>
       </div>
       

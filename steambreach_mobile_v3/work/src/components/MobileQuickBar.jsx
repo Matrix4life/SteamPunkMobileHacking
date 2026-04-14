@@ -39,7 +39,7 @@ const getQuickActions = ({ isInside, privilege, isChatting, targetIP, botnet }) 
     { label: 'NMAP', cmd: 'nmap' },
     { label: 'HYDRA', cmd: 'hydra ', partial: true },
     { label: 'SQLMAP', cmd: 'sqlmap ', partial: true },
-    { label: 'SHOP', cmd: 'shop' },
+    { label: 'MARKET', cmd: 'market' },
     { label: 'CONTRACTS', cmd: 'contracts' },
     { label: 'STATUS', cmd: 'status' },
   ];

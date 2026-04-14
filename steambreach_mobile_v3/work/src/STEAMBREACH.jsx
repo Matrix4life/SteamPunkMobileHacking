@@ -52,8 +52,6 @@ import RigDisplay from './components/RigDisplay';
 import NetworkMap from './components/NetworkMap';
 import Header from './components/Header';
 import ContractBoard from './components/ContractBoard';
-import MarketBoard from './components/MarketBoard';
-import DarknetShop from './components/DarknetShop';
 import UnifiedMarket from './components/UnifiedMarket';
 import {
   syncWifiWithWorld,
@@ -1025,21 +1023,8 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
     return () => clearInterval(wantedTimer);
   }, [screen]);
 
-  const handleBuy = (item, cost) => {
-    if (walletFrozen && item !== 'ClearLogs') {
-      setTerminal(prev => [...prev, { type: 'out', text: `[-] WALLET FROZEN: Transaction channels blocked by law enforcement.\n[*] Bribe SOC Insider is still available to reduce heat.`, isNew: true }]);
-      return;
-    }
-    if (item !== 'ClearLogs' && inventory.includes(item)) return;
-    if (money >= cost) {
-      setMoney(m => m - cost);
-      if (item === 'ClearLogs') setHeat(h => Math.max(h - 50, 0));
-      else setInventory(inv => [...inv, item]);
-    }
-  };
-
   // ─── HARDWARE MARKET HANDLERS ─────────────────────────────
-  const openHardwareMarket = () => {
+  const openMarketHub = () => {
     const newBtc = generateBTCPrice(btcIndex);
     setBtcIndex(newBtc);
     setHwMarketData(generateUnifiedMarket(currentRegion, newBtc, reputation));
@@ -1160,26 +1145,6 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
     const price = hwMarketData?.commodityPrices?.[itemKey] || 0;
     setMoney(m => m + price * qty);
     setStash(s => ({ ...s, [itemKey]: s[itemKey] - qty }));
-  };
-
-  const handleMarketTrade = (action, itemKey, qty) => {
-    if (action === 'buy') {
-        if (walletFrozen) return; // UI should show this, but guard here too
-        const priceMult = getHeatPriceMult(heat);
-        const inflatedPrice = Math.ceil(marketPrices[itemKey] * priceMult);
-        const cost = inflatedPrice * qty;
-        if (money >= cost) {
-            setMoney(m => m - cost);
-            setStash(s => ({ ...s, [itemKey]: (s[itemKey] || 0) + qty }));
-        }
-    } else if (action === 'sell') {
-        const currentQty = stash[itemKey] || 0;
-        if (currentQty >= qty) {
-            const revenue = marketPrices[itemKey] * qty;
-            setMoney(m => m + revenue);
-            setStash(s => ({ ...s, [itemKey]: s[itemKey] - qty }));
-        }
-    }
   };
 
   const acceptContract = (id) => {
@@ -1759,7 +1724,7 @@ const verifyContract = (ip, objectiveType) => {
       
       market: async () => {
   if (isInside) return `[-] Cannot access market while inside a target.`;
-  setScreen('market');
+  openMarketHub();
         if (walletFrozen) return `[!] WALLET FROZEN — limited trading. Reduce heat below 75%.`;
         return '';
       },
@@ -3302,19 +3267,19 @@ if (typeof rawData === 'string' && rawData.includes('[STORY_TRIGGER]')) {
       reset_grid: async () => { localStorage.clear(); window.location.reload(); return "PURGING..."; },
       shop: async () => { 
         if (isInside) return "[-] Exit session first."; 
-        openHardwareMarket();
+        openMarketHub();
         if (walletFrozen) return `[!] WARNING: Wallet frozen. Only Bribe SOC available until heat drops below 75%.`;
-        return ''; 
+        return '[*] SHOP merged into MARKET hub. Use: market';
       },
       hardware: async () => {
         if (isInside) return "[-] Exit session first.";
-        openHardwareMarket();
-        return '';
+        openMarketHub();
+        return '[*] HARDWARE merged into MARKET hub. Use: market';
       },
       rig: async () => {
         if (isInside) return "[-] Exit session first.";
-        openHardwareMarket();
-        return '';
+        openMarketHub();
+        return '[*] RIG merged into MARKET hub. Use: market';
       },
       status: async () => {
   const d = director; const score = d.skillScore; const maxHops = getMaxProxySlots(inventory, d.modifiers);
@@ -4802,33 +4767,6 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
       onBuySW={handleBuySW}
       onBuyCommodity={handleBuyCommodity}
       onSellCommodity={handleSellCommodity}
-      returnToGame={() => setScreen('game')}
-    />
-  );
-
-  if (screen === 'shop') return (
-    <DarknetShop money={money} reputation={reputation} inventory={inventory} handleBuy={handleBuy} returnToGame={() => setScreen('game')} />
-  );
-
-  if (screen === 'market') return (
-    <MarketBoard
-      money={money} stash={stash} marketPrices={marketPrices}
-      currentRegion={currentRegion} heat={heat}
-      handleTrade={handleMarketTrade}
-      empireListings={empireListings}
-      onUpdateListing={(key, update) => {
-        setEmpireListings(prev => {
-          const cur = prev[key] || { listed: 0, priceMult: 1.0 };
-          if (update.priceMult !== undefined) return { ...prev, [key]: { ...cur, priceMult: update.priceMult } };
-          if (update.delistAll) return { ...prev, [key]: { ...cur, listed: 0 } };
-          if (update.listQty) {
-            const qty = update.listQty;
-            setStash(s => ({ ...s, [key]: Math.max(0, (s[key] || 0) - qty) }));
-            return { ...prev, [key]: { ...cur, listed: cur.listed + qty } };
-          }
-          return prev;
-        });
-      }}
       returnToGame={() => setScreen('game')}
     />
   );

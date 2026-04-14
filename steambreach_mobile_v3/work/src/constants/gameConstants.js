@@ -88,11 +88,10 @@ const COMMAND_REGISTRY = [
   { cmd: 'use burner', desc: 'Burn a Burner VPN — Heat −25% (find in target files)', category: 'ECONOMY & ITEMS' },
   { cmd: 'use 0day', desc: 'Instant root via Zero-Day — no logging (find in target files)', category: 'ECONOMY & ITEMS' },
   { cmd: 'contracts', desc: 'View AI fixer contracts board', category: 'ECONOMY & ITEMS' },
-  { cmd: 'market', desc: 'Open Black Market — buy/sell cc_dumps, botnets, exploits, zerodays', category: 'ECONOMY & ITEMS' },
+  { cmd: 'market', desc: 'Open unified Market Hub — commodities, software, hardware, rig management', category: 'ECONOMY & ITEMS' },
   { cmd: 'buy <item> <qty>', desc: 'Buy a commodity at current market price', category: 'ECONOMY & ITEMS' },
   { cmd: 'sell <item> <qty>', desc: 'Sell a commodity from your stash', category: 'ECONOMY & ITEMS' },
-  { cmd: 'shop', desc: 'Access darknet software marketplace', category: 'ECONOMY & ITEMS' },
-  { cmd: 'hardware / rig', desc: 'Open hardware marketplace — buy and install rig components', category: 'ECONOMY & ITEMS' },
+  { cmd: 'shop / hardware / rig', desc: 'Legacy aliases → opens the unified Market Hub', category: 'ECONOMY & ITEMS' },
 
   // --- MORALITY ---
   { cmd: 'assist', desc: 'When prompted: quietly help a civilian — raises SIGNAL score', category: 'MORALITY' },

@@ -11,6 +11,35 @@ const ContractBoard = ({
   denyContract,
   returnToGame
 }) => {
+  const safeText = (value, fallback = '') => {
+    if (value === null || value === undefined) return fallback;
+    if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+      return String(value);
+    }
+    if (Array.isArray(value)) {
+      const flattened = value
+        .map(v => safeText(v, ''))
+        .filter(Boolean)
+        .join(', ');
+      return flattened || fallback;
+    }
+    if (typeof value === 'object') {
+      const preferred =
+        value.text ??
+        value.label ??
+        value.name ??
+        value.title ??
+        value.value;
+      if (preferred !== undefined) return safeText(preferred, fallback);
+      try {
+        return JSON.stringify(value);
+      } catch {
+        return fallback;
+      }
+    }
+    return fallback;
+  };
+
   const [selectedId, setSelectedId] = useState(null);
   const [isReady, setIsReady] = useState(false);
   const mobile = isMobile();
@@ -41,6 +70,7 @@ const ContractBoard = ({
 
   const selected = visibleContracts.find(c => c.id === selectedId) || null;
   const canAccept = !!(selected && !selected.active && !activeContract);
+  const canAbandonSelected = !!(selected && (!activeContract || activeContract.id === selected.id));
 
   useEffect(() => {
     if (mobile) return;
@@ -64,7 +94,7 @@ const ContractBoard = ({
         );
       } else if (e.key === 'Enter' && canAccept && isReady && selected) {
         acceptContract(selected.id);
-      } else if ((e.key === 'Delete' || e.key === 'Backspace') && selected && !selected.active) {
+      } else if ((e.key === 'Delete' || e.key === 'Backspace') && canAbandonSelected && selected) {
         removeContract(selected.id);
         setSelectedId(null);
       }
@@ -76,6 +106,7 @@ const ContractBoard = ({
     visibleContracts,
     selectedId,
     canAccept,
+    canAbandonSelected,
     returnToGame,
     acceptContract,
     removeContract,
@@ -116,7 +147,7 @@ const ContractBoard = ({
 
     return objs.map((obj, i) => {
       const actionText =
-        obj.label ||
+        safeText(obj.label) ||
         (obj.type === 'exfil'
           ? `EXFIL '${obj.targetFile}'`
           : obj.type === 'destroy'
@@ -144,12 +175,12 @@ const ContractBoard = ({
             {obj.ip && (
               <>
                 <span style={{ color: COLORS.textDim }}> • </span>
-                <span style={{ color: COLORS.ip }}>{obj.ip}</span>
+                <span style={{ color: COLORS.ip }}>{safeText(obj.ip)}</span>
               </>
             )}
             {obj.name && (
               <>
-                <span style={{ color: COLORS.textDim }}> ({obj.name})</span>
+                <span style={{ color: COLORS.textDim }}> ({safeText(obj.name)})</span>
               </>
             )}
           </span>
@@ -166,23 +197,23 @@ const ContractBoard = ({
 
     return (
       <div style={{ fontSize: '11px', color: COLORS.textDim, lineHeight: '1.8', borderBottom: `1px solid ${COLORS.border}`, paddingBottom: '12px', marginBottom: '12px' }}>
-        {contract.client && <div>CLIENT: <span style={{ color: COLORS.text }}>{contract.client}</span></div>}
-        {contract.motive && <div>MOTIVE: <span style={{ color: COLORS.text }}>{contract.motive}</span></div>}
-        {contract.targetProfile && <div>TARGET PROFILE: <span style={{ color: COLORS.text }}>{contract.targetProfile}</span></div>}
-        {contract.riskLabel && <div>RISK: <span style={{ color: getProbColor(contract.probability) }}>{contract.riskLabel}</span></div>}
+        {contract.client && <div>CLIENT: <span style={{ color: COLORS.text }}>{safeText(contract.client)}</span></div>}
+        {contract.motive && <div>MOTIVE: <span style={{ color: COLORS.text }}>{safeText(contract.motive)}</span></div>}
+        {contract.targetProfile && <div>TARGET PROFILE: <span style={{ color: COLORS.text }}>{safeText(contract.targetProfile)}</span></div>}
+        {contract.riskLabel && <div>RISK: <span style={{ color: getProbColor(contract.probability) }}>{safeText(contract.riskLabel)}</span></div>}
         {lines.length > 0 && (
           <div style={{ marginTop: '4px' }}>
             KNOWN CONDITIONS:
             <div style={{ marginTop: '4px' }}>
               {lines.map((line, idx) => (
-                <div key={idx}>- {line}</div>
+                <div key={idx}>- {safeText(line, '[invalid intel]')}</div>
               ))}
             </div>
           </div>
         )}
         {contract.complication && (
           <div style={{ color: COLORS.danger, marginTop: '6px' }}>
-            COMPLICATION: {contract.complication}
+            COMPLICATION: {safeText(contract.complication)}
           </div>
         )}
       </div>
@@ -205,12 +236,12 @@ const ContractBoard = ({
         </div>
 
         <div style={{ fontSize: '14px', lineHeight: '1.6', marginBottom: '12px', color: COLORS.text }}>
-          {selected.desc}
+          {safeText(selected.desc)}
         </div>
 
         {selected.briefing && (
           <div style={{ fontSize: '13px', lineHeight: '1.6', marginBottom: '16px', color: COLORS.textDim }}>
-            {selected.briefing}
+            {safeText(selected.briefing)}
           </div>
         )}
 
@@ -251,7 +282,7 @@ const ContractBoard = ({
           </button>
         )}
 
-        {!selected.active && (
+        {canAbandonSelected && (
           <button
             onClick={() => { removeContract(selected.id); setSelectedId(null); }}
             style={{
@@ -264,11 +295,11 @@ const ContractBoard = ({
               WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation',
             }}
           >
-            ABANDON CONTRACT
+            {selected.active ? 'ABANDON ACTIVE CONTRACT' : 'ABANDON CONTRACT'}
           </button>
         )}
 
-        {activeContract && !selected.active && (
+        {activeContract && !selected.active && !canAbandonSelected && (
           <div style={{ color: COLORS.danger, fontSize: '12px', textAlign: 'center', marginBottom: '12px' }}>
             Complete or abandon active contract first.
           </div>
@@ -326,9 +357,9 @@ const ContractBoard = ({
                     ₿{c.reward?.toLocaleString()}
                   </span>
                 </div>
-                <div style={{ fontSize: '13px', lineHeight: '1.5' }}>{c.desc}</div>
+                <div style={{ fontSize: '13px', lineHeight: '1.5' }}>{safeText(c.desc)}</div>
                 <div style={{ fontSize: '11px', color: COLORS.textDim, marginTop: '8px', display: 'flex', justifyContent: 'space-between' }}>
-                  <span>{c.objectives ? `${c.objectives.length} TARGETS` : c.targetName} • {c.timeLimit}s</span>
+                  <span>{c.objectives ? `${c.objectives.length} TARGETS` : safeText(c.targetName)} • {safeText(c.timeLimit)}s</span>
                   <span style={{ color: getProbColor(c.probability), fontWeight: 'bold' }}>
                     {c.probability ? `${c.probability}% PROB` : ''}
                   </span>
@@ -387,9 +418,9 @@ const ContractBoard = ({
                     ₿{c.reward?.toLocaleString()}
                   </span>
                 </div>
-                <div style={{ fontSize: '12px', lineHeight: '1.4' }}>{c.desc}</div>
+                <div style={{ fontSize: '12px', lineHeight: '1.4' }}>{safeText(c.desc)}</div>
                 <div style={{ fontSize: '10px', color: COLORS.textDim, marginTop: '6px', display: 'flex', justifyContent: 'space-between' }}>
-                  <span>{c.objectives ? `${c.objectives.length} TARGETS` : c.targetName} • {c.timeLimit}s</span>
+                  <span>{c.objectives ? `${c.objectives.length} TARGETS` : safeText(c.targetName)} • {safeText(c.timeLimit)}s</span>
                   <span style={{ color: getProbColor(c.probability), fontWeight: 'bold' }}>
                     {c.probability ? `${c.probability}% PROB` : ''}
                   </span>
@@ -425,11 +456,11 @@ const ContractBoard = ({
                 </span>
               </div>
 
-              <div style={{ fontSize: '13px', lineHeight: '1.5', marginBottom: '12px' }}>{selected.desc}</div>
+              <div style={{ fontSize: '13px', lineHeight: '1.5', marginBottom: '12px' }}>{safeText(selected.desc)}</div>
 
               {selected.briefing && (
                 <div style={{ fontSize: '12px', lineHeight: '1.6', color: COLORS.textDim, marginBottom: '16px' }}>
-                  {selected.briefing}
+                  {safeText(selected.briefing)}
                 </div>
               )}
 
@@ -469,7 +500,7 @@ const ContractBoard = ({
                 </button>
               )}
 
-              {!selected.active && (
+              {canAbandonSelected && (
                 <button
                   onClick={() => { removeContract(selected.id); setSelectedId(null); }}
                   style={{
@@ -481,11 +512,11 @@ const ContractBoard = ({
                     letterSpacing: '1px', marginTop: canAccept ? '8px' : '16px', width: '100%',
                   }}
                 >
-                  [DEL] ABANDON CONTRACT
+                  {selected.active ? '[DEL] ABANDON ACTIVE CONTRACT' : '[DEL] ABANDON CONTRACT'}
                 </button>
               )}
 
-              {activeContract && !selected.active && (
+              {activeContract && !selected.active && !canAbandonSelected && (
                 <div style={{ color: COLORS.danger, marginTop: '16px', fontSize: '11px', textAlign: 'center' }}>
                   Complete or abandon active contract first.
                 </div>

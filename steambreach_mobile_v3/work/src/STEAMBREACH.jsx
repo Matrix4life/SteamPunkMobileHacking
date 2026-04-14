@@ -744,6 +744,46 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
     }
   }, [director.narrativeQueue, isProcessing, isInside]);
 
+  // ── RIVAL RETALIATION TICK ────────────────────────────────────────────────
+  useEffect(() => {
+    if (screen !== 'game' || !operator || rivals.length === 0) return;
+
+    const retaliationTick = setInterval(() => {
+      const candidates = rivals.filter(r => r.status !== 'destroyed' && (r.status === 'hostile' || r.relationship <= -20));
+      if (candidates.length === 0) return;
+
+      const attacker = candidates[Math.floor(Math.random() * candidates.length)];
+      const attack = rivalAttacksPlayer(attacker, { rep: reputation, btc: money, proxyCount: proxies.length });
+      if (!attack) return;
+
+      setRivals(prev => prev.map(r => (
+        r.id === attacker.id
+          ? { ...r, attackCount: (r.attackCount || 0) + 1, lastSeen: Date.now(), status: 'hostile' }
+          : r
+      )));
+
+      if (attack.success && attack.damage) {
+        const btcLost = Math.max(0, Math.min(money, attack.damage.btcLost || 0));
+        const heatGain = Math.max(0, attack.damage.heatGain || 0);
+        if (btcLost > 0) setMoney(m => Math.max(0, m - btcLost));
+        if (heatGain > 0) setHeat(h => Math.min(100, h + heatGain));
+        setTerminal(prev => [...prev, {
+          type: 'out',
+          text: `[RIVAL ALERT] ${attacker.handle} breached your infrastructure.\n[-] Wallet drained: ₿${btcLost.toLocaleString()}\n[!] Heat +${heatGain}%`,
+          isNew: true
+        }]);
+      } else {
+        setTerminal(prev => [...prev, {
+          type: 'out',
+          text: `[RIVAL ALERT] ${attacker.handle} attempted retaliation, but your defenses held.`,
+          isNew: true
+        }]);
+      }
+    }, 45000);
+
+    return () => clearInterval(retaliationTick);
+  }, [screen, operator, rivals, reputation, money, proxies.length]);
+
   const trackCommand = useCallback((cmd, success) => {
     setDirector(prev => {
       const m = { ...prev.metrics };
@@ -1151,6 +1191,29 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
     setScreen('game');
     setTerminal(prev => [...prev, { type: 'out', text: `[FIXER] Contract ${id} accepted.\n[*] Target: ${activated.targetName} (${activated.targetIP})\n[*] Time limit: ${activated.timeLimit}s | Max heat: ${activated.heatCap}%\n[*] Reward: ₿${activated.reward.toLocaleString()} + ${activated.repReward} REP`, isNew: true }]);
   };
+  const declineContract = (id) => {
+    const contract = contracts.find(c => c.id === id);
+    if (!contract || contract.completed) {
+      setTerminal(prev => [...prev, { type: 'out', text: `[-] Contract ${id} is no longer available.`, isNew: true }]);
+      setScreen('game');
+      return;
+    }
+
+    // Keep active-contract flow explicit and avoid silently dropping active jobs from the board.
+    if (activeContract && activeContract.id !== id) {
+      setTerminal(prev => [...prev, {
+        type: 'out',
+        text: `[-] Cannot abandon ${id} while ${activeContract.id} is active.\n[*] Complete or fail the active contract first.`,
+        isNew: true
+      }]);
+      setScreen('game');
+      return;
+    }
+
+    completeContractAndRemove(id);
+    setTerminal(prev => [...prev, { type: 'out', text: `[FIXER] Contract ${id} abandoned.`, isNew: true }]);
+    setScreen('game');
+  };
 const completeContractAndRemove = (id) => {
     // 1. Remove the contract from the board
     setContracts(prev => prev.filter(c => c.id !== id));
@@ -1310,24 +1373,83 @@ const completeContractAndRemove = (id) => {
 const verifyContract = (ip, objectiveType) => {
     let msg = '';
     const currentContract = contracts.find(c => c.active && !c.completed);
-    if (currentContract) {
-      const isMatch = currentContract.objectives?.some(o => o.ip === ip && o.type === objectiveType);
-      if (isMatch) {
-        const timeTaken = (Date.now() - currentContract.startTime) / 1000;
-        const rewardVal = currentContract.reward || 0;
-        const repVal = currentContract.repReward || 0;
-        if (timeTaken <= (currentContract.timeLimit || 9999) && heat <= (currentContract.heatCap || 100)) {
-          setMoney(m => m + rewardVal);
-          setReputation(r => r + repVal);
-          completeContractAndRemove(currentContract.id); trackContract(true);
-          msg = `\n\n[FIXER] CONTRACT FULFILLED.\n[+] BONUS: ₿${rewardVal.toLocaleString()} + ${repVal} REP`;
-        } else {
-          completeContractAndRemove(currentContract.id); trackContract(false);
-          msg = `\n\n[FIXER] CONTRACT FAILED. Time Limit or Heat Cap exceeded.`;
-        }
+    if (!currentContract) return msg;
+
+    const objectives = Array.isArray(currentContract.objectives) ? currentContract.objectives : [];
+    const targetBssid = wifiState.targetBssid || null;
+    const contractBssid = currentContract.targetBssid || null;
+
+    const isObjectiveMatch = (obj) => {
+      if (obj.completed) return false;
+      if (obj.type !== objectiveType) return false;
+
+      // WiFi contracts are stage-based and tied to the selected wireless target.
+      if (currentContract.isWifiContract || obj.wifiObjective) {
+        if (!contractBssid || !targetBssid) return true;
+        return contractBssid === targetBssid;
       }
+
+      // Legacy contracts remain IP + action based.
+      return obj.ip === ip;
+    };
+
+    const objectiveIdx = objectives.findIndex(isObjectiveMatch);
+    if (objectiveIdx === -1) return msg;
+
+    const timeTaken = (Date.now() - currentContract.startTime) / 1000;
+    const withinLimits =
+      timeTaken <= (currentContract.timeLimit || 9999) &&
+      heat <= (currentContract.heatCap || 100);
+
+    if (!withinLimits) {
+      completeContractAndRemove(currentContract.id);
+      trackContract(false);
+      return `\n\n[FIXER] CONTRACT FAILED. Time Limit or Heat Cap exceeded.`;
     }
+
+    const updatedObjectives = objectives.map((o, idx) =>
+      idx === objectiveIdx ? { ...o, completed: true } : o
+    );
+    const doneCount = updatedObjectives.filter(o => o.completed).length;
+    const allDone = updatedObjectives.length > 0 && doneCount === updatedObjectives.length;
+
+    if (allDone) {
+      const rewardVal = currentContract.reward || 0;
+      const repVal = currentContract.repReward || 0;
+      setMoney(m => m + rewardVal);
+      setReputation(r => r + repVal);
+      completeContractAndRemove(currentContract.id);
+      trackContract(true);
+      msg = `\n\n[FIXER] CONTRACT FULFILLED.\n[+] BONUS: ₿${rewardVal.toLocaleString()} + ${repVal} REP`;
+    } else {
+      setContracts(prev => prev.map(c =>
+        c.id === currentContract.id ? { ...c, objectives: updatedObjectives } : c
+      ));
+      msg = `\n\n[FIXER] Objective ${doneCount}/${updatedObjectives.length} complete. Stay on mission.`;
+    }
+
     return msg;
+  };
+
+  const maybeCreateWiFiContract = (network) => {
+    if (!network || !network.bssid) return;
+    if (contracts.length >= 8) return;
+
+    const exists = contracts.some(c =>
+      c &&
+      c.isWifiContract &&
+      c.targetBssid === network.bssid &&
+      !c.completed
+    );
+    if (exists) return;
+
+    const newContract = generateWiFiContract(network, reputation, directorRef.current?.modifiers);
+    setContracts(prev => [...prev, newContract]);
+    setTerminal(prev => [...prev, {
+      type: 'out',
+      text: `[FIXER] Wireless contract ${newContract.id} posted for ${network.essid}.\n[*] Type 'contracts' to review.`,
+      isNew: true
+    }]);
   };
 
   const COMMANDS = { // <--- Your existing commands object starts here
@@ -3372,6 +3494,10 @@ phy0    wlan0           ath9k_htc       Qualcomm Atheros AR9271
             // Update the target in wifiNetworks
             setWifiNetworks(prev => prev.map(n => ({ ...n, target: n.bssid === selectedNet.bssid })));
             playSuccess();
+            if (selectedNet.target || Math.random() < 0.35) {
+              maybeCreateWiFiContract(selectedNet);
+            }
+            const contractMsg = verifyContract(null, 'focus');
             
             if (encLabel === 'OPEN') {
               output += `\n[!] OPEN NETWORK — No password required!\n[*] Run 'nmcli' to connect directly`;
@@ -3392,7 +3518,7 @@ phy0    wlan0           ath9k_htc       Qualcomm Atheros AR9271
             } else {
               output += `\n[+] Capture file: capture-01.cap\n[*] Run 'aireplay-ng' to force handshake capture`;
             }
-            return output;
+            return output + contractMsg;
           }
           
           // No arg — normal scan/focus flow
@@ -3405,6 +3531,7 @@ phy0    wlan0           ath9k_htc       Qualcomm Atheros AR9271
             });
             setWifiState(prev => ({ ...prev, scanned: true }));
             playSuccess();
+            const contractMsg = verifyContract(null, 'scan');
             const openNets = nets.filter(n => n.discovered && n.enc === 'OPEN');
             const wpa2Nets = nets.filter(n => n.discovered && (n.enc === 'WPA2' || n.enc === 'WEP'));
             const wpa3Nets = nets.filter(n => n.discovered && (n.enc === 'WPA3' || n.enc === 'WPA3-SAE'));
@@ -3414,7 +3541,7 @@ phy0    wlan0           ath9k_htc       Qualcomm Atheros AR9271
             if (openNets.length > 0) hint += `[!] OPEN NETWORKS (no password): ${openNets.map(n => n.essid).join(', ')}\n`;
             if (wpa2Nets.length > 0) hint += `[!] CRACKABLE (WPA2/WEP): ${wpa2Nets.slice(0,3).map(n => n.essid).join(', ')}${wpa2Nets.length > 3 ? '...' : ''}\n`;
             if (wpa3Nets.length > 0) hint += `[!] WPA3 (need social engineering): ${wpa3Nets.slice(0,3).map(n => n.essid).join(', ')}`;
-            return output + hint;
+            return output + hint + contractMsg;
           } else if (!wifiState.focused) {
             // Already scanned but no target selected — prompt for selection
             const openNets = nets.filter(n => n.discovered && n.enc === 'OPEN');
@@ -3458,7 +3585,11 @@ phy0    wlan0           ath9k_htc       Qualcomm Atheros AR9271
             clients.forEach(c => { output += ` ${c.mac}  ${String(c.pwr || c.signal || -40).padStart(3)}   ${String(c.frames || 1000).padStart(6)}  ${c.dev || c.device || 'Unknown'}\n`; });
             setWifiState(prev => ({ ...prev, focused: true, capFile: true, targetBssid: targetNet.bssid }));
             playSuccess();
-            return output + `\n[+] Focused capture on ${targetNet.essid}\n[+] Capture file: capture-01.cap\n[*] Force handshake: aireplay-ng deauth`;
+            if (targetNet.target || Math.random() < 0.35) {
+              maybeCreateWiFiContract(targetNet);
+            }
+            const contractMsg = verifyContract(null, 'focus');
+            return output + `\n[+] Focused capture on ${targetNet.essid}\n[+] Capture file: capture-01.cap\n[*] Force handshake: aireplay-ng deauth${contractMsg}`;
           }
         }
 
@@ -3493,6 +3624,10 @@ Examples:
           if (hasWrite) {
             setWifiState(prev => ({ ...prev, focused: true, capFile: true, targetBssid: targetBssid }));
             output += `\n[+] Focused capture active — writing to capture-01.cap\n[*] Monitoring ${clients.length} clients on ${foundNet.essid}`;
+            if (foundNet.target || Math.random() < 0.35) {
+              maybeCreateWiFiContract(foundNet);
+            }
+            output += verifyContract(null, 'focus');
           }
           playSuccess();
           return output;
@@ -3531,7 +3666,8 @@ Examples:
           setIsProcessing(false);
           playSuccess();
           setHeat(h => Math.min(h + 3, 100));
-          return `[+] Client disconnected: ${targetClient.dev}\n[+] Client reassociated — WPA handshake CAPTURED!\n[+] Saved to: capture-01.cap\n[*] Run 'aircrack-ng' to crack the password.`;
+          const contractMsg = verifyContract(null, 'deauth');
+          return `[+] Client disconnected: ${targetClient.dev}\n[+] Client reassociated — WPA handshake CAPTURED!\n[+] Saved to: capture-01.cap\n[*] Run 'aircrack-ng' to crack the password.${contractMsg}`;
         }
 
         // ═══ FIELD MODE: Requires deauth flag ═══
@@ -3554,7 +3690,8 @@ ${WIFI_CLIENTS.slice(0, 4).map(c => `    ${c.mac}  ${c.dev}`).join('\n')}`;
           setIsProcessing(false);
           playSuccess();
           setHeat(h => Math.min(h + 5, 100));
-          return `[+] Deauth sent!${client ? `\n[+] Device: ${client.dev}` : ''}\n[+] Client reassociated — WPA handshake CAPTURED!\n[+] Saved to: capture-01.cap\n[*] Crack: aircrack-ng crack`;
+          const contractMsg = verifyContract(null, 'deauth');
+          return `[+] Deauth sent!${client ? `\n[+] Device: ${client.dev}` : ''}\n[+] Client reassociated — WPA handshake CAPTURED!\n[+] Saved to: capture-01.cap\n[*] Crack: aircrack-ng crack${contractMsg}`;
         }
 
         // ═══ OPERATOR MODE: Full syntax required ═══
@@ -3591,7 +3728,7 @@ ${WIFI_CLIENTS.slice(0, 4).map(c => `    ${c.mac}  ${c.dev}`).join('\n')}`;
         setIsProcessing(false);
         playSuccess();
         setHeat(h => Math.min(h + 5, 100));
-        return output;
+        return output + verifyContract(null, 'deauth');
       },
 
       'aircrack-ng': async () => {
@@ -3607,7 +3744,8 @@ ${WIFI_CLIENTS.slice(0, 4).map(c => `    ${c.mac}  ${c.dev}`).join('\n')}`;
           setWifiState(prev => ({ ...prev, cracked: true, pwd: crackedPwd }));
           setIsProcessing(false);
           playSuccess();
-          return `\n                           KEY FOUND! [ ${crackedPwd} ]\n\n[+] Password cracked: ${crackedPwd}\n[*] Connect: nmcli`;
+          const contractMsg = verifyContract(null, 'crack');
+          return `\n                           KEY FOUND! [ ${crackedPwd} ]\n\n[+] Password cracked: ${crackedPwd}\n[*] Connect: nmcli${contractMsg}`;
         }
 
         // ═══ FIELD MODE: Requires crack flag ═══
@@ -3620,7 +3758,8 @@ ${WIFI_CLIENTS.slice(0, 4).map(c => `    ${c.mac}  ${c.dev}`).join('\n')}`;
           setWifiState(prev => ({ ...prev, cracked: true, pwd: crackedPwd }));
           setIsProcessing(false);
           playSuccess();
-          return `\n                           KEY FOUND! [ ${crackedPwd} ]\n\n[+] Password cracked: ${crackedPwd}\n[*] Connect: nmcli connect`;
+          const contractMsg = verifyContract(null, 'crack');
+          return `\n                           KEY FOUND! [ ${crackedPwd} ]\n\n[+] Password cracked: ${crackedPwd}\n[*] Connect: nmcli connect${contractMsg}`;
         }
 
         // ═══ OPERATOR MODE: Full syntax required ═══
@@ -3647,7 +3786,7 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
         setWifiState(prev => ({ ...prev, cracked: true, pwd: crackedPwd }));
         setIsProcessing(false);
         playSuccess();
-        return `\n                               Aircrack-ng 1.7\n\n\n                           KEY FOUND! [ ${crackedPwd} ]\n\n\n      Master Key     : A4 29 C1 7E 3B 90 D2 4F 18 6A B7 E5 33 CC 01 8D\n      EAPOL HMAC     : 9A 8B 7C 6D 5E 4F 3A 2B 1C 0D EF FE DC CB BA A9\n\n[+] Password cracked: ${crackedPwd}\n[*] Connect: nmcli dev wifi connect STEAMWORKS-CORP password ${crackedPwd}`;
+        return `\n                               Aircrack-ng 1.7\n\n\n                           KEY FOUND! [ ${crackedPwd} ]\n\n\n      Master Key     : A4 29 C1 7E 3B 90 D2 4F 18 6A B7 E5 33 CC 01 8D\n      EAPOL HMAC     : 9A 8B 7C 6D 5E 4F 3A 2B 1C 0D EF FE DC CB BA A9\n\n[+] Password cracked: ${crackedPwd}\n[*] Connect: nmcli dev wifi connect STEAMWORKS-CORP password ${crackedPwd}${verifyContract(null, 'crack')}`;
       },
 
       nmcli: async () => {
@@ -3692,7 +3831,8 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
           spawnInternalNodes();
           setIsProcessing(false);
           playSuccess();
-          return `[+] Connected to ${targetName}!\n[+] IP: 10.0.0.187 | Gateway: 10.0.0.1\n\n[!] New targets added to network map:\n    • 10.0.0.20 — File Server\n    • 10.0.0.30 — Database Server\n    • 10.0.0.50 — Domain Controller\n\n[*] Run 'nmap' to scan internal network`;
+          const contractMsg = verifyContract(null, 'connect');
+          return `[+] Connected to ${targetName}!\n[+] IP: 10.0.0.187 | Gateway: 10.0.0.1\n\n[!] New targets added to network map:\n    • 10.0.0.20 — File Server\n    • 10.0.0.30 — Database Server\n    • 10.0.0.50 — Domain Controller\n\n[*] Run 'nmap' to scan internal network${contractMsg}`;
         }
 
         // ═══ FIELD MODE: Requires connect flag ═══
@@ -3705,7 +3845,8 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
           spawnInternalNodes();
           setIsProcessing(false);
           playSuccess();
-          return `[+] Connected to ${targetName}!\n[+] IP: 10.0.0.187\n\n[!] New targets:\n    • 10.0.0.20 — File Server\n    • 10.0.0.30 — Database\n    • 10.0.0.50 — Domain Controller`;
+          const contractMsg = verifyContract(null, 'connect');
+          return `[+] Connected to ${targetName}!\n[+] IP: 10.0.0.187\n\n[!] New targets:\n    • 10.0.0.20 — File Server\n    • 10.0.0.30 — Database\n    • 10.0.0.50 — Domain Controller${contractMsg}`;
         }
 
         // ═══ OPERATOR MODE: Full syntax required ═══
@@ -3730,7 +3871,8 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
           spawnInternalNodes();
           setIsProcessing(false);
           playSuccess();
-          return `\n  [+] Associating with AP... ✓\n  [+] Obtaining IP via DHCP... ✓\n\n  ╔════════════════════════════════════════╗\n  ║     CONNECTED TO ${ssid.toUpperCase().substring(0,14).padEnd(14)}     ║\n  ╠════════════════════════════════════════╣\n  ║  IP Address : 10.0.0.187               ║\n  ║  Gateway    : 10.0.0.1                 ║\n  ║  Security   : OPEN (No encryption!)    ║\n  ╚════════════════════════════════════════╝\n\n  [!] WARNING: Traffic on this network is unencrypted!\n  [+] New targets added to network map`;
+          const contractMsg = verifyContract(null, 'connect');
+          return `\n  [+] Associating with AP... ✓\n  [+] Obtaining IP via DHCP... ✓\n\n  ╔════════════════════════════════════════╗\n  ║     CONNECTED TO ${ssid.toUpperCase().substring(0,14).padEnd(14)}     ║\n  ╠════════════════════════════════════════╣\n  ║  IP Address : 10.0.0.187               ║\n  ║  Gateway    : 10.0.0.1                 ║\n  ║  Security   : OPEN (No encryption!)    ║\n  ╚════════════════════════════════════════╝\n\n  [!] WARNING: Traffic on this network is unencrypted!\n  [+] New targets added to network map${contractMsg}`;
         }
         
         const password = passwordIdx !== -1 ? args[passwordIdx + 1] : null;
@@ -3743,7 +3885,8 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
         spawnInternalNodes();
         setIsProcessing(false);
         playSuccess();
-        return `\n  [+] Authenticating... ✓\n  [+] Obtaining IP via DHCP... ✓\n\n  ╔════════════════════════════════════════╗\n  ║     CONNECTED TO ${ssid.toUpperCase().substring(0,14).padEnd(14)}     ║\n  ╠════════════════════════════════════════╣\n  ║  IP Address : 10.0.0.187               ║\n  ║  Gateway    : 10.0.0.1                 ║\n  ╚════════════════════════════════════════╝\n\n  [+] Inside ${ssid} network!\n  [!] New targets added to network map:\n      • 10.0.0.20 — File Server\n      • 10.0.0.30 — Database Server\n      • 10.0.0.50 — Domain Controller`;
+        const contractMsg = verifyContract(null, 'connect');
+        return `\n  [+] Authenticating... ✓\n  [+] Obtaining IP via DHCP... ✓\n\n  ╔════════════════════════════════════════╗\n  ║     CONNECTED TO ${ssid.toUpperCase().substring(0,14).padEnd(14)}     ║\n  ╠════════════════════════════════════════╣\n  ║  IP Address : 10.0.0.187               ║\n  ║  Gateway    : 10.0.0.1                 ║\n  ╚════════════════════════════════════════╝\n\n  [+] Inside ${ssid} network!\n  [!] New targets added to network map:\n      • 10.0.0.20 — File Server\n      • 10.0.0.30 — Database Server\n      • 10.0.0.50 — Domain Controller${contractMsg}`;
       },
 
       wireshark: async () => {
@@ -3893,6 +4036,7 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
                 
                 if (newNet.target) {
                   playSuccess();
+                  maybeCreateWiFiContract(newNet);
                 } else {
                   playBlip();
                 }
@@ -4146,14 +4290,23 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
           const icon = { active: '🟢', compromised: '🔴', hostile: '⚠️', friendly: '🤝', destroyed: '💀' }[r.status] || '⚪';
           lines.push(`  ${icon} ${r.handle.padEnd(18)} ${String(r.rep).padStart(4)}   ${r.archetypeName.padEnd(14)}  ${r.ip}`);
         });
-        lines.push('', '  Type "dossier <handle>" for intel | "raid <handle>" to attack');
+        lines.push('', `  Mode: ${gameMode.toUpperCase()} | dossier${gameMode === 'arcade' ? '' : ' <handle>'} | raid${gameMode === 'arcade' ? '' : ' <handle>'}`);
         return lines.join('\n');
       },
       
       dossier: async () => {
-        if (!arg1) return `[-] Usage: dossier <handle>`;
-        const rival = rivals.find(r => r.handle.toLowerCase() === arg1.toLowerCase());
-        if (!rival) return `[-] Unknown handle: ${arg1}. Type "rivals" to see known hackers.`;
+        let handle = arg1;
+        if (gameMode === 'arcade' && !handle) {
+          const auto = rivals.find(r => r.status === 'hostile') || rivals[0];
+          handle = auto?.handle;
+        }
+        if (gameMode === 'operator' && (!handle || handle.startsWith('-'))) {
+          const hIdx = args.indexOf('--handle');
+          if (hIdx !== -1) handle = args[hIdx + 1];
+        }
+        if (!handle) return gameMode === 'operator' ? `[-] Usage: dossier --handle <handle>` : `[-] Usage: dossier <handle>`;
+        const rival = rivals.find(r => r.handle.toLowerCase() === handle.toLowerCase());
+        if (!rival) return `[-] Unknown handle: ${handle}. Type "rivals" to see known hackers.`;
         const rarityCount = {};
         rival.zeroDays.forEach(zd => { rarityCount[zd.rarity] = (rarityCount[zd.rarity] || 0) + 1; });
         const relStatus = rival.relationship > 20 ? 'FRIENDLY' : rival.relationship < -20 ? 'HOSTILE' : 'NEUTRAL';
@@ -4182,9 +4335,18 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
       },
       
       raid: async () => {
-        if (!arg1) return `[-] Usage: raid <handle>`;
-        const rivalIdx = rivals.findIndex(r => r.handle.toLowerCase() === arg1.toLowerCase());
-        if (rivalIdx === -1) return `[-] Unknown handle: ${arg1}. Type "rivals" to see targets.`;
+        let handle = arg1;
+        if (gameMode === 'arcade' && !handle) {
+          const auto = [...rivals].sort((a, b) => (b.btc || 0) - (a.btc || 0))[0];
+          handle = auto?.handle;
+        }
+        if (gameMode === 'operator' && (!handle || handle.startsWith('-'))) {
+          const tIdx = args.indexOf('--target');
+          if (tIdx !== -1) handle = args[tIdx + 1];
+        }
+        if (!handle) return gameMode === 'operator' ? `[-] Usage: raid --target <handle>` : `[-] Usage: raid <handle>`;
+        const rivalIdx = rivals.findIndex(r => r.handle.toLowerCase() === handle.toLowerCase());
+        if (rivalIdx === -1) return `[-] Unknown handle: ${handle}. Type "rivals" to see targets.`;
         const rival = rivals[rivalIdx];
         const result = attemptRivalHack(rival, { rep: reputation, heat, btc: money }, zeroDays);
         playBlip(); setIsProcessing(true);
@@ -4249,9 +4411,18 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
       },
       
       taunt: async () => {
-        if (!arg1) return `[-] Usage: taunt <handle>`;
-        const rivalIdx = rivals.findIndex(r => r.handle.toLowerCase() === arg1.toLowerCase());
-        if (rivalIdx === -1) return `[-] Unknown handle: ${arg1}`;
+        let handle = arg1;
+        if (gameMode === 'arcade' && !handle) {
+          const auto = rivals.find(r => r.status !== 'hostile') || rivals[0];
+          handle = auto?.handle;
+        }
+        if (gameMode === 'operator' && (!handle || handle.startsWith('-'))) {
+          const tIdx = args.indexOf('--target');
+          if (tIdx !== -1) handle = args[tIdx + 1];
+        }
+        if (!handle) return gameMode === 'operator' ? `[-] Usage: taunt --target <handle>` : `[-] Usage: taunt <handle>`;
+        const rivalIdx = rivals.findIndex(r => r.handle.toLowerCase() === handle.toLowerCase());
+        if (rivalIdx === -1) return `[-] Unknown handle: ${handle}`;
         const rival = rivals[rivalIdx];
         const taunts = [`"Your firewall is a joke, ${rival.handle}."`, `"Script kiddies have better opsec than you."`, `"Nice botnet. Did your mom set it up?"`, `"I'm in your network right now. Check your six."`];
         setRivals(prev => prev.map((r, i) => i === rivalIdx ? { ...r, relationship: Math.max(-100, r.relationship - 20), status: 'hostile' } : r));
@@ -4663,7 +4834,13 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
   );
 
   if (screen === 'contracts') return (
-    <ContractBoard contracts={contracts} activeContract={activeContract} acceptContract={acceptContract} returnToGame={() => setScreen('game')} />
+    <ContractBoard
+      contracts={contracts}
+      activeContract={activeContract}
+      acceptContract={acceptContract}
+      declineContract={declineContract}
+      returnToGame={() => setScreen('game')}
+    />
   );
   
   if (screen === 'sounds') return (

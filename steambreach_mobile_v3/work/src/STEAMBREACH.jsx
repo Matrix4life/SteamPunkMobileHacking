@@ -178,9 +178,40 @@ const STEAMBREACH = () => {
   // ─── RIVALS & ZERO-DAY COLLECTIBLES ───
   const [rivals, setRivals] = useState([]);
   const [zeroDays, setZeroDays] = useState([]);
+  const [rivalRaidCooldowns, setRivalRaidCooldowns] = useState({});
 
   const rigFx = getRigEffects(rig);
   const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
+  const STASH_LABELS = {
+    cc_dumps: 'CC Dumps',
+    botnets: 'Botnet Access',
+    exploits: 'Exploit Kits',
+    zerodays: 'Weaponized 0-Days',
+  };
+  const ensureRivalStash = (rival) => {
+    if (!rival) return rival;
+    if (rival.stash && typeof rival.stash === 'object') {
+      return {
+        ...rival,
+        stash: {
+          cc_dumps: Math.max(0, rival.stash.cc_dumps || 0),
+          botnets: Math.max(0, rival.stash.botnets || 0),
+          exploits: Math.max(0, rival.stash.exploits || 0),
+          zerodays: Math.max(0, rival.stash.zerodays || 0),
+        }
+      };
+    }
+    const skill = Math.max(1, rival.skillMod || 1);
+    return {
+      ...rival,
+      stash: {
+        cc_dumps: Math.floor(4 + skill * 8 + Math.random() * 8),
+        botnets: Math.floor(1 + skill * 3 + Math.random() * 4),
+        exploits: Math.floor(skill + Math.random() * 3),
+        zerodays: Math.floor(Math.random() * Math.max(1, Math.floor(skill / 2))),
+      }
+    };
+  };
   const getEconomyNodeValue = (ip = targetIP) => {
     const node = world?.[ip];
     if (!node) return 2500;
@@ -562,7 +593,7 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
   const collectCurrentState = () => ({
     operator, gameMode, money, reputation, heat, botnet, proxies, looted, wipedNodes,
     inventory, rig, partsBag, softwareOwned, btcIndex, consumables, stash, currentRegion, marketPrices, world, unlockedFiles, contracts, director, morality, pendingInteraction, wifiState,
-    rivals, zeroDays,
+    rivals, zeroDays, rivalRaidCooldowns,
     timestamp: Date.now(),
   });
 
@@ -592,8 +623,9 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
     setMorality(data.morality || { chaos: 0, signal: 0 });
     setPendingInteraction(data.pendingInteraction || null);
     setWifiState(data.wifiState || { mon: false, scanned: false, focused: false, capFile: false, hshake: false, cracked: false, pwd: null, connected: false, targetBssid: null });
-    setRivals(data.rivals || []);
+    setRivals((data.rivals || []).map(ensureRivalStash));
     setZeroDays(data.zeroDays || []);
+    setRivalRaidCooldowns(data.rivalRaidCooldowns || {});
   };
 
   const saveGame = (slotName) => {
@@ -658,6 +690,7 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
     setPendingInteraction(null);
     setWifiState({ mon: false, scanned: false, focused: false, capFile: false, hshake: false, cracked: false, pwd: null, connected: false, targetBssid: null });
     setRivals([]); setZeroDays([]);
+    setRivalRaidCooldowns({});
     setScreen('game');
   };
 
@@ -665,7 +698,7 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
     if (screen !== 'game' || !operator) return;
     const autoSaveTimer = setInterval(() => saveGame(`auto_${operator}`), 60000);
     return () => clearInterval(autoSaveTimer);
-  }, [screen, operator, money, botnet, proxies, looted, wipedNodes, inventory, consumables, stash, currentRegion, world, contracts, director, heat, reputation, morality, pendingInteraction]);
+  }, [screen, operator, money, botnet, proxies, looted, wipedNodes, inventory, consumables, stash, currentRegion, world, contracts, director, heat, reputation, morality, pendingInteraction, rivals, zeroDays, rivalRaidCooldowns]);
 
   // ── DARKNET AUTO-SELL TICK (tycoon layer) ────────────
   useEffect(() => {
@@ -751,7 +784,7 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
       if (candidates.length === 0) return;
 
       const attacker = candidates[Math.floor(Math.random() * candidates.length)];
-      const attack = rivalAttacksPlayer(attacker, { rep: reputation, btc: money, proxyCount: proxies.length });
+      const attack = rivalAttacksPlayer(attacker, { rep: reputation, btc: money, proxyCount: proxies.length, stash });
       if (!attack) return;
 
       setRivals(prev => prev.map(r => (
@@ -763,11 +796,29 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
       if (attack.success && attack.damage) {
         const btcLost = Math.max(0, Math.min(money, attack.damage.btcLost || 0));
         const heatGain = Math.max(0, attack.damage.heatGain || 0);
+        const stashHit = attack.damage.stashLost || null;
         if (btcLost > 0) setMoney(m => Math.max(0, m - btcLost));
+        if (stashHit?.key && stashHit.amount > 0) {
+          setStash(prev => ({
+            ...prev,
+            [stashHit.key]: Math.max(0, (prev[stashHit.key] || 0) - stashHit.amount)
+          }));
+          setRivals(prev => prev.map(r => (
+            r.id === attacker.id
+              ? {
+                ...r,
+                stash: {
+                  ...(r.stash || {}),
+                  [stashHit.key]: (r.stash?.[stashHit.key] || 0) + stashHit.amount
+                }
+              }
+              : r
+          )));
+        }
         if (heatGain > 0) setHeat(h => Math.min(100, h + heatGain));
         setTerminal(prev => [...prev, {
           type: 'out',
-          text: `[RIVAL ALERT] ${attacker.handle} breached your infrastructure.\n[-] Wallet drained: ₿${btcLost.toLocaleString()}\n[!] Heat +${heatGain}%`,
+          text: `[RIVAL ALERT] ${attacker.handle} breached your infrastructure.\n${btcLost > 0 ? `[-] Wallet drained: ₿${btcLost.toLocaleString()}\n` : ''}${stashHit?.key ? `[-] Stash siphoned: ${stashHit.amount}x ${STASH_LABELS[stashHit.key] || stashHit.key}\n` : ''}[!] Heat +${heatGain}%`,
           isNew: true
         }]);
       } else {
@@ -780,7 +831,7 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
     }, 45000);
 
     return () => clearInterval(retaliationTick);
-  }, [screen, operator, rivals, reputation, money, proxies.length]);
+  }, [screen, operator, rivals, reputation, money, proxies.length, stash]);
 
   const trackCommand = useCallback((cmd, success) => {
     setDirector(prev => {
@@ -2054,7 +2105,7 @@ const verifyContract = (ip, objectiveType) => {
           let rivalMsg = '';
           const newRival = checkRivalSpawn(reputation, rivals);
           if (newRival) {
-            setRivals(prev => [...prev, newRival]);
+            setRivals(prev => [...prev, ensureRivalStash(newRival)]);
             rivalMsg = `\n\n[!!!] NEW RIVAL DETECTED [!!!]\n[*] ${newRival.handle} (${newRival.archetypeName}) noticed your activity.\n[*] Node: ${newRival.ip}\n[*] Type "dossier ${newRival.handle}" for intel.`;
           }
           
@@ -4256,6 +4307,7 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
           lines.push(`  ${icon} ${r.handle.padEnd(18)} ${String(r.rep).padStart(4)}   ${r.archetypeName.padEnd(14)}  ${r.ip}`);
         });
         lines.push('', `  Mode: ${gameMode.toUpperCase()} | dossier${gameMode === 'arcade' ? '' : ' <handle>'} | raid${gameMode === 'arcade' ? '' : ' <handle>'}`);
+        lines.push('  NOTE: Repeated raids on the same rival have diminishing returns for 15 minutes.');
         return lines.join('\n');
       },
       
@@ -4275,6 +4327,10 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
         const rarityCount = {};
         rival.zeroDays.forEach(zd => { rarityCount[zd.rarity] = (rarityCount[zd.rarity] || 0) + 1; });
         const relStatus = rival.relationship > 20 ? 'FRIENDLY' : rival.relationship < -20 ? 'HOSTILE' : 'NEUTRAL';
+        const stashSummary = Object.entries(rival.stash || {})
+          .filter(([, qty]) => qty > 0)
+          .map(([k, qty]) => `${STASH_LABELS[k] || k}: ${qty}`)
+          .join(' | ') || 'Low inventory';
         return `╔══════════════════════════════════════════════════════════╗
 ║  DOSSIER: ${rival.handle.toUpperCase().padEnd(45)}║
 ╚══════════════════════════════════════════════════════════╝
@@ -4286,6 +4342,7 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
   WEAKNESS:     ${rival.vulnerability}
   WALLET:       ₿${rival.btc.toLocaleString()}
   RELATIONSHIP: ${relStatus} (${rival.relationship > 0 ? '+' : ''}${rival.relationship})
+  BLACK-MARKET STASH: ${stashSummary}
 
   ZERO-DAYS: ${rival.zeroDays.length} exploits
   ${Object.keys(rarityCount).length > 0 ? '├─ ' + Object.entries(rarityCount).map(([r, c]) => `${RARITY_TIERS[r]?.name || r}: ${c}`).join(', ') : '├─ None detected'}
@@ -4312,8 +4369,19 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
         if (!handle) return gameMode === 'operator' ? `[-] Usage: raid --target <handle>` : `[-] Usage: raid <handle>`;
         const rivalIdx = rivals.findIndex(r => r.handle.toLowerCase() === handle.toLowerCase());
         if (rivalIdx === -1) return `[-] Unknown handle: ${handle}. Type "rivals" to see targets.`;
-        const rival = rivals[rivalIdx];
-        const result = attemptRivalHack(rival, { rep: reputation, heat, btc: money }, zeroDays);
+        const rival = ensureRivalStash(rivals[rivalIdx]);
+        const now = Date.now();
+        const cooldownMs = 15 * 60 * 1000;
+        const lastRaid = rivalRaidCooldowns[rival.id] || 0;
+        const elapsed = now - lastRaid;
+        const raidFactor = elapsed >= cooldownMs ? 1 : clamp(elapsed / cooldownMs, 0.25, 1);
+        const result = attemptRivalHack(
+          rival,
+          { rep: reputation, heat, btc: money },
+          zeroDays,
+          { raidFactor, rivalStash: rival.stash }
+        );
+        setRivalRaidCooldowns(prev => ({ ...prev, [rival.id]: now }));
         playBlip(); setIsProcessing(true);
         await new Promise(r => setTimeout(r, 2000));
         setIsProcessing(false);
@@ -4322,7 +4390,9 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
           `║  ENGAGING: ${rival.handle.toUpperCase().padEnd(43)}║`,
           '╚══════════════════════════════════════════════════════════╝',
           '', `  Target: ${rival.ip} | Security: ${rival.security}%`,
-          `  Your odds: ${result.successChance.toFixed(1)}% | Roll: ${result.roll.toFixed(1)}`, '',
+          `  Your odds: ${result.successChance.toFixed(1)}% | Roll: ${result.roll.toFixed(1)}`,
+          `  Raid efficiency: ${Math.round(raidFactor * 100)}%${raidFactor < 1 ? ' (cooldown penalty active)' : ''}`,
+          '',
         ];
         if (result.success) {
           playSuccess();
@@ -4331,12 +4401,31 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
             lines.push(`  LOOT EXTRACTED:`);
             if (result.loot.btc > 0) { setMoney(m => m + result.loot.btc); lines.push(`  ├─ Bitcoin: +₿${result.loot.btc.toLocaleString()}`); }
             if (result.loot.rep > 0) { setReputation(r => r + result.loot.rep); lines.push(`  ├─ Reputation: +${result.loot.rep}`); }
+            if (result.loot.stash?.key && result.loot.stash.amount > 0) {
+              const { key, amount } = result.loot.stash;
+              setStash(prev => ({ ...prev, [key]: (prev[key] || 0) + amount }));
+              lines.push(`  ├─ Stash: +${amount}x ${STASH_LABELS[key] || key}`);
+            }
             if (result.loot.zeroDay) {
               setZeroDays(prev => [...prev, { ...result.loot.zeroDay, obtained: Date.now() }]);
               lines.push(`  └─ ZERO-DAY: ${result.loot.zeroDay.name} [${RARITY_TIERS[result.loot.zeroDay.rarity]?.name}]`);
             }
           }
-          setRivals(prev => prev.map((r, i) => i === rivalIdx ? { ...r, btc: Math.max(0, r.btc - (result.loot?.btc || 0)), defeatCount: r.defeatCount + 1, relationship: Math.max(-100, r.relationship - 15), status: r.relationship < -50 ? 'hostile' : r.status } : r));
+          setRivals(prev => prev.map((r, i) => {
+            if (i !== rivalIdx) return r;
+            const nextStash = { ...(r.stash || {}) };
+            if (result.loot?.stash?.key) {
+              nextStash[result.loot.stash.key] = Math.max(0, (nextStash[result.loot.stash.key] || 0) - result.loot.stash.amount);
+            }
+            return {
+              ...r,
+              btc: Math.max(0, r.btc - (result.loot?.btc || 0)),
+              stash: nextStash,
+              defeatCount: r.defeatCount + 1,
+              relationship: Math.max(-100, r.relationship - 15),
+              status: r.relationship < -50 ? 'hostile' : r.status
+            };
+          }));
         } else {
           playFailure();
           lines.push('  ╳╳╳╳╳╳╳╳╳╳ ACCESS DENIED ╳╳╳╳╳╳╳╳╳╳', '', `  ${rival.handle} detected your intrusion.`, `  Relationship: -10 | Heat: +5%`);

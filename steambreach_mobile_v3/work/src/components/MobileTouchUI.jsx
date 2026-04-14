@@ -596,7 +596,7 @@ const toggleSection = (section) => {
     {/* NAV - always visible */}
     <div style={{ ...S.label, paddingTop: '6px' }}>NAV</div>
     <div style={S.row}>
-      <button onClick={() => tap('shop')} style={btn(COLORS.warning, true, false)}>🏪</button>
+      <button onClick={() => tap('market')} style={btn(COLORS.warning, true, false)}>🏪</button>
       <button onClick={() => tap('contracts')} style={btn(COLORS.chat, true, false)}>📋</button>
       <button onClick={() => smartCmd('travel')} style={btn(COLORS.ip, subMenu === 'travel', false)}>✈️</button>
       <button onClick={() => tap('save')} style={btn(COLORS.textDim, false, false)}>💾</button>

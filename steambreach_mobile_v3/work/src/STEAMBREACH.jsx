@@ -1390,23 +1390,61 @@ const completeContractAndRemove = (id) => {
 const verifyContract = (ip, objectiveType) => {
     let msg = '';
     const currentContract = contracts.find(c => c.active && !c.completed);
-    if (currentContract) {
-      const isMatch = currentContract.objectives?.some(o => o.ip === ip && o.type === objectiveType);
-      if (isMatch) {
-        const timeTaken = (Date.now() - currentContract.startTime) / 1000;
-        const rewardVal = currentContract.reward || 0;
-        const repVal = currentContract.repReward || 0;
-        if (timeTaken <= (currentContract.timeLimit || 9999) && heat <= (currentContract.heatCap || 100)) {
-          setMoney(m => m + rewardVal);
-          setReputation(r => r + repVal);
-          completeContractAndRemove(currentContract.id); trackContract(true);
-          msg = `\n\n[FIXER] CONTRACT FULFILLED.\n[+] BONUS: ₿${rewardVal.toLocaleString()} + ${repVal} REP`;
-        } else {
-          completeContractAndRemove(currentContract.id); trackContract(false);
-          msg = `\n\n[FIXER] CONTRACT FAILED. Time Limit or Heat Cap exceeded.`;
-        }
+    if (!currentContract) return msg;
+
+    const objectives = Array.isArray(currentContract.objectives) ? currentContract.objectives : [];
+    const targetBssid = wifiState.targetBssid || null;
+    const contractBssid = currentContract.targetBssid || null;
+
+    const isObjectiveMatch = (obj) => {
+      if (obj.completed) return false;
+      if (obj.type !== objectiveType) return false;
+
+      // WiFi contracts are stage-based and tied to the selected wireless target.
+      if (currentContract.isWifiContract || obj.wifiObjective) {
+        if (!contractBssid || !targetBssid) return true;
+        return contractBssid === targetBssid;
       }
+
+      // Legacy contracts remain IP + action based.
+      return obj.ip === ip;
+    };
+
+    const objectiveIdx = objectives.findIndex(isObjectiveMatch);
+    if (objectiveIdx === -1) return msg;
+
+    const timeTaken = (Date.now() - currentContract.startTime) / 1000;
+    const withinLimits =
+      timeTaken <= (currentContract.timeLimit || 9999) &&
+      heat <= (currentContract.heatCap || 100);
+
+    if (!withinLimits) {
+      completeContractAndRemove(currentContract.id);
+      trackContract(false);
+      return `\n\n[FIXER] CONTRACT FAILED. Time Limit or Heat Cap exceeded.`;
     }
+
+    const updatedObjectives = objectives.map((o, idx) =>
+      idx === objectiveIdx ? { ...o, completed: true } : o
+    );
+    const doneCount = updatedObjectives.filter(o => o.completed).length;
+    const allDone = updatedObjectives.length > 0 && doneCount === updatedObjectives.length;
+
+    if (allDone) {
+      const rewardVal = currentContract.reward || 0;
+      const repVal = currentContract.repReward || 0;
+      setMoney(m => m + rewardVal);
+      setReputation(r => r + repVal);
+      completeContractAndRemove(currentContract.id);
+      trackContract(true);
+      msg = `\n\n[FIXER] CONTRACT FULFILLED.\n[+] BONUS: ₿${rewardVal.toLocaleString()} + ${repVal} REP`;
+    } else {
+      setContracts(prev => prev.map(c =>
+        c.id === currentContract.id ? { ...c, objectives: updatedObjectives } : c
+      ));
+      msg = `\n\n[FIXER] Objective ${doneCount}/${updatedObjectives.length} complete. Stay on mission.`;
+    }
+
     return msg;
   };
 

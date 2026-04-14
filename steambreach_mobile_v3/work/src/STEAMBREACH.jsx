@@ -70,12 +70,16 @@ import { initNative, hapticLight, hapticMedium, hapticSuccess, hapticError } fro
 import {
   RARITY_TIERS,
   EXPLOIT_CATEGORIES,
+  RIVAL_FACTIONS,
   generateRival,
   rollForZeroDay,
   attemptRivalHack,
   rivalAttacksPlayer,
   checkRivalSpawn,
   checkZeroDayDrop,
+  evolveRival,
+  processRivalWorldTick,
+  getPlayerBountyTier,
 } from './rivals/rivalsSystem';
 
 // ─── WIFI HACKING MODULE ───
@@ -180,6 +184,7 @@ const STEAMBREACH = () => {
   // ─── RIVALS & ZERO-DAY COLLECTIBLES ───
   const [rivals, setRivals] = useState([]);
   const [zeroDays, setZeroDays] = useState([]);
+  const [playerBounty, setPlayerBounty] = useState({ tier: 'COLD', amount: 0, hunters: 0 });
 
   const rigFx = getRigEffects(rig);
   const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
@@ -306,6 +311,14 @@ const generateStory = async (ip, orgData) => {
     const minerNodes = getMinerNodes(lootList);
     if (minerNodes <= 0) return 0;
     return Math.floor(minerNodes * HOURLY_RATE * getMineRigMult() * getEconomyMarketMult());
+  };
+
+  const getFactionSummary = () => {
+    const counts = {};
+    rivals.forEach((r) => {
+      counts[r.faction] = (counts[r.faction] || 0) + 1;
+    });
+    return counts;
   };
 
   const [director, setDirector] = useState(DEFAULT_DIRECTOR);
@@ -564,7 +577,7 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
   const collectCurrentState = () => ({
     operator, gameMode, money, reputation, heat, botnet, proxies, looted, wipedNodes,
     inventory, rig, partsBag, softwareOwned, btcIndex, consumables, stash, currentRegion, marketPrices, world, unlockedFiles, contracts, director, morality, pendingInteraction, wifiState,
-    rivals, zeroDays,
+    rivals, zeroDays, playerBounty,
     timestamp: Date.now(),
   });
 
@@ -596,6 +609,7 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
     setWifiState(data.wifiState || { mon: false, scanned: false, focused: false, capFile: false, hshake: false, cracked: false, pwd: null, connected: false, targetBssid: null });
     setRivals(data.rivals || []);
     setZeroDays(data.zeroDays || []);
+    setPlayerBounty(data.playerBounty || { tier: 'COLD', amount: 0, hunters: 0 });
   };
 
   const saveGame = (slotName) => {
@@ -659,7 +673,7 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
     setMorality({ chaos: 0, signal: 0 });
     setPendingInteraction(null);
     setWifiState({ mon: false, scanned: false, focused: false, capFile: false, hshake: false, cracked: false, pwd: null, connected: false, targetBssid: null });
-    setRivals([]); setZeroDays([]);
+    setRivals([]); setZeroDays([]); setPlayerBounty({ tier: 'COLD', amount: 0, hunters: 0 });
     setScreen('game');
   };
 
@@ -667,7 +681,7 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
     if (screen !== 'game' || !operator) return;
     const autoSaveTimer = setInterval(() => saveGame(`auto_${operator}`), 60000);
     return () => clearInterval(autoSaveTimer);
-  }, [screen, operator, money, botnet, proxies, looted, wipedNodes, inventory, consumables, stash, currentRegion, world, contracts, director, heat, reputation, morality, pendingInteraction]);
+  }, [screen, operator, money, botnet, proxies, looted, wipedNodes, inventory, consumables, stash, currentRegion, world, contracts, director, heat, reputation, morality, pendingInteraction, playerBounty]);
 
   // ── DARKNET AUTO-SELL TICK (tycoon layer) ────────────
   useEffect(() => {
@@ -984,6 +998,72 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
 
     return () => clearInterval(wantedTimer);
   }, [screen]);
+
+  useEffect(() => {
+    if (screen !== 'game' || !operator) return;
+    const id = setInterval(() => {
+      const tick = processRivalWorldTick(rivals, {
+        rep: reputation,
+        heat,
+        btc: money,
+        proxyCount: proxies.length,
+      });
+      if (tick.rivals) setRivals(tick.rivals);
+      if (tick.bounty) setPlayerBounty(tick.bounty);
+
+      if (tick.events?.length) {
+        setTerminal(prev => [
+          ...prev,
+          ...tick.events.slice(0, 2).map((evt) => ({ type: 'out', text: evt.message, isNew: true })),
+        ]);
+      }
+
+      const hostilePool = (tick.rivals || []).filter(r => r.status === 'hostile' || (r.huntProgress || 0) >= 70);
+      if (hostilePool.length > 0) {
+        const attacker = hostilePool[Math.floor(Math.random() * hostilePool.length)];
+        const attack = rivalAttacksPlayer(attacker, {
+          rep: reputation,
+          btc: money,
+          proxyCount: proxies.length,
+        });
+        if (attack) {
+          setRivals(prev => prev.map((r) => r.id === attacker.id ? {
+            ...r,
+            attackCount: (r.attackCount || 0) + 1,
+            huntProgress: Math.max(0, (r.huntProgress || 0) - (attack.success ? 10 : 4)),
+            vendetta: Math.min(100, (r.vendetta || 0) + 6),
+            title: 'Hunter of Wallets',
+          } : r));
+
+          if (attack.success && attack.damage) {
+            const btcLost = Math.min(money, attack.damage.btcLost || 0);
+            if (btcLost > 0) setMoney(m => Math.max(0, m - btcLost));
+            if (attack.damage.heatGain) setHeat(h => Math.min(100, h + attack.damage.heatGain));
+            if (attack.damage.proxyBurn && proxies.length > 0) {
+              const burned = proxies[Math.floor(Math.random() * proxies.length)];
+              setProxies(prev => prev.filter(ip => ip !== burned));
+              setBotnet(prev => prev.filter(ip => ip !== burned));
+            }
+            if (attack.damage.zdStolen && zeroDays.length > 0) {
+              setZeroDays(prev => prev.slice(0, Math.max(0, prev.length - 1)));
+            }
+            setTerminal(prev => [...prev, {
+              type: 'out',
+              text: `[RIVAL STRIKE] ${attacker.factionIcon || '⚠️'} ${attacker.handle} breached your infrastructure.\n[-] ₿${btcLost.toLocaleString()} lost | Heat +${attack.damage.heatGain || 0}%${attack.damage.proxyBurn ? '\n[-] One proxy hop was burned.' : ''}${attack.damage.zdStolen ? '\n[-] A zero-day was stolen from your vault.' : ''}`,
+              isNew: true,
+            }]);
+          } else {
+            setTerminal(prev => [...prev, {
+              type: 'out',
+              text: `[RIVAL PROBE] ${attacker.handle} tried to trace you but failed. Their hunt continues.`,
+              isNew: true,
+            }]);
+          }
+        }
+      }
+    }, 45000);
+    return () => clearInterval(id);
+  }, [screen, operator, rivals, reputation, heat, money, proxies, botnet, zeroDays]);
 
   const handleBuy = (item, cost) => {
     if (walletFrozen && item !== 'ClearLogs') {
@@ -1968,7 +2048,8 @@ const verifyContract = (ip, objectiveType) => {
           const newRival = checkRivalSpawn(reputation, rivals);
           if (newRival) {
             setRivals(prev => [...prev, newRival]);
-            rivalMsg = `\n\n[!!!] NEW RIVAL DETECTED [!!!]\n[*] ${newRival.handle} (${newRival.archetypeName}) noticed your activity.\n[*] Node: ${newRival.ip}\n[*] Type "dossier ${newRival.handle}" for intel.`;
+            setPlayerBounty(getPlayerBountyTier(reputation, heat, rivals.filter(r => r.status === 'hostile').length));
+            rivalMsg = `\n\n[!!!] NEW RIVAL DETECTED [!!!]\n[*] ${newRival.factionIcon} ${newRival.handle} (${newRival.archetypeName}) of ${newRival.factionName} noticed your activity.\n[*] Node: ${newRival.ip}\n[*] Type "dossier ${newRival.handle}" for intel.`;
           }
           
           return `[+] EXFIL COMPLETE. ₿${val.toLocaleString()} secured.\n[!] Trace +25%, Heat +10%.${contractMsg}${rivalMsg}`;
@@ -4124,6 +4205,7 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
       // RIVALS SYSTEM COMMANDS
       // ═══════════════════════════════════════════════════════════════
       
+
       rivals: async () => {
         if (rivals.length === 0) {
           return `╔══════════════════════════════════════════════════════════╗
@@ -4139,17 +4221,57 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
           '╔══════════════════════════════════════════════════════════╗',
           '║              UNDERGROUND HACKER REGISTRY                  ║',
           '╚══════════════════════════════════════════════════════════╝',
-          '', '  HANDLE              REP    TYPE              IP',
+          '',
+          '  HANDLE              FACTION     ST  HUNT  REP    IP',
           '  ─────────────────────────────────────────────────────────',
         ];
         rivals.forEach(r => {
           const icon = { active: '🟢', compromised: '🔴', hostile: '⚠️', friendly: '🤝', destroyed: '💀' }[r.status] || '⚪';
-          lines.push(`  ${icon} ${r.handle.padEnd(18)} ${String(r.rep).padStart(4)}   ${r.archetypeName.padEnd(14)}  ${r.ip}`);
+          const factionTag = (r.factionIcon || '•') + (r.factionName || 'NONE').slice(0, 8);
+          lines.push(`  ${icon} ${r.handle.padEnd(18)} ${factionTag.padEnd(10)} ${String(r.status || 'active').slice(0,2).toUpperCase().padEnd(2)}  ${String(r.huntProgress || 0).padStart(3)}%  ${String(r.rep).padStart(4)}   ${r.ip}`);
         });
-        lines.push('', '  Type "dossier <handle>" for intel | "raid <handle>" to attack');
+        lines.push('', '  Type "dossier <handle>" | "raid <handle>" | "ally <handle>" | "taunt <handle>"');
         return lines.join('\n');
       },
-      
+
+      factions: async () => {
+        const counts = getFactionSummary();
+        const lines = [
+          '╔══════════════════════════════════════════════════════════╗',
+          '║                 DARKNET FACTIONS                         ║',
+          '╚══════════════════════════════════════════════════════════╝',
+          '',
+        ];
+        Object.entries(RIVAL_FACTIONS).forEach(([key, faction]) => {
+          lines.push(`  ${faction.icon} ${faction.name.padEnd(12)} ${faction.style.padEnd(10)} Members: ${String(counts[key] || 0).padStart(2)}`);
+          lines.push(`     ${faction.desc}`);
+        });
+        lines.push('', '  Faction pressure shapes who hunts you and who will deal.');
+        return lines.join('\n');
+      },
+
+      bounty: async () => {
+        const bountyNow = getPlayerBountyTier(reputation, heat, rivals.filter(r => r.status === 'hostile').length);
+        setPlayerBounty(bountyNow);
+        return `╔══════════════════════════════════════════════════════════╗
+║                    OPERATOR BOUNTY                        ║
+╚══════════════════════════════════════════════════════════╝
+
+  TIER:    ${bountyNow.tier}
+  VALUE:   ₿${bountyNow.amount.toLocaleString()}
+  HUNTERS: ${bountyNow.hunters}
+
+  HEAT:    ${heat}%
+  HOSTILES:${rivals.filter(r => r.status === 'hostile').length}
+  REP:     ${reputation}
+
+  ${bountyNow.tier === 'COLD' ? 'Keep moving quietly. Nobody serious is bidding on you yet.' :
+    bountyNow.tier === 'WARM' ? 'You are being discussed on underground channels.' :
+    bountyNow.tier === 'HOT' ? 'You are now worth hunting.' :
+    bountyNow.tier === 'CRITICAL' ? 'Multiple factions are funding trace operations.' :
+    'Every serious operator on the grid wants your wallet and your name.'}`;
+      },
+
       dossier: async () => {
         if (!arg1) return `[-] Usage: dossier <handle>`;
         const rival = rivals.find(r => r.handle.toLowerCase() === arg1.toLowerCase());
@@ -4161,13 +4283,19 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
 ║  DOSSIER: ${rival.handle.toUpperCase().padEnd(45)}║
 ╚══════════════════════════════════════════════════════════╝
 
+  TITLE:        ${rival.title || 'Underground Operator'}
   ARCHETYPE:    ${rival.archetypeName}
+  FACTION:      ${rival.factionIcon || '•'} ${rival.factionName || 'Unknown'}
   REPUTATION:   ${rival.rep} pts
   HOME NODE:    ${rival.ip}
   SECURITY:     ${rival.security}%
   WEAKNESS:     ${rival.vulnerability}
   WALLET:       ₿${rival.btc.toLocaleString()}
   RELATIONSHIP: ${relStatus} (${rival.relationship > 0 ? '+' : ''}${rival.relationship})
+  HUNT:         ${rival.huntProgress || 0}% | VENDETTA: ${rival.vendetta || 0}%
+
+  TRAITS:
+  ${(rival.traits && rival.traits.length > 0) ? '├─ ' + rival.traits.join(', ') : '├─ None logged'}
 
   ZERO-DAYS: ${rival.zeroDays.length} exploits
   ${Object.keys(rarityCount).length > 0 ? '├─ ' + Object.entries(rarityCount).map(([r, c]) => `${RARITY_TIERS[r]?.name || r}: ${c}`).join(', ') : '├─ None detected'}
@@ -4176,17 +4304,18 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
 
   HISTORY:
   ├─ Attacks on you: ${rival.attackCount}
-  └─ Your victories: ${rival.defeatCount}
+  ├─ Your victories: ${rival.defeatCount}
+  └─ Memory: ${(rival.memory && rival.memory.length > 0) ? rival.memory[rival.memory.length - 1] : 'No notable encounters yet.'}
 
-  [raid ${rival.handle}] to attack | [taunt ${rival.handle}] to provoke`;
+  [raid ${rival.handle}] | [ally ${rival.handle}] | [taunt ${rival.handle}] | [betray ${rival.handle}]`;
       },
-      
+
       raid: async () => {
         if (!arg1) return `[-] Usage: raid <handle>`;
         const rivalIdx = rivals.findIndex(r => r.handle.toLowerCase() === arg1.toLowerCase());
         if (rivalIdx === -1) return `[-] Unknown handle: ${arg1}. Type "rivals" to see targets.`;
         const rival = rivals[rivalIdx];
-        const result = attemptRivalHack(rival, { rep: reputation, heat, btc: money }, zeroDays);
+        const result = attemptRivalHack(rival, { rep: reputation, heat, btc: money, proxyCount: proxies.length }, zeroDays);
         playBlip(); setIsProcessing(true);
         await new Promise(r => setTimeout(r, 2000));
         setIsProcessing(false);
@@ -4194,8 +4323,11 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
           '╔══════════════════════════════════════════════════════════╗',
           `║  ENGAGING: ${rival.handle.toUpperCase().padEnd(43)}║`,
           '╚══════════════════════════════════════════════════════════╝',
-          '', `  Target: ${rival.ip} | Security: ${rival.security}%`,
-          `  Your odds: ${result.successChance.toFixed(1)}% | Roll: ${result.roll.toFixed(1)}`, '',
+          '',
+          `  Target: ${rival.ip} | Security: ${rival.security}%`,
+          `  Faction: ${rival.factionIcon || '•'} ${rival.factionName || 'Unknown'}`,
+          `  Your odds: ${result.successChance.toFixed(1)}% | Roll: ${result.roll.toFixed(1)}`,
+          '',
         ];
         if (result.success) {
           playSuccess();
@@ -4209,16 +4341,26 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
               lines.push(`  └─ ZERO-DAY: ${result.loot.zeroDay.name} [${RARITY_TIERS[result.loot.zeroDay.rarity]?.name}]`);
             }
           }
-          setRivals(prev => prev.map((r, i) => i === rivalIdx ? { ...r, btc: Math.max(0, r.btc - (result.loot?.btc || 0)), defeatCount: r.defeatCount + 1, relationship: Math.max(-100, r.relationship - 15), status: r.relationship < -50 ? 'hostile' : r.status } : r));
+          setRivals(prev => prev.map((r, i) => {
+            if (i !== rivalIdx) return r;
+            return evolveRival({
+              ...r,
+              btc: Math.max(0, r.btc - (result.loot?.btc || 0)),
+              defeatCount: (r.defeatCount || 0) + 1,
+              status: 'compromised',
+            }, 'raid');
+          }));
+          lines.push('', '  Rival evolved. Expect stronger counterplay next time.');
         } else {
           playFailure();
           lines.push('  ╳╳╳╳╳╳╳╳╳╳ ACCESS DENIED ╳╳╳╳╳╳╳╳╳╳', '', `  ${rival.handle} detected your intrusion.`, `  Relationship: -10 | Heat: +5%`);
-          setRivals(prev => prev.map((r, i) => i === rivalIdx ? { ...r, relationship: Math.max(-100, r.relationship - 10), status: r.relationship < -30 ? 'hostile' : r.status } : r));
+          setRivals(prev => prev.map((r, i) => i === rivalIdx ? evolveRival({ ...r, status: 'hostile' }, 'raid') : r));
           setHeat(h => Math.min(100, h + 5));
         }
+        setPlayerBounty(getPlayerBountyTier(reputation, heat, rivals.filter(r => r.status === 'hostile').length));
         return lines.join('\n');
       },
-      
+
       exploits: async () => {
         if (zeroDays.length === 0) {
           return `╔══════════════════════════════════════════════════════════╗
@@ -4247,15 +4389,39 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
         lines.push('  Zero-days boost your success rate when raiding rivals.');
         return lines.join('\n');
       },
-      
+
+      ally: async () => {
+        if (!arg1) return `[-] Usage: ally <handle>`;
+        const rivalIdx = rivals.findIndex(r => r.handle.toLowerCase() === arg1.toLowerCase());
+        if (rivalIdx === -1) return `[-] Unknown handle: ${arg1}`;
+        const rival = rivals[rivalIdx];
+        const fee = Math.max(1500, Math.floor((rival.btc || 0) * (rival.allyCostPct || 0.10)));
+        if (money < fee) return `[-] ${rival.handle} wants ₿${fee.toLocaleString()} up front to stop hunting you.`;
+        setMoney(m => m - fee);
+        setRivals(prev => prev.map((r, i) => i === rivalIdx ? evolveRival({ ...r }, 'ally') : r));
+        return `[+] Backchannel pact accepted with ${rival.handle}.\n[-] Fee paid: ₿${fee.toLocaleString()}\n[+] Status: FRIENDLY\n[*] They may now leave you alone and occasionally draw heat away.`;
+      },
+
+      betray: async () => {
+        if (!arg1) return `[-] Usage: betray <handle>`;
+        const rivalIdx = rivals.findIndex(r => r.handle.toLowerCase() === arg1.toLowerCase());
+        if (rivalIdx === -1) return `[-] Unknown handle: ${arg1}`;
+        const rival = rivals[rivalIdx];
+        if (rival.status !== 'friendly') return `[-] You only have leverage over rivals who already trust you.`;
+        const cashout = Math.max(1000, Math.floor((rival.btc || 0) * 0.15));
+        setMoney(m => m + cashout);
+        setRivals(prev => prev.map((r, i) => i === rivalIdx ? evolveRival({ ...r, btc: Math.max(0, r.btc - cashout) }, 'betray') : r));
+        return `[!] Pact broken. You skimmed ₿${cashout.toLocaleString()} from ${rival.handle}.\n[!] They are now HOSTILE and will remember this.`;
+      },
+
       taunt: async () => {
         if (!arg1) return `[-] Usage: taunt <handle>`;
         const rivalIdx = rivals.findIndex(r => r.handle.toLowerCase() === arg1.toLowerCase());
         if (rivalIdx === -1) return `[-] Unknown handle: ${arg1}`;
         const rival = rivals[rivalIdx];
         const taunts = [`"Your firewall is a joke, ${rival.handle}."`, `"Script kiddies have better opsec than you."`, `"Nice botnet. Did your mom set it up?"`, `"I'm in your network right now. Check your six."`];
-        setRivals(prev => prev.map((r, i) => i === rivalIdx ? { ...r, relationship: Math.max(-100, r.relationship - 20), status: 'hostile' } : r));
-        return `[*] Broadcasting on underground channels...\n\n  ${taunts[Math.floor(Math.random() * taunts.length)]}\n\n[!] ${rival.handle} is now HOSTILE.\n[!] Expect retaliation.`;
+        setRivals(prev => prev.map((r, i) => i === rivalIdx ? evolveRival({ ...r, status: 'hostile' }, 'taunt') : r));
+        return `[*] Broadcasting on underground channels...\n\n  ${taunts[Math.floor(Math.random() * taunts.length)]}\n\n[!] ${rival.handle} is now HOSTILE.\n[!] Hunt progress increased. Expect retaliation.`;
       },
 
       help: async () => {

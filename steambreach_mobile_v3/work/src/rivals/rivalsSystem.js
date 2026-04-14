@@ -1,5 +1,6 @@
+
 // ============================================================================
-// STEAMBREACH: RIVALS & ZERO-DAY COLLECTIBLES SYSTEM
+// STEAMBREACH: RIVALS, FACTIONS & ZERO-DAY COLLECTIBLES SYSTEM
 // ============================================================================
 
 export const RARITY_TIERS = {
@@ -18,6 +19,41 @@ export const EXPLOIT_CATEGORIES = {
   MOBILE:   { name: 'Mobile',   icon: '📱', desc: 'iOS/Android exploits' },
   HARDWARE: { name: 'Hardware', icon: '🔧', desc: 'Firmware & chip-level' },
   CRYPTO:   { name: 'Crypto',   icon: '🔐', desc: 'Cryptographic attacks' },
+};
+
+export const RIVAL_FACTIONS = {
+  BLACK_SUN: {
+    name: 'BLACK SUN',
+    icon: '☠️',
+    style: 'Chaos',
+    desc: 'Loud saboteurs and ransomware brokers.',
+    hostilityBias: 10,
+    marketMod: 1.05,
+  },
+  SYNAPSE: {
+    name: 'SYNAPSE',
+    icon: '🧠',
+    style: 'Elite AI',
+    desc: 'Adaptive operators who learn your habits.',
+    hostilityBias: 0,
+    marketMod: 1.0,
+  },
+  GOLD_MARKET: {
+    name: 'GOLD MARKET',
+    icon: '💰',
+    style: 'Profit',
+    desc: 'Cartel brokers who price everything.',
+    hostilityBias: -5,
+    marketMod: 1.1,
+  },
+  GHOSTLINE: {
+    name: 'GHOSTLINE',
+    icon: '🕵️',
+    style: 'Stealth',
+    desc: 'Ghost-tier trackers and proxy hunters.',
+    hostilityBias: 5,
+    marketMod: 0.98,
+  },
 };
 
 export const ZERO_DAY_DATABASE = [
@@ -66,6 +102,19 @@ export const RIVAL_ARCHETYPES = {
   LEGEND: { name: 'Legend', repRange: [600, 1500], skillMod: 1.8, personality: 'Mythical status. Definitely exists.', btcRange: [200000, 2000000], zdSlots: [8, 15] },
 };
 
+export const RIVAL_TRAITS = [
+  'Adaptive Firewall',
+  'Packet Ghost',
+  'Proxy Butcher',
+  'Ransom Broker',
+  'Counter-Forensics',
+  'Honeytrap Artist',
+  'Silent Worm',
+  'Credential Leech',
+  'Darknet Diplomat',
+  'AI Predictor',
+];
+
 const HANDLE_PREFIXES = ['Zero', 'Null', 'Void', 'Ghost', 'Phantom', 'Shadow', 'Dark', 'Acid', 'Crash', 'Lord', 'Neo', 'Cyber', 'Razor', 'Viper', 'Toxic', 'Chaos', 'Flux', 'Glitch', 'Byte', 'Root', 'Sudo', 'Daemon', 'Kernel', 'Stack'];
 const HANDLE_SUFFIXES = ['Phr34k', 'H4x0r', 'C0de', 'Burn', 'Storm', 'Strike', 'Blade', 'Wolf', 'Hawk', 'Reaper', 'Wraith', 'Specter', 'Breaker', 'Slayer', 'Master', 'Ninja', 'Dragon', 'Phoenix', 'Daemon', 'Virus', 'X', '404'];
 
@@ -74,19 +123,59 @@ const leetTransform = (str) => {
   return str.split('').map(c => Math.random() > 0.6 ? (map[c.toLowerCase()] || c) : c).join('');
 };
 
+const rand = (min, max) => min + Math.floor(Math.random() * (max - min + 1));
+const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
 export function generateHandle() {
   const usePrefix = Math.random() > 0.3;
   const useSuffix = Math.random() > 0.3;
   let handle = '';
-  if (usePrefix) handle += HANDLE_PREFIXES[Math.floor(Math.random() * HANDLE_PREFIXES.length)];
-  if (useSuffix) handle += HANDLE_SUFFIXES[Math.floor(Math.random() * HANDLE_SUFFIXES.length)];
-  if (!handle) handle = HANDLE_PREFIXES[Math.floor(Math.random() * HANDLE_PREFIXES.length)] + Math.floor(Math.random() * 999);
+  if (usePrefix) handle += pick(HANDLE_PREFIXES);
+  if (useSuffix) handle += pick(HANDLE_SUFFIXES);
+  if (!handle) handle = pick(HANDLE_PREFIXES) + Math.floor(Math.random() * 999);
   return Math.random() > 0.5 ? leetTransform(handle) : handle;
 }
 
 function generateRivalIP() {
   const prefixes = ['185.', '193.', '91.', '45.', '194.', '212.', '178.', '95.'];
-  return prefixes[Math.floor(Math.random() * prefixes.length)] + Math.floor(Math.random() * 255) + '.' + Math.floor(Math.random() * 255) + '.' + Math.floor(Math.random() * 255);
+  return `${pick(prefixes)}${rand(0, 255)}.${rand(0, 255)}.${rand(0, 255)}`;
+}
+
+function getFactionKey() {
+  const keys = Object.keys(RIVAL_FACTIONS);
+  const roll = Math.random();
+  if (roll < 0.28) return 'BLACK_SUN';
+  if (roll < 0.52) return 'GHOSTLINE';
+  if (roll < 0.76) return 'GOLD_MARKET';
+  return 'SYNAPSE';
+}
+
+function getInitialTraits(archetypeKey, factionKey) {
+  const base = [];
+  if (factionKey === 'SYNAPSE') base.push('AI Predictor');
+  if (factionKey === 'GHOSTLINE') base.push('Packet Ghost');
+  if (factionKey === 'BLACK_SUN') base.push('Ransom Broker');
+  if (factionKey === 'GOLD_MARKET') base.push('Darknet Diplomat');
+  if (archetypeKey === 'APT_OPERATOR' || archetypeKey === 'LEGEND') base.push('Counter-Forensics');
+  return [...new Set(base)].slice(0, 3);
+}
+
+function getTitle(rival) {
+  if ((rival.defeatCount || 0) >= 3) return 'The One Who Remembers';
+  if ((rival.attackCount || 0) >= 3) return 'Hunter of Wallets';
+  if ((rival.relationship || 0) <= -60) return 'Your Nemesis';
+  if ((rival.relationship || 0) >= 40) return 'Trusted Ghost';
+  if ((rival.rep || 0) >= 700) return 'Legend of the Grid';
+  return 'Underground Operator';
+}
+
+export function getPlayerBountyTier(playerRep = 0, heat = 0, hostileRivals = 0) {
+  const pressure = heat + (playerRep * 0.08) + (hostileRivals * 8);
+  if (pressure >= 140) return { tier: 'MANHUNT', amount: 250000, hunters: 3 };
+  if (pressure >= 105) return { tier: 'CRITICAL', amount: 120000, hunters: 2 };
+  if (pressure >= 70) return { tier: 'HOT', amount: 45000, hunters: 1 };
+  if (pressure >= 40) return { tier: 'WARM', amount: 10000, hunters: 1 };
+  return { tier: 'COLD', amount: 0, hunters: 0 };
 }
 
 export function rollForZeroDay(luckMod = 1.0) {
@@ -99,12 +188,12 @@ export function rollForZeroDay(luckMod = 1.0) {
   }
   const candidates = ZERO_DAY_DATABASE.filter(zd => zd.rarity === selectedRarity);
   if (candidates.length === 0) return null;
-  return { ...candidates[Math.floor(Math.random() * candidates.length)], obtained: Date.now() };
+  return { ...pick(candidates), obtained: Date.now() };
 }
 
 function generateRivalZeroDays(archetype) {
   const [minSlots, maxSlots] = archetype.zdSlots;
-  const numZDs = minSlots + Math.floor(Math.random() * (maxSlots - minSlots + 1));
+  const numZDs = rand(minSlots, maxSlots);
   const collection = [];
   for (let i = 0; i < numZDs; i++) {
     const zd = rollForZeroDay(archetype.skillMod);
@@ -115,22 +204,27 @@ function generateRivalZeroDays(archetype) {
 
 export function generateRival(playerRep = 100) {
   const archetypeKeys = Object.keys(RIVAL_ARCHETYPES);
-  const eligible = archetypeKeys.filter(key => {
+  const eligible = archetypeKeys.filter((key) => {
     const [minRep, maxRep] = RIVAL_ARCHETYPES[key].repRange;
     return playerRep >= minRep * 0.5 && playerRep <= maxRep * 1.5;
   });
-  const selectedKey = eligible.length > 0 ? eligible[Math.floor(Math.random() * eligible.length)] : 'SCRIPT_KIDDIE';
+  const selectedKey = eligible.length > 0 ? pick(eligible) : 'SCRIPT_KIDDIE';
   const archetype = RIVAL_ARCHETYPES[selectedKey];
   const [minBtc, maxBtc] = archetype.btcRange;
   const [minRep, maxRep] = archetype.repRange;
-  return {
+  const factionKey = getFactionKey();
+  const faction = RIVAL_FACTIONS[factionKey];
+  const rival = {
     id: 'rival_' + Date.now() + '_' + Math.floor(Math.random() * 10000),
     handle: generateHandle(),
     archetype: selectedKey,
     archetypeName: archetype.name,
+    faction: factionKey,
+    factionName: faction.name,
+    factionIcon: faction.icon,
     ip: generateRivalIP(),
-    rep: minRep + Math.floor(Math.random() * (maxRep - minRep)),
-    btc: minBtc + Math.floor(Math.random() * (maxBtc - minBtc)),
+    rep: rand(minRep, maxRep),
+    btc: rand(minBtc, maxBtc),
     skillMod: archetype.skillMod,
     personality: archetype.personality,
     zeroDays: generateRivalZeroDays(archetype),
@@ -139,17 +233,70 @@ export function generateRival(playerRep = 100) {
     attackCount: 0,
     defeatCount: 0,
     relationship: 0,
+    vendetta: 0,
     security: Math.floor(50 + archetype.skillMod * 30 + Math.random() * 20),
     vulnerability: ['hydra', 'sqlmap', 'msfconsole', 'curl'][Math.floor(Math.random() * 4)],
+    traits: getInitialTraits(selectedKey, factionKey),
+    huntProgress: rand(0, 15),
+    allyCostPct: factionKey === 'GOLD_MARKET' ? 0.12 : 0.1,
+    title: 'Underground Operator',
+    bounty: Math.floor(rand(2000, 12000) * faction.marketMod),
+    memory: [],
   };
+  rival.title = getTitle(rival);
+  return rival;
+}
+
+export function evolveRival(rival, trigger = 'raid') {
+  const next = { ...rival };
+  next.memory = [...(next.memory || [])].slice(-5);
+  if (trigger === 'raid') {
+    next.vendetta = Math.min(100, (next.vendetta || 0) + 18);
+    next.huntProgress = Math.min(100, (next.huntProgress || 0) + 12);
+    next.security = Math.min(99, (next.security || 0) + 4);
+    next.relationship = Math.max(-100, (next.relationship || 0) - 12);
+    if (Math.random() < 0.35) next.vulnerability = pick(['hydra', 'sqlmap', 'msfconsole', 'curl'].filter((v) => v !== next.vulnerability));
+    if (Math.random() < 0.25 && (next.traits || []).length < 4) next.traits = [...new Set([...(next.traits || []), pick(RIVAL_TRAITS)])];
+    next.memory.push('You raided their vault.');
+  }
+  if (trigger === 'taunt') {
+    next.vendetta = Math.min(100, (next.vendetta || 0) + 10);
+    next.huntProgress = Math.min(100, (next.huntProgress || 0) + 16);
+    next.relationship = Math.max(-100, (next.relationship || 0) - 20);
+    next.memory.push('You taunted them publicly.');
+  }
+  if (trigger === 'ally') {
+    next.status = 'friendly';
+    next.relationship = Math.min(100, Math.max(25, (next.relationship || 0) + 35));
+    next.vendetta = Math.max(0, (next.vendetta || 0) - 20);
+    next.huntProgress = Math.max(0, (next.huntProgress || 0) - 20);
+    next.memory.push('You brokered an alliance.');
+  }
+  if (trigger === 'betray') {
+    next.status = 'hostile';
+    next.relationship = -80;
+    next.vendetta = Math.min(100, (next.vendetta || 0) + 35);
+    next.huntProgress = Math.min(100, (next.huntProgress || 0) + 30);
+    next.memory.push('You betrayed the pact.');
+  }
+  if ((next.relationship || 0) <= -30 && next.status !== 'destroyed') next.status = 'hostile';
+  if ((next.relationship || 0) >= 25 && next.status !== 'destroyed') next.status = 'friendly';
+  next.title = getTitle(next);
+  return next;
 }
 
 export function attemptRivalHack(rival, playerStats, playerZeroDays = []) {
   const baseSuccess = 50;
   let playerBonus = (playerStats.rep || 0) / 20;
   playerBonus += (playerStats.heat || 0) > 50 ? -10 : 0;
-  playerZeroDays.forEach(zd => { playerBonus += (zd.successBonus || 0) / 3; });
+  playerBonus += Math.min(10, ((playerStats.proxyCount || 0) * 2));
+  playerZeroDays.forEach((zd) => { playerBonus += (zd.successBonus || 0) / 3; });
+
   let rivalDefense = rival.security / 2 + rival.skillMod * 10;
+  if ((rival.traits || []).includes('Adaptive Firewall')) rivalDefense += 8;
+  if ((rival.traits || []).includes('Counter-Forensics')) rivalDefense += 4;
+  if (rival.status === 'compromised') rivalDefense -= 10;
+
   const successChance = Math.min(95, Math.max(5, baseSuccess + playerBonus - rivalDefense));
   const roll = Math.random() * 100;
   const success = roll < successChance;
@@ -158,16 +305,20 @@ export function attemptRivalHack(rival, playerStats, playerZeroDays = []) {
     loot = {
       btc: Math.floor(rival.btc * (0.1 + Math.random() * 0.3)),
       rep: Math.floor(rival.rep * 0.1),
-      zeroDay: Math.random() < 0.25 && rival.zeroDays.length > 0 ? rival.zeroDays[Math.floor(Math.random() * rival.zeroDays.length)] : null,
+      zeroDay: Math.random() < 0.25 && rival.zeroDays.length > 0 ? pick(rival.zeroDays) : null,
     };
   }
   return { success, successChance, roll, loot };
 }
 
 export function rivalAttacksPlayer(rival, playerStats) {
-  const attackChance = 0.08 + (rival.skillMod * 0.06) - (rival.relationship / 600);
+  const hostileBias = rival.status === 'hostile' ? 0.08 : rival.status === 'friendly' ? -0.06 : 0;
+  const vendettaBias = (rival.vendetta || 0) / 500;
+  const huntBias = (rival.huntProgress || 0) / 700;
+  const attackChance = 0.08 + (rival.skillMod * 0.06) - (rival.relationship / 600) + hostileBias + vendettaBias + huntBias;
   if (Math.random() > attackChance) return null;
-  const rivalPower = rival.skillMod * 50 + rival.rep / 10;
+
+  const rivalPower = rival.skillMod * 50 + rival.rep / 10 + (rival.vendetta || 0) / 3;
   const playerDefense = (playerStats.rep || 0) / 5 + ((playerStats.proxyCount || 0) * 10);
   const successChance = Math.min(75, Math.max(10, 50 + rivalPower - playerDefense));
   const success = Math.random() * 100 < successChance;
@@ -177,13 +328,14 @@ export function rivalAttacksPlayer(rival, playerStats) {
       btcLost: Math.floor((playerStats.btc || 0) * (0.03 + Math.random() * 0.12)),
       heatGain: 5 + Math.floor(Math.random() * 15),
       zdStolen: Math.random() < 0.1,
+      proxyBurn: Math.random() < 0.18,
     };
   }
-  return { rival, success, damage };
+  return { rival, success, damage, successChance };
 }
 
 export function checkRivalSpawn(playerRep, existingRivals = []) {
-  const maxRivals = Math.min(10, 3 + Math.floor(playerRep / 200));
+  const maxRivals = Math.min(12, 3 + Math.floor(playerRep / 180));
   if (existingRivals.length >= maxRivals) return null;
   if (Math.random() > 0.12) return null;
   return generateRival(playerRep);
@@ -193,4 +345,61 @@ export function checkZeroDayDrop(nodeSecLevel, playerLuck = 1.0) {
   const secMult = { low: 0.03, mid: 0.08, high: 0.15, elite: 0.25 }[nodeSecLevel] || 0.05;
   if (Math.random() > secMult) return null;
   return rollForZeroDay(playerLuck * (1 + (secMult * 2)));
+}
+
+export function processRivalWorldTick(rivals = [], playerStats = {}) {
+  const events = [];
+  const updated = rivals.map((r) => {
+    if (r.status === 'destroyed') return r;
+    let next = { ...r };
+    next.lastSeen = Date.now();
+    next.huntProgress = Math.min(100, Math.max(0, (next.huntProgress || 0) + (next.status === 'hostile' ? rand(3, 10) : rand(-2, 4))));
+    next.vendetta = Math.min(100, Math.max(0, (next.vendetta || 0) + (next.status === 'hostile' ? rand(1, 4) : rand(-2, 1))));
+    if (Math.random() < 0.12 && next.status !== 'friendly') {
+      next.btc += rand(200, 4000);
+    }
+    if (Math.random() < 0.08 && (next.traits || []).length < 4) {
+      next.traits = [...new Set([...(next.traits || []), pick(RIVAL_TRAITS)])].slice(0, 4);
+      events.push({ type: 'evolved', message: `${next.factionIcon} ${next.handle} evolved: ${next.traits[next.traits.length - 1]}` });
+    }
+    next.title = getTitle(next);
+    return next;
+  });
+
+  if (updated.length >= 2 && Math.random() < 0.18) {
+    const aIdx = rand(0, updated.length - 1);
+    let bIdx = rand(0, updated.length - 1);
+    while (bIdx === aIdx) bIdx = rand(0, updated.length - 1);
+    const a = updated[aIdx];
+    const b = updated[bIdx];
+    if (a.status !== 'destroyed' && b.status !== 'destroyed') {
+      const winnerIdx = Math.random() < 0.5 ? aIdx : bIdx;
+      const loserIdx = winnerIdx === aIdx ? bIdx : aIdx;
+      const winner = { ...updated[winnerIdx] };
+      const loser = { ...updated[loserIdx] };
+      const stolen = Math.floor((loser.btc || 0) * 0.12);
+      winner.btc += stolen;
+      winner.rep += 8;
+      winner.relationship = Math.max(-100, (winner.relationship || 0) - 4);
+      loser.btc = Math.max(0, loser.btc - stolen);
+      loser.security = Math.max(20, (loser.security || 0) - 5);
+      loser.status = loser.security <= 25 ? 'compromised' : loser.status;
+      winner.title = getTitle(winner);
+      loser.title = getTitle(loser);
+      updated[winnerIdx] = winner;
+      updated[loserIdx] = loser;
+      events.push({
+        type: 'war',
+        message: `[GLOBAL EVENT] ${winner.factionIcon} ${winner.handle} hit ${loser.handle} and stole ₿${stolen.toLocaleString()}.`,
+      });
+    }
+  }
+
+  const bounty = getPlayerBountyTier(
+    playerStats.rep || 0,
+    playerStats.heat || 0,
+    updated.filter((r) => r.status === 'hostile').length,
+  );
+
+  return { rivals: updated, events, bounty };
 }

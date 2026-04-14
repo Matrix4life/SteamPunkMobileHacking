@@ -70,16 +70,12 @@ import { initNative, hapticLight, hapticMedium, hapticSuccess, hapticError } fro
 import {
   RARITY_TIERS,
   EXPLOIT_CATEGORIES,
-  RIVAL_FACTIONS,
   generateRival,
   rollForZeroDay,
   attemptRivalHack,
   rivalAttacksPlayer,
   checkRivalSpawn,
   checkZeroDayDrop,
-  evolveRival,
-  processRivalWorldTick,
-  getPlayerBountyTier,
 } from './rivals/rivalsSystem';
 
 // ─── WIFI HACKING MODULE ───
@@ -184,7 +180,6 @@ const STEAMBREACH = () => {
   // ─── RIVALS & ZERO-DAY COLLECTIBLES ───
   const [rivals, setRivals] = useState([]);
   const [zeroDays, setZeroDays] = useState([]);
-  const [playerBounty, setPlayerBounty] = useState({ tier: 'COLD', amount: 0, hunters: 0 });
 
   const rigFx = getRigEffects(rig);
   const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
@@ -311,14 +306,6 @@ const generateStory = async (ip, orgData) => {
     const minerNodes = getMinerNodes(lootList);
     if (minerNodes <= 0) return 0;
     return Math.floor(minerNodes * HOURLY_RATE * getMineRigMult() * getEconomyMarketMult());
-  };
-
-  const getFactionSummary = () => {
-    const counts = {};
-    rivals.forEach((r) => {
-      counts[r.faction] = (counts[r.faction] || 0) + 1;
-    });
-    return counts;
   };
 
   const [director, setDirector] = useState(DEFAULT_DIRECTOR);
@@ -577,7 +564,7 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
   const collectCurrentState = () => ({
     operator, gameMode, money, reputation, heat, botnet, proxies, looted, wipedNodes,
     inventory, rig, partsBag, softwareOwned, btcIndex, consumables, stash, currentRegion, marketPrices, world, unlockedFiles, contracts, director, morality, pendingInteraction, wifiState,
-    rivals, zeroDays, playerBounty,
+    rivals, zeroDays,
     timestamp: Date.now(),
   });
 
@@ -609,7 +596,6 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
     setWifiState(data.wifiState || { mon: false, scanned: false, focused: false, capFile: false, hshake: false, cracked: false, pwd: null, connected: false, targetBssid: null });
     setRivals(data.rivals || []);
     setZeroDays(data.zeroDays || []);
-    setPlayerBounty(data.playerBounty || { tier: 'COLD', amount: 0, hunters: 0 });
   };
 
   const saveGame = (slotName) => {
@@ -673,7 +659,7 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
     setMorality({ chaos: 0, signal: 0 });
     setPendingInteraction(null);
     setWifiState({ mon: false, scanned: false, focused: false, capFile: false, hshake: false, cracked: false, pwd: null, connected: false, targetBssid: null });
-    setRivals([]); setZeroDays([]); setPlayerBounty({ tier: 'COLD', amount: 0, hunters: 0 });
+    setRivals([]); setZeroDays([]);
     setScreen('game');
   };
 
@@ -681,7 +667,7 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
     if (screen !== 'game' || !operator) return;
     const autoSaveTimer = setInterval(() => saveGame(`auto_${operator}`), 60000);
     return () => clearInterval(autoSaveTimer);
-  }, [screen, operator, money, botnet, proxies, looted, wipedNodes, inventory, consumables, stash, currentRegion, world, contracts, director, heat, reputation, morality, pendingInteraction, playerBounty]);
+  }, [screen, operator, money, botnet, proxies, looted, wipedNodes, inventory, consumables, stash, currentRegion, world, contracts, director, heat, reputation, morality, pendingInteraction]);
 
   // ── DARKNET AUTO-SELL TICK (tycoon layer) ────────────
   useEffect(() => {
@@ -757,6 +743,46 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
       setDirector(prev => ({ ...prev, narrativeQueue: prev.narrativeQueue.slice(1) }));
     }
   }, [director.narrativeQueue, isProcessing, isInside]);
+
+  // ── RIVAL RETALIATION TICK ────────────────────────────────────────────────
+  useEffect(() => {
+    if (screen !== 'game' || !operator || rivals.length === 0) return;
+
+    const retaliationTick = setInterval(() => {
+      const candidates = rivals.filter(r => r.status !== 'destroyed' && (r.status === 'hostile' || r.relationship <= -20));
+      if (candidates.length === 0) return;
+
+      const attacker = candidates[Math.floor(Math.random() * candidates.length)];
+      const attack = rivalAttacksPlayer(attacker, { rep: reputation, btc: money, proxyCount: proxies.length });
+      if (!attack) return;
+
+      setRivals(prev => prev.map(r => (
+        r.id === attacker.id
+          ? { ...r, attackCount: (r.attackCount || 0) + 1, lastSeen: Date.now(), status: 'hostile' }
+          : r
+      )));
+
+      if (attack.success && attack.damage) {
+        const btcLost = Math.max(0, Math.min(money, attack.damage.btcLost || 0));
+        const heatGain = Math.max(0, attack.damage.heatGain || 0);
+        if (btcLost > 0) setMoney(m => Math.max(0, m - btcLost));
+        if (heatGain > 0) setHeat(h => Math.min(100, h + heatGain));
+        setTerminal(prev => [...prev, {
+          type: 'out',
+          text: `[RIVAL ALERT] ${attacker.handle} breached your infrastructure.\n[-] Wallet drained: ₿${btcLost.toLocaleString()}\n[!] Heat +${heatGain}%`,
+          isNew: true
+        }]);
+      } else {
+        setTerminal(prev => [...prev, {
+          type: 'out',
+          text: `[RIVAL ALERT] ${attacker.handle} attempted retaliation, but your defenses held.`,
+          isNew: true
+        }]);
+      }
+    }, 45000);
+
+    return () => clearInterval(retaliationTick);
+  }, [screen, operator, rivals, reputation, money, proxies.length]);
 
   const trackCommand = useCallback((cmd, success) => {
     setDirector(prev => {
@@ -999,72 +1025,6 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
     return () => clearInterval(wantedTimer);
   }, [screen]);
 
-  useEffect(() => {
-    if (screen !== 'game' || !operator) return;
-    const id = setInterval(() => {
-      const tick = processRivalWorldTick(rivals, {
-        rep: reputation,
-        heat,
-        btc: money,
-        proxyCount: proxies.length,
-      });
-      if (tick.rivals) setRivals(tick.rivals);
-      if (tick.bounty) setPlayerBounty(tick.bounty);
-
-      if (tick.events?.length) {
-        setTerminal(prev => [
-          ...prev,
-          ...tick.events.slice(0, 2).map((evt) => ({ type: 'out', text: evt.message, isNew: true })),
-        ]);
-      }
-
-      const hostilePool = (tick.rivals || []).filter(r => r.status === 'hostile' || (r.huntProgress || 0) >= 70);
-      if (hostilePool.length > 0) {
-        const attacker = hostilePool[Math.floor(Math.random() * hostilePool.length)];
-        const attack = rivalAttacksPlayer(attacker, {
-          rep: reputation,
-          btc: money,
-          proxyCount: proxies.length,
-        });
-        if (attack) {
-          setRivals(prev => prev.map((r) => r.id === attacker.id ? {
-            ...r,
-            attackCount: (r.attackCount || 0) + 1,
-            huntProgress: Math.max(0, (r.huntProgress || 0) - (attack.success ? 10 : 4)),
-            vendetta: Math.min(100, (r.vendetta || 0) + 6),
-            title: 'Hunter of Wallets',
-          } : r));
-
-          if (attack.success && attack.damage) {
-            const btcLost = Math.min(money, attack.damage.btcLost || 0);
-            if (btcLost > 0) setMoney(m => Math.max(0, m - btcLost));
-            if (attack.damage.heatGain) setHeat(h => Math.min(100, h + attack.damage.heatGain));
-            if (attack.damage.proxyBurn && proxies.length > 0) {
-              const burned = proxies[Math.floor(Math.random() * proxies.length)];
-              setProxies(prev => prev.filter(ip => ip !== burned));
-              setBotnet(prev => prev.filter(ip => ip !== burned));
-            }
-            if (attack.damage.zdStolen && zeroDays.length > 0) {
-              setZeroDays(prev => prev.slice(0, Math.max(0, prev.length - 1)));
-            }
-            setTerminal(prev => [...prev, {
-              type: 'out',
-              text: `[RIVAL STRIKE] ${attacker.factionIcon || '⚠️'} ${attacker.handle} breached your infrastructure.\n[-] ₿${btcLost.toLocaleString()} lost | Heat +${attack.damage.heatGain || 0}%${attack.damage.proxyBurn ? '\n[-] One proxy hop was burned.' : ''}${attack.damage.zdStolen ? '\n[-] A zero-day was stolen from your vault.' : ''}`,
-              isNew: true,
-            }]);
-          } else {
-            setTerminal(prev => [...prev, {
-              type: 'out',
-              text: `[RIVAL PROBE] ${attacker.handle} tried to trace you but failed. Their hunt continues.`,
-              isNew: true,
-            }]);
-          }
-        }
-      }
-    }, 45000);
-    return () => clearInterval(id);
-  }, [screen, operator, rivals, reputation, heat, money, proxies, botnet, zeroDays]);
-
   const handleBuy = (item, cost) => {
     if (walletFrozen && item !== 'ClearLogs') {
       setTerminal(prev => [...prev, { type: 'out', text: `[-] WALLET FROZEN: Transaction channels blocked by law enforcement.\n[*] Bribe SOC Insider is still available to reduce heat.`, isNew: true }]);
@@ -1230,6 +1190,29 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
     setActiveContract(activated);
     setScreen('game');
     setTerminal(prev => [...prev, { type: 'out', text: `[FIXER] Contract ${id} accepted.\n[*] Target: ${activated.targetName} (${activated.targetIP})\n[*] Time limit: ${activated.timeLimit}s | Max heat: ${activated.heatCap}%\n[*] Reward: ₿${activated.reward.toLocaleString()} + ${activated.repReward} REP`, isNew: true }]);
+  };
+  const declineContract = (id) => {
+    const contract = contracts.find(c => c.id === id);
+    if (!contract || contract.completed) {
+      setTerminal(prev => [...prev, { type: 'out', text: `[-] Contract ${id} is no longer available.`, isNew: true }]);
+      setScreen('game');
+      return;
+    }
+
+    // Keep active-contract flow explicit and avoid silently dropping active jobs from the board.
+    if (activeContract && activeContract.id !== id) {
+      setTerminal(prev => [...prev, {
+        type: 'out',
+        text: `[-] Cannot abandon ${id} while ${activeContract.id} is active.\n[*] Complete or fail the active contract first.`,
+        isNew: true
+      }]);
+      setScreen('game');
+      return;
+    }
+
+    completeContractAndRemove(id);
+    setTerminal(prev => [...prev, { type: 'out', text: `[FIXER] Contract ${id} abandoned.`, isNew: true }]);
+    setScreen('game');
   };
 const completeContractAndRemove = (id) => {
     // 1. Remove the contract from the board
@@ -1447,6 +1430,7 @@ const verifyContract = (ip, objectiveType) => {
 
     return msg;
   };
+
   const maybeCreateWiFiContract = (network) => {
     if (!network || !network.bssid) return;
     if (contracts.length >= 8) return;
@@ -1467,6 +1451,7 @@ const verifyContract = (ip, objectiveType) => {
       isNew: true
     }]);
   };
+
   const COMMANDS = { // <--- Your existing commands object starts here
   
       rclone: async () => {
@@ -2105,8 +2090,7 @@ const verifyContract = (ip, objectiveType) => {
           const newRival = checkRivalSpawn(reputation, rivals);
           if (newRival) {
             setRivals(prev => [...prev, newRival]);
-            setPlayerBounty(getPlayerBountyTier(reputation, heat, rivals.filter(r => r.status === 'hostile').length));
-            rivalMsg = `\n\n[!!!] NEW RIVAL DETECTED [!!!]\n[*] ${newRival.factionIcon} ${newRival.handle} (${newRival.archetypeName}) of ${newRival.factionName} noticed your activity.\n[*] Node: ${newRival.ip}\n[*] Type "dossier ${newRival.handle}" for intel.`;
+            rivalMsg = `\n\n[!!!] NEW RIVAL DETECTED [!!!]\n[*] ${newRival.handle} (${newRival.archetypeName}) noticed your activity.\n[*] Node: ${newRival.ip}\n[*] Type "dossier ${newRival.handle}" for intel.`;
           }
           
           return `[+] EXFIL COMPLETE. ₿${val.toLocaleString()} secured.\n[!] Trace +25%, Heat +10%.${contractMsg}${rivalMsg}`;
@@ -3510,6 +3494,10 @@ phy0    wlan0           ath9k_htc       Qualcomm Atheros AR9271
             // Update the target in wifiNetworks
             setWifiNetworks(prev => prev.map(n => ({ ...n, target: n.bssid === selectedNet.bssid })));
             playSuccess();
+            if (selectedNet.target || Math.random() < 0.35) {
+              maybeCreateWiFiContract(selectedNet);
+            }
+            const contractMsg = verifyContract(null, 'focus');
             
             if (encLabel === 'OPEN') {
               output += `\n[!] OPEN NETWORK — No password required!\n[*] Run 'nmcli' to connect directly`;
@@ -3530,7 +3518,7 @@ phy0    wlan0           ath9k_htc       Qualcomm Atheros AR9271
             } else {
               output += `\n[+] Capture file: capture-01.cap\n[*] Run 'aireplay-ng' to force handshake capture`;
             }
-            return output;
+            return output + contractMsg;
           }
           
           // No arg — normal scan/focus flow
@@ -3543,6 +3531,7 @@ phy0    wlan0           ath9k_htc       Qualcomm Atheros AR9271
             });
             setWifiState(prev => ({ ...prev, scanned: true }));
             playSuccess();
+            const contractMsg = verifyContract(null, 'scan');
             const openNets = nets.filter(n => n.discovered && n.enc === 'OPEN');
             const wpa2Nets = nets.filter(n => n.discovered && (n.enc === 'WPA2' || n.enc === 'WEP'));
             const wpa3Nets = nets.filter(n => n.discovered && (n.enc === 'WPA3' || n.enc === 'WPA3-SAE'));
@@ -3552,7 +3541,7 @@ phy0    wlan0           ath9k_htc       Qualcomm Atheros AR9271
             if (openNets.length > 0) hint += `[!] OPEN NETWORKS (no password): ${openNets.map(n => n.essid).join(', ')}\n`;
             if (wpa2Nets.length > 0) hint += `[!] CRACKABLE (WPA2/WEP): ${wpa2Nets.slice(0,3).map(n => n.essid).join(', ')}${wpa2Nets.length > 3 ? '...' : ''}\n`;
             if (wpa3Nets.length > 0) hint += `[!] WPA3 (need social engineering): ${wpa3Nets.slice(0,3).map(n => n.essid).join(', ')}`;
-            return output + hint;
+            return output + hint + contractMsg;
           } else if (!wifiState.focused) {
             // Already scanned but no target selected — prompt for selection
             const openNets = nets.filter(n => n.discovered && n.enc === 'OPEN');
@@ -3596,7 +3585,11 @@ phy0    wlan0           ath9k_htc       Qualcomm Atheros AR9271
             clients.forEach(c => { output += ` ${c.mac}  ${String(c.pwr || c.signal || -40).padStart(3)}   ${String(c.frames || 1000).padStart(6)}  ${c.dev || c.device || 'Unknown'}\n`; });
             setWifiState(prev => ({ ...prev, focused: true, capFile: true, targetBssid: targetNet.bssid }));
             playSuccess();
-            return output + `\n[+] Focused capture on ${targetNet.essid}\n[+] Capture file: capture-01.cap\n[*] Force handshake: aireplay-ng deauth`;
+            if (targetNet.target || Math.random() < 0.35) {
+              maybeCreateWiFiContract(targetNet);
+            }
+            const contractMsg = verifyContract(null, 'focus');
+            return output + `\n[+] Focused capture on ${targetNet.essid}\n[+] Capture file: capture-01.cap\n[*] Force handshake: aireplay-ng deauth${contractMsg}`;
           }
         }
 
@@ -3631,6 +3624,10 @@ Examples:
           if (hasWrite) {
             setWifiState(prev => ({ ...prev, focused: true, capFile: true, targetBssid: targetBssid }));
             output += `\n[+] Focused capture active — writing to capture-01.cap\n[*] Monitoring ${clients.length} clients on ${foundNet.essid}`;
+            if (foundNet.target || Math.random() < 0.35) {
+              maybeCreateWiFiContract(foundNet);
+            }
+            output += verifyContract(null, 'focus');
           }
           playSuccess();
           return output;
@@ -3669,7 +3666,8 @@ Examples:
           setIsProcessing(false);
           playSuccess();
           setHeat(h => Math.min(h + 3, 100));
-          return `[+] Client disconnected: ${targetClient.dev}\n[+] Client reassociated — WPA handshake CAPTURED!\n[+] Saved to: capture-01.cap\n[*] Run 'aircrack-ng' to crack the password.`;
+          const contractMsg = verifyContract(null, 'deauth');
+          return `[+] Client disconnected: ${targetClient.dev}\n[+] Client reassociated — WPA handshake CAPTURED!\n[+] Saved to: capture-01.cap\n[*] Run 'aircrack-ng' to crack the password.${contractMsg}`;
         }
 
         // ═══ FIELD MODE: Requires deauth flag ═══
@@ -3692,7 +3690,8 @@ ${WIFI_CLIENTS.slice(0, 4).map(c => `    ${c.mac}  ${c.dev}`).join('\n')}`;
           setIsProcessing(false);
           playSuccess();
           setHeat(h => Math.min(h + 5, 100));
-          return `[+] Deauth sent!${client ? `\n[+] Device: ${client.dev}` : ''}\n[+] Client reassociated — WPA handshake CAPTURED!\n[+] Saved to: capture-01.cap\n[*] Crack: aircrack-ng crack`;
+          const contractMsg = verifyContract(null, 'deauth');
+          return `[+] Deauth sent!${client ? `\n[+] Device: ${client.dev}` : ''}\n[+] Client reassociated — WPA handshake CAPTURED!\n[+] Saved to: capture-01.cap\n[*] Crack: aircrack-ng crack${contractMsg}`;
         }
 
         // ═══ OPERATOR MODE: Full syntax required ═══
@@ -3729,7 +3728,7 @@ ${WIFI_CLIENTS.slice(0, 4).map(c => `    ${c.mac}  ${c.dev}`).join('\n')}`;
         setIsProcessing(false);
         playSuccess();
         setHeat(h => Math.min(h + 5, 100));
-        return output;
+        return output + verifyContract(null, 'deauth');
       },
 
       'aircrack-ng': async () => {
@@ -3745,7 +3744,8 @@ ${WIFI_CLIENTS.slice(0, 4).map(c => `    ${c.mac}  ${c.dev}`).join('\n')}`;
           setWifiState(prev => ({ ...prev, cracked: true, pwd: crackedPwd }));
           setIsProcessing(false);
           playSuccess();
-          return `\n                           KEY FOUND! [ ${crackedPwd} ]\n\n[+] Password cracked: ${crackedPwd}\n[*] Connect: nmcli`;
+          const contractMsg = verifyContract(null, 'crack');
+          return `\n                           KEY FOUND! [ ${crackedPwd} ]\n\n[+] Password cracked: ${crackedPwd}\n[*] Connect: nmcli${contractMsg}`;
         }
 
         // ═══ FIELD MODE: Requires crack flag ═══
@@ -3758,7 +3758,8 @@ ${WIFI_CLIENTS.slice(0, 4).map(c => `    ${c.mac}  ${c.dev}`).join('\n')}`;
           setWifiState(prev => ({ ...prev, cracked: true, pwd: crackedPwd }));
           setIsProcessing(false);
           playSuccess();
-          return `\n                           KEY FOUND! [ ${crackedPwd} ]\n\n[+] Password cracked: ${crackedPwd}\n[*] Connect: nmcli connect`;
+          const contractMsg = verifyContract(null, 'crack');
+          return `\n                           KEY FOUND! [ ${crackedPwd} ]\n\n[+] Password cracked: ${crackedPwd}\n[*] Connect: nmcli connect${contractMsg}`;
         }
 
         // ═══ OPERATOR MODE: Full syntax required ═══
@@ -3785,7 +3786,7 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
         setWifiState(prev => ({ ...prev, cracked: true, pwd: crackedPwd }));
         setIsProcessing(false);
         playSuccess();
-        return `\n                               Aircrack-ng 1.7\n\n\n                           KEY FOUND! [ ${crackedPwd} ]\n\n\n      Master Key     : A4 29 C1 7E 3B 90 D2 4F 18 6A B7 E5 33 CC 01 8D\n      EAPOL HMAC     : 9A 8B 7C 6D 5E 4F 3A 2B 1C 0D EF FE DC CB BA A9\n\n[+] Password cracked: ${crackedPwd}\n[*] Connect: nmcli dev wifi connect STEAMWORKS-CORP password ${crackedPwd}`;
+        return `\n                               Aircrack-ng 1.7\n\n\n                           KEY FOUND! [ ${crackedPwd} ]\n\n\n      Master Key     : A4 29 C1 7E 3B 90 D2 4F 18 6A B7 E5 33 CC 01 8D\n      EAPOL HMAC     : 9A 8B 7C 6D 5E 4F 3A 2B 1C 0D EF FE DC CB BA A9\n\n[+] Password cracked: ${crackedPwd}\n[*] Connect: nmcli dev wifi connect STEAMWORKS-CORP password ${crackedPwd}${verifyContract(null, 'crack')}`;
       },
 
       nmcli: async () => {
@@ -3830,7 +3831,8 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
           spawnInternalNodes();
           setIsProcessing(false);
           playSuccess();
-          return `[+] Connected to ${targetName}!\n[+] IP: 10.0.0.187 | Gateway: 10.0.0.1\n\n[!] New targets added to network map:\n    • 10.0.0.20 — File Server\n    • 10.0.0.30 — Database Server\n    • 10.0.0.50 — Domain Controller\n\n[*] Run 'nmap' to scan internal network`;
+          const contractMsg = verifyContract(null, 'connect');
+          return `[+] Connected to ${targetName}!\n[+] IP: 10.0.0.187 | Gateway: 10.0.0.1\n\n[!] New targets added to network map:\n    • 10.0.0.20 — File Server\n    • 10.0.0.30 — Database Server\n    • 10.0.0.50 — Domain Controller\n\n[*] Run 'nmap' to scan internal network${contractMsg}`;
         }
 
         // ═══ FIELD MODE: Requires connect flag ═══
@@ -3843,7 +3845,8 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
           spawnInternalNodes();
           setIsProcessing(false);
           playSuccess();
-          return `[+] Connected to ${targetName}!\n[+] IP: 10.0.0.187\n\n[!] New targets:\n    • 10.0.0.20 — File Server\n    • 10.0.0.30 — Database\n    • 10.0.0.50 — Domain Controller`;
+          const contractMsg = verifyContract(null, 'connect');
+          return `[+] Connected to ${targetName}!\n[+] IP: 10.0.0.187\n\n[!] New targets:\n    • 10.0.0.20 — File Server\n    • 10.0.0.30 — Database\n    • 10.0.0.50 — Domain Controller${contractMsg}`;
         }
 
         // ═══ OPERATOR MODE: Full syntax required ═══
@@ -3868,7 +3871,8 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
           spawnInternalNodes();
           setIsProcessing(false);
           playSuccess();
-          return `\n  [+] Associating with AP... ✓\n  [+] Obtaining IP via DHCP... ✓\n\n  ╔════════════════════════════════════════╗\n  ║     CONNECTED TO ${ssid.toUpperCase().substring(0,14).padEnd(14)}     ║\n  ╠════════════════════════════════════════╣\n  ║  IP Address : 10.0.0.187               ║\n  ║  Gateway    : 10.0.0.1                 ║\n  ║  Security   : OPEN (No encryption!)    ║\n  ╚════════════════════════════════════════╝\n\n  [!] WARNING: Traffic on this network is unencrypted!\n  [+] New targets added to network map`;
+          const contractMsg = verifyContract(null, 'connect');
+          return `\n  [+] Associating with AP... ✓\n  [+] Obtaining IP via DHCP... ✓\n\n  ╔════════════════════════════════════════╗\n  ║     CONNECTED TO ${ssid.toUpperCase().substring(0,14).padEnd(14)}     ║\n  ╠════════════════════════════════════════╣\n  ║  IP Address : 10.0.0.187               ║\n  ║  Gateway    : 10.0.0.1                 ║\n  ║  Security   : OPEN (No encryption!)    ║\n  ╚════════════════════════════════════════╝\n\n  [!] WARNING: Traffic on this network is unencrypted!\n  [+] New targets added to network map${contractMsg}`;
         }
         
         const password = passwordIdx !== -1 ? args[passwordIdx + 1] : null;
@@ -3881,7 +3885,8 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
         spawnInternalNodes();
         setIsProcessing(false);
         playSuccess();
-        return `\n  [+] Authenticating... ✓\n  [+] Obtaining IP via DHCP... ✓\n\n  ╔════════════════════════════════════════╗\n  ║     CONNECTED TO ${ssid.toUpperCase().substring(0,14).padEnd(14)}     ║\n  ╠════════════════════════════════════════╣\n  ║  IP Address : 10.0.0.187               ║\n  ║  Gateway    : 10.0.0.1                 ║\n  ╚════════════════════════════════════════╝\n\n  [+] Inside ${ssid} network!\n  [!] New targets added to network map:\n      • 10.0.0.20 — File Server\n      • 10.0.0.30 — Database Server\n      • 10.0.0.50 — Domain Controller`;
+        const contractMsg = verifyContract(null, 'connect');
+        return `\n  [+] Authenticating... ✓\n  [+] Obtaining IP via DHCP... ✓\n\n  ╔════════════════════════════════════════╗\n  ║     CONNECTED TO ${ssid.toUpperCase().substring(0,14).padEnd(14)}     ║\n  ╠════════════════════════════════════════╣\n  ║  IP Address : 10.0.0.187               ║\n  ║  Gateway    : 10.0.0.1                 ║\n  ╚════════════════════════════════════════╝\n\n  [+] Inside ${ssid} network!\n  [!] New targets added to network map:\n      • 10.0.0.20 — File Server\n      • 10.0.0.30 — Database Server\n      • 10.0.0.50 — Domain Controller${contractMsg}`;
       },
 
       wireshark: async () => {
@@ -4031,6 +4036,7 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
                 
                 if (newNet.target) {
                   playSuccess();
+                  maybeCreateWiFiContract(newNet);
                 } else {
                   playBlip();
                 }
@@ -4262,7 +4268,6 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
       // RIVALS SYSTEM COMMANDS
       // ═══════════════════════════════════════════════════════════════
       
-
       rivals: async () => {
         if (rivals.length === 0) {
           return `╔══════════════════════════════════════════════════════════╗
@@ -4278,61 +4283,30 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
           '╔══════════════════════════════════════════════════════════╗',
           '║              UNDERGROUND HACKER REGISTRY                  ║',
           '╚══════════════════════════════════════════════════════════╝',
-          '',
-          '  HANDLE              FACTION     ST  HUNT  REP    IP',
+          '', '  HANDLE              REP    TYPE              IP',
           '  ─────────────────────────────────────────────────────────',
         ];
         rivals.forEach(r => {
           const icon = { active: '🟢', compromised: '🔴', hostile: '⚠️', friendly: '🤝', destroyed: '💀' }[r.status] || '⚪';
-          const factionTag = (r.factionIcon || '•') + (r.factionName || 'NONE').slice(0, 8);
-          lines.push(`  ${icon} ${r.handle.padEnd(18)} ${factionTag.padEnd(10)} ${String(r.status || 'active').slice(0,2).toUpperCase().padEnd(2)}  ${String(r.huntProgress || 0).padStart(3)}%  ${String(r.rep).padStart(4)}   ${r.ip}`);
+          lines.push(`  ${icon} ${r.handle.padEnd(18)} ${String(r.rep).padStart(4)}   ${r.archetypeName.padEnd(14)}  ${r.ip}`);
         });
-        lines.push('', '  Type "dossier <handle>" | "raid <handle>" | "ally <handle>" | "taunt <handle>"');
+        lines.push('', `  Mode: ${gameMode.toUpperCase()} | dossier${gameMode === 'arcade' ? '' : ' <handle>'} | raid${gameMode === 'arcade' ? '' : ' <handle>'}`);
         return lines.join('\n');
       },
-
-      factions: async () => {
-        const counts = getFactionSummary();
-        const lines = [
-          '╔══════════════════════════════════════════════════════════╗',
-          '║                 DARKNET FACTIONS                         ║',
-          '╚══════════════════════════════════════════════════════════╝',
-          '',
-        ];
-        Object.entries(RIVAL_FACTIONS).forEach(([key, faction]) => {
-          lines.push(`  ${faction.icon} ${faction.name.padEnd(12)} ${faction.style.padEnd(10)} Members: ${String(counts[key] || 0).padStart(2)}`);
-          lines.push(`     ${faction.desc}`);
-        });
-        lines.push('', '  Faction pressure shapes who hunts you and who will deal.');
-        return lines.join('\n');
-      },
-
-      bounty: async () => {
-        const bountyNow = getPlayerBountyTier(reputation, heat, rivals.filter(r => r.status === 'hostile').length);
-        setPlayerBounty(bountyNow);
-        return `╔══════════════════════════════════════════════════════════╗
-║                    OPERATOR BOUNTY                        ║
-╚══════════════════════════════════════════════════════════╝
-
-  TIER:    ${bountyNow.tier}
-  VALUE:   ₿${bountyNow.amount.toLocaleString()}
-  HUNTERS: ${bountyNow.hunters}
-
-  HEAT:    ${heat}%
-  HOSTILES:${rivals.filter(r => r.status === 'hostile').length}
-  REP:     ${reputation}
-
-  ${bountyNow.tier === 'COLD' ? 'Keep moving quietly. Nobody serious is bidding on you yet.' :
-    bountyNow.tier === 'WARM' ? 'You are being discussed on underground channels.' :
-    bountyNow.tier === 'HOT' ? 'You are now worth hunting.' :
-    bountyNow.tier === 'CRITICAL' ? 'Multiple factions are funding trace operations.' :
-    'Every serious operator on the grid wants your wallet and your name.'}`;
-      },
-
+      
       dossier: async () => {
-        if (!arg1) return `[-] Usage: dossier <handle>`;
-        const rival = rivals.find(r => r.handle.toLowerCase() === arg1.toLowerCase());
-        if (!rival) return `[-] Unknown handle: ${arg1}. Type "rivals" to see known hackers.`;
+        let handle = arg1;
+        if (gameMode === 'arcade' && !handle) {
+          const auto = rivals.find(r => r.status === 'hostile') || rivals[0];
+          handle = auto?.handle;
+        }
+        if (gameMode === 'operator' && (!handle || handle.startsWith('-'))) {
+          const hIdx = args.indexOf('--handle');
+          if (hIdx !== -1) handle = args[hIdx + 1];
+        }
+        if (!handle) return gameMode === 'operator' ? `[-] Usage: dossier --handle <handle>` : `[-] Usage: dossier <handle>`;
+        const rival = rivals.find(r => r.handle.toLowerCase() === handle.toLowerCase());
+        if (!rival) return `[-] Unknown handle: ${handle}. Type "rivals" to see known hackers.`;
         const rarityCount = {};
         rival.zeroDays.forEach(zd => { rarityCount[zd.rarity] = (rarityCount[zd.rarity] || 0) + 1; });
         const relStatus = rival.relationship > 20 ? 'FRIENDLY' : rival.relationship < -20 ? 'HOSTILE' : 'NEUTRAL';
@@ -4340,19 +4314,13 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
 ║  DOSSIER: ${rival.handle.toUpperCase().padEnd(45)}║
 ╚══════════════════════════════════════════════════════════╝
 
-  TITLE:        ${rival.title || 'Underground Operator'}
   ARCHETYPE:    ${rival.archetypeName}
-  FACTION:      ${rival.factionIcon || '•'} ${rival.factionName || 'Unknown'}
   REPUTATION:   ${rival.rep} pts
   HOME NODE:    ${rival.ip}
   SECURITY:     ${rival.security}%
   WEAKNESS:     ${rival.vulnerability}
   WALLET:       ₿${rival.btc.toLocaleString()}
   RELATIONSHIP: ${relStatus} (${rival.relationship > 0 ? '+' : ''}${rival.relationship})
-  HUNT:         ${rival.huntProgress || 0}% | VENDETTA: ${rival.vendetta || 0}%
-
-  TRAITS:
-  ${(rival.traits && rival.traits.length > 0) ? '├─ ' + rival.traits.join(', ') : '├─ None logged'}
 
   ZERO-DAYS: ${rival.zeroDays.length} exploits
   ${Object.keys(rarityCount).length > 0 ? '├─ ' + Object.entries(rarityCount).map(([r, c]) => `${RARITY_TIERS[r]?.name || r}: ${c}`).join(', ') : '├─ None detected'}
@@ -4361,18 +4329,26 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
 
   HISTORY:
   ├─ Attacks on you: ${rival.attackCount}
-  ├─ Your victories: ${rival.defeatCount}
-  └─ Memory: ${(rival.memory && rival.memory.length > 0) ? rival.memory[rival.memory.length - 1] : 'No notable encounters yet.'}
+  └─ Your victories: ${rival.defeatCount}
 
-  [raid ${rival.handle}] | [ally ${rival.handle}] | [taunt ${rival.handle}] | [betray ${rival.handle}]`;
+  [raid ${rival.handle}] to attack | [taunt ${rival.handle}] to provoke`;
       },
-
+      
       raid: async () => {
-        if (!arg1) return `[-] Usage: raid <handle>`;
-        const rivalIdx = rivals.findIndex(r => r.handle.toLowerCase() === arg1.toLowerCase());
-        if (rivalIdx === -1) return `[-] Unknown handle: ${arg1}. Type "rivals" to see targets.`;
+        let handle = arg1;
+        if (gameMode === 'arcade' && !handle) {
+          const auto = [...rivals].sort((a, b) => (b.btc || 0) - (a.btc || 0))[0];
+          handle = auto?.handle;
+        }
+        if (gameMode === 'operator' && (!handle || handle.startsWith('-'))) {
+          const tIdx = args.indexOf('--target');
+          if (tIdx !== -1) handle = args[tIdx + 1];
+        }
+        if (!handle) return gameMode === 'operator' ? `[-] Usage: raid --target <handle>` : `[-] Usage: raid <handle>`;
+        const rivalIdx = rivals.findIndex(r => r.handle.toLowerCase() === handle.toLowerCase());
+        if (rivalIdx === -1) return `[-] Unknown handle: ${handle}. Type "rivals" to see targets.`;
         const rival = rivals[rivalIdx];
-        const result = attemptRivalHack(rival, { rep: reputation, heat, btc: money, proxyCount: proxies.length }, zeroDays);
+        const result = attemptRivalHack(rival, { rep: reputation, heat, btc: money }, zeroDays);
         playBlip(); setIsProcessing(true);
         await new Promise(r => setTimeout(r, 2000));
         setIsProcessing(false);
@@ -4380,11 +4356,8 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
           '╔══════════════════════════════════════════════════════════╗',
           `║  ENGAGING: ${rival.handle.toUpperCase().padEnd(43)}║`,
           '╚══════════════════════════════════════════════════════════╝',
-          '',
-          `  Target: ${rival.ip} | Security: ${rival.security}%`,
-          `  Faction: ${rival.factionIcon || '•'} ${rival.factionName || 'Unknown'}`,
-          `  Your odds: ${result.successChance.toFixed(1)}% | Roll: ${result.roll.toFixed(1)}`,
-          '',
+          '', `  Target: ${rival.ip} | Security: ${rival.security}%`,
+          `  Your odds: ${result.successChance.toFixed(1)}% | Roll: ${result.roll.toFixed(1)}`, '',
         ];
         if (result.success) {
           playSuccess();
@@ -4398,26 +4371,16 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
               lines.push(`  └─ ZERO-DAY: ${result.loot.zeroDay.name} [${RARITY_TIERS[result.loot.zeroDay.rarity]?.name}]`);
             }
           }
-          setRivals(prev => prev.map((r, i) => {
-            if (i !== rivalIdx) return r;
-            return evolveRival({
-              ...r,
-              btc: Math.max(0, r.btc - (result.loot?.btc || 0)),
-              defeatCount: (r.defeatCount || 0) + 1,
-              status: 'compromised',
-            }, 'raid');
-          }));
-          lines.push('', '  Rival evolved. Expect stronger counterplay next time.');
+          setRivals(prev => prev.map((r, i) => i === rivalIdx ? { ...r, btc: Math.max(0, r.btc - (result.loot?.btc || 0)), defeatCount: r.defeatCount + 1, relationship: Math.max(-100, r.relationship - 15), status: r.relationship < -50 ? 'hostile' : r.status } : r));
         } else {
           playFailure();
           lines.push('  ╳╳╳╳╳╳╳╳╳╳ ACCESS DENIED ╳╳╳╳╳╳╳╳╳╳', '', `  ${rival.handle} detected your intrusion.`, `  Relationship: -10 | Heat: +5%`);
-          setRivals(prev => prev.map((r, i) => i === rivalIdx ? evolveRival({ ...r, status: 'hostile' }, 'raid') : r));
+          setRivals(prev => prev.map((r, i) => i === rivalIdx ? { ...r, relationship: Math.max(-100, r.relationship - 10), status: r.relationship < -30 ? 'hostile' : r.status } : r));
           setHeat(h => Math.min(100, h + 5));
         }
-        setPlayerBounty(getPlayerBountyTier(reputation, heat, rivals.filter(r => r.status === 'hostile').length));
         return lines.join('\n');
       },
-
+      
       exploits: async () => {
         if (zeroDays.length === 0) {
           return `╔══════════════════════════════════════════════════════════╗
@@ -4446,39 +4409,24 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
         lines.push('  Zero-days boost your success rate when raiding rivals.');
         return lines.join('\n');
       },
-
-      ally: async () => {
-        if (!arg1) return `[-] Usage: ally <handle>`;
-        const rivalIdx = rivals.findIndex(r => r.handle.toLowerCase() === arg1.toLowerCase());
-        if (rivalIdx === -1) return `[-] Unknown handle: ${arg1}`;
-        const rival = rivals[rivalIdx];
-        const fee = Math.max(1500, Math.floor((rival.btc || 0) * (rival.allyCostPct || 0.10)));
-        if (money < fee) return `[-] ${rival.handle} wants ₿${fee.toLocaleString()} up front to stop hunting you.`;
-        setMoney(m => m - fee);
-        setRivals(prev => prev.map((r, i) => i === rivalIdx ? evolveRival({ ...r }, 'ally') : r));
-        return `[+] Backchannel pact accepted with ${rival.handle}.\n[-] Fee paid: ₿${fee.toLocaleString()}\n[+] Status: FRIENDLY\n[*] They may now leave you alone and occasionally draw heat away.`;
-      },
-
-      betray: async () => {
-        if (!arg1) return `[-] Usage: betray <handle>`;
-        const rivalIdx = rivals.findIndex(r => r.handle.toLowerCase() === arg1.toLowerCase());
-        if (rivalIdx === -1) return `[-] Unknown handle: ${arg1}`;
-        const rival = rivals[rivalIdx];
-        if (rival.status !== 'friendly') return `[-] You only have leverage over rivals who already trust you.`;
-        const cashout = Math.max(1000, Math.floor((rival.btc || 0) * 0.15));
-        setMoney(m => m + cashout);
-        setRivals(prev => prev.map((r, i) => i === rivalIdx ? evolveRival({ ...r, btc: Math.max(0, r.btc - cashout) }, 'betray') : r));
-        return `[!] Pact broken. You skimmed ₿${cashout.toLocaleString()} from ${rival.handle}.\n[!] They are now HOSTILE and will remember this.`;
-      },
-
+      
       taunt: async () => {
-        if (!arg1) return `[-] Usage: taunt <handle>`;
-        const rivalIdx = rivals.findIndex(r => r.handle.toLowerCase() === arg1.toLowerCase());
-        if (rivalIdx === -1) return `[-] Unknown handle: ${arg1}`;
+        let handle = arg1;
+        if (gameMode === 'arcade' && !handle) {
+          const auto = rivals.find(r => r.status !== 'hostile') || rivals[0];
+          handle = auto?.handle;
+        }
+        if (gameMode === 'operator' && (!handle || handle.startsWith('-'))) {
+          const tIdx = args.indexOf('--target');
+          if (tIdx !== -1) handle = args[tIdx + 1];
+        }
+        if (!handle) return gameMode === 'operator' ? `[-] Usage: taunt --target <handle>` : `[-] Usage: taunt <handle>`;
+        const rivalIdx = rivals.findIndex(r => r.handle.toLowerCase() === handle.toLowerCase());
+        if (rivalIdx === -1) return `[-] Unknown handle: ${handle}`;
         const rival = rivals[rivalIdx];
         const taunts = [`"Your firewall is a joke, ${rival.handle}."`, `"Script kiddies have better opsec than you."`, `"Nice botnet. Did your mom set it up?"`, `"I'm in your network right now. Check your six."`];
-        setRivals(prev => prev.map((r, i) => i === rivalIdx ? evolveRival({ ...r, status: 'hostile' }, 'taunt') : r));
-        return `[*] Broadcasting on underground channels...\n\n  ${taunts[Math.floor(Math.random() * taunts.length)]}\n\n[!] ${rival.handle} is now HOSTILE.\n[!] Hunt progress increased. Expect retaliation.`;
+        setRivals(prev => prev.map((r, i) => i === rivalIdx ? { ...r, relationship: Math.max(-100, r.relationship - 20), status: 'hostile' } : r));
+        return `[*] Broadcasting on underground channels...\n\n  ${taunts[Math.floor(Math.random() * taunts.length)]}\n\n[!] ${rival.handle} is now HOSTILE.\n[!] Expect retaliation.`;
       },
 
       help: async () => {
@@ -4886,7 +4834,13 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
   );
 
   if (screen === 'contracts') return (
-    <ContractBoard contracts={contracts} activeContract={activeContract} acceptContract={acceptContract} returnToGame={() => setScreen('game')} />
+    <ContractBoard
+      contracts={contracts}
+      activeContract={activeContract}
+      acceptContract={acceptContract}
+      declineContract={declineContract}
+      returnToGame={() => setScreen('game')}
+    />
   );
   
   if (screen === 'sounds') return (

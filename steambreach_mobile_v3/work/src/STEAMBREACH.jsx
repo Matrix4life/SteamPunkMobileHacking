@@ -1447,7 +1447,26 @@ const verifyContract = (ip, objectiveType) => {
 
     return msg;
   };
+  const maybeCreateWiFiContract = (network) => {
+    if (!network || !network.bssid) return;
+    if (contracts.length >= 8) return;
 
+    const exists = contracts.some(c =>
+      c &&
+      c.isWifiContract &&
+      c.targetBssid === network.bssid &&
+      !c.completed
+    );
+    if (exists) return;
+
+    const newContract = generateWiFiContract(network, reputation, directorRef.current?.modifiers);
+    setContracts(prev => [...prev, newContract]);
+    setTerminal(prev => [...prev, {
+      type: 'out',
+      text: `[FIXER] Wireless contract ${newContract.id} posted for ${network.essid}.\n[*] Type 'contracts' to review.`,
+      isNew: true
+    }]);
+  };
   const COMMANDS = { // <--- Your existing commands object starts here
   
       rclone: async () => {

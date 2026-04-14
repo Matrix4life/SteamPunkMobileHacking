@@ -144,7 +144,11 @@ export function generateRival(playerRep = 100) {
   };
 }
 
-export function attemptRivalHack(rival, playerStats, playerZeroDays = []) {
+const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+
+export function attemptRivalHack(rival, playerStats, playerZeroDays = [], options = {}) {
+  const raidFactor = clamp(options.raidFactor ?? 1, 0.2, 1.2);
+  const rivalStash = options.rivalStash || {};
   const baseSuccess = 50;
   let playerBonus = (playerStats.rep || 0) / 20;
   playerBonus += (playerStats.heat || 0) > 50 ? -10 : 0;
@@ -155,10 +159,22 @@ export function attemptRivalHack(rival, playerStats, playerZeroDays = []) {
   const success = roll < successChance;
   let loot = null;
   if (success) {
+    const stashKeys = Object.keys(rivalStash).filter(k => (rivalStash[k] || 0) > 0);
+    let stash = null;
+    if (stashKeys.length > 0 && Math.random() < 0.55) {
+      const key = stashKeys[Math.floor(Math.random() * stashKeys.length)];
+      const available = rivalStash[key] || 0;
+      const pct = 0.08 + Math.random() * 0.12;
+      const scaled = Math.floor(available * pct * raidFactor);
+      const cap = Math.max(2, Math.floor(6 + ((playerStats.rep || 0) / 300)));
+      const amount = Math.max(1, Math.min(available, scaled, cap));
+      if (amount > 0) stash = { key, amount };
+    }
     loot = {
-      btc: Math.floor(rival.btc * (0.1 + Math.random() * 0.3)),
+      btc: Math.floor(rival.btc * (0.08 + Math.random() * 0.18) * raidFactor),
       rep: Math.floor(rival.rep * 0.1),
       zeroDay: Math.random() < 0.25 && rival.zeroDays.length > 0 ? rival.zeroDays[Math.floor(Math.random() * rival.zeroDays.length)] : null,
+      stash,
     };
   }
   return { success, successChance, roll, loot };
@@ -173,10 +189,24 @@ export function rivalAttacksPlayer(rival, playerStats) {
   const success = Math.random() * 100 < successChance;
   let damage = null;
   if (success) {
+    const stash = playerStats.stash || {};
+    const stashKeys = Object.keys(stash).filter(k => (stash[k] || 0) > 0);
+    const useStashLane = stashKeys.length > 0 && Math.random() < 0.5;
+    let stashLost = null;
+    if (useStashLane) {
+      const key = stashKeys[Math.floor(Math.random() * stashKeys.length)];
+      const available = stash[key] || 0;
+      const pct = 0.04 + Math.random() * 0.08;
+      const scaled = Math.floor(available * pct);
+      const cap = Math.max(1, 1 + Math.floor(rival.skillMod * 2));
+      const amount = Math.max(1, Math.min(available, scaled, cap));
+      if (amount > 0) stashLost = { key, amount };
+    }
     damage = {
-      btcLost: Math.floor((playerStats.btc || 0) * (0.03 + Math.random() * 0.12)),
+      btcLost: useStashLane ? 0 : Math.floor((playerStats.btc || 0) * (0.03 + Math.random() * 0.09)),
       heatGain: 5 + Math.floor(Math.random() * 15),
       zdStolen: Math.random() < 0.1,
+      stashLost,
     };
   }
   return { rival, success, damage };

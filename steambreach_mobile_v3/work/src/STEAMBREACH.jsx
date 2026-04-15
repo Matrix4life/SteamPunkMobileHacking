@@ -267,6 +267,132 @@ const STEAMBREACH = () => {
 
     return { error: `[-] Unknown virus id: ${input}. Type 'viruses' to list payloads.` };
   };
+
+
+  useEffect(() => {
+    const hasActiveInfections = Object.values(world || {}).some((node) => node?.infection && node.infection.state !== INFECTION_STATES.IDLE);
+    if (!hasActiveInfections) return undefined;
+
+    const tick = setInterval(() => {
+      setWorld((prev) => {
+        let next = prev;
+        let changed = false;
+        const infectNode = (graph, ip, virus, sourceNodeId = null) => markNodeInfection(graph, ip, virus, {
+          state: INFECTION_STATES.INJECTING,
+          stage: 0.12,
+          timer: virus.type === 'worm' ? 2 : 0,
+          sourceNodeId,
+          spreadAttempted: false,
+        });
+
+        for (const [ip, node] of Object.entries(prev || {})) {
+          if (ip === 'local' || !node?.infection) continue;
+          const infection = node.infection;
+
+          if (infection.state === INFECTION_STATES.INJECTING) {
+            changed = true;
+            const nextStage = (infection.stage || 0) + 0.45;
+            next = {
+              ...next,
+              [ip]: {
+                ...next[ip],
+                infection: {
+                  ...infection,
+                  state: nextStage >= 1 ? INFECTION_STATES.INFECTED : INFECTION_STATES.INJECTING,
+                  stage: Math.min(1, nextStage),
+                },
+              },
+            };
+            continue;
+          }
+
+          if (infection.state === INFECTION_STATES.INFECTED) {
+            changed = true;
+            const nextTimer = Math.max(0, (infection.timer || 0) - 1);
+            let nextState = infection.state;
+            if (infection.virusType === 'worm' && nextTimer <= 0) nextState = INFECTION_STATES.SPREADING;
+            else if (infection.virusType === 'wiper' && (infection.stage || 0) >= 1) nextState = INFECTION_STATES.DEAD;
+            else if (Math.random() < (infection.virusType === 'stealer' ? 0.18 : 0.12)) nextState = INFECTION_STATES.DETECTED;
+            next = {
+              ...next,
+              [ip]: {
+                ...next[ip],
+                infection: {
+                  ...infection,
+                  state: nextState,
+                  timer: nextTimer,
+                  stage: Math.min(1, (infection.stage || 0) + 0.2),
+                },
+              },
+            };
+            continue;
+          }
+
+          if (infection.state === INFECTION_STATES.SPREADING) {
+            changed = true;
+            let updatedInfection = {
+              ...infection,
+              stage: 1,
+              spreadAttempted: true,
+            };
+            let graph = next;
+            if (!infection.spreadAttempted && infection.virusType === 'worm') {
+              const neighbors = getConnectedNodeIPs(next, ip)
+                .filter((nodeIP) => !next[nodeIP]?.infection || next[nodeIP].infection.state === INFECTION_STATES.IDLE);
+              if (neighbors.length > 0) {
+                const targetNeighbor = neighbors[Math.floor(Math.random() * neighbors.length)];
+                graph = infectNode(graph, targetNeighbor, { id: infection.virusId, type: infection.virusType }, ip);
+              }
+            }
+            next = {
+              ...graph,
+              [ip]: {
+                ...graph[ip],
+                infection: updatedInfection,
+              },
+            };
+            continue;
+          }
+
+          if (infection.state === INFECTION_STATES.DETECTED) {
+            changed = true;
+            next = {
+              ...next,
+              [ip]: {
+                ...next[ip],
+                infection: {
+                  ...infection,
+                  state: INFECTION_STATES.QUARANTINED,
+                  timer: 0,
+                },
+              },
+            };
+            continue;
+          }
+
+          if (infection.state === INFECTION_STATES.QUARANTINED) {
+            if (infection.virusType !== 'wiper') continue;
+            changed = true;
+            next = {
+              ...next,
+              [ip]: {
+                ...next[ip],
+                infection: {
+                  ...infection,
+                  state: INFECTION_STATES.DEAD,
+                },
+              },
+            };
+          }
+        }
+
+        return changed ? next : prev;
+      });
+    }, 900);
+
+    return () => clearInterval(tick);
+  }, [world, getConnectedNodeIPs, markNodeInfection]);
+
 const generateStory = async (ip, orgData) => {
   const orgName = orgData?.org?.orgName || 'Unknown Corp';
   const orgType = orgData?.org?.type || 'corporation';

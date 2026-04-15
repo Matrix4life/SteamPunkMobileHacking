@@ -192,6 +192,10 @@ const MODE_COMMANDS = {
       { cmd: 'openssl', desc: 'Deploy ransomware' },
       { cmd: 'crontab', desc: 'Schedule logic bomb' },
       { cmd: 'wipe', desc: 'Scrub logs (Heat -15%)' },
+      { cmd: 'findvirus', desc: 'Harvest malware signatures from target' },
+      { cmd: 'craftvirus <type>', desc: 'Build worm/stealer/wiper/ransom payload' },
+      { cmd: 'viruses', desc: 'List crafted payload inventory' },
+      { cmd: 'usevirus <id>', desc: 'Deploy crafted virus on current target' },
     ],
     field: [
       { cmd: 'msfvenom reverse', desc: 'Reverse shell payload' },
@@ -206,6 +210,10 @@ const MODE_COMMANDS = {
       { cmd: 'openssl fast', desc: 'AES-128 ransomware' },
       { cmd: 'crontab', desc: 'Schedule timed payload' },
       { cmd: 'wipe', desc: 'Scrub system logs' },
+      { cmd: 'findvirus', desc: 'Collect virus intel fragments from host' },
+      { cmd: 'craftvirus <worm|stealer|wiper|ransom>', desc: 'Compile custom malware' },
+      { cmd: 'viruses', desc: 'View virus lab inventory and values' },
+      { cmd: 'usevirus <id>', desc: 'Execute crafted payload on target host' },
     ],
     operator: [
       { cmd: 'msfvenom -p linux/x64/meterpreter/reverse_tcp LHOST=<ip> LPORT=4444 -f elf -o shell.bin', desc: 'Generate reverse shell' },
@@ -216,6 +224,10 @@ const MODE_COMMANDS = {
       { cmd: 'openssl enc -aes-256-cbc -salt -pbkdf2 -in <file> -out <file>.enc', desc: 'File encryption' },
       { cmd: 'crontab -e "0 0 * * * /tmp/payload.sh"', desc: 'Scheduled execution' },
       { cmd: 'wipe', desc: 'Clear /var/log/* and bash_history' },
+      { cmd: 'findvirus', desc: 'Extract signatures/modules from compromised host' },
+      { cmd: 'craftvirus <type>', desc: 'Compile polymorphic malware payload' },
+      { cmd: 'viruses', desc: 'List compiled payloads and trade value' },
+      { cmd: 'usevirus <virus_id>', desc: 'Deploy one crafted virus (consumable)' },
     ],
   },
 
@@ -263,6 +275,7 @@ const MODE_COMMANDS = {
       { cmd: 'buy <item> <qty>', desc: 'Buy commodity' },
       { cmd: 'sell <item> <qty>', desc: 'Sell commodity' },
       { cmd: 'shop / hardware / rig', desc: 'Alias → market hub' },
+      { cmd: 'tradevirus <id>', desc: 'Sell crafted virus on darknet exchange' },
     ],
     field: [
       { cmd: 'use decoy', desc: 'Deploy trace decoy (-30%)' },
@@ -273,6 +286,7 @@ const MODE_COMMANDS = {
       { cmd: 'buy <item> <qty>', desc: 'Purchase at market price' },
       { cmd: 'sell <item> <qty>', desc: 'Sell from stash' },
       { cmd: 'shop / hardware / rig', desc: 'Alias → market hub' },
+      { cmd: 'tradevirus <id>', desc: 'Liquidate crafted virus payload for BTC' },
     ],
     operator: [
       { cmd: 'use decoy', desc: 'Inject false trail (-30% trace)' },
@@ -283,6 +297,7 @@ const MODE_COMMANDS = {
       { cmd: 'buy <item> <qty>', desc: 'Purchase commodity' },
       { cmd: 'sell <item> <qty>', desc: 'Liquidate holdings' },
       { cmd: 'shop / hardware / rig', desc: 'Alias → market hub' },
+      { cmd: 'tradevirus <id>', desc: 'Trade custom malware on darknet market' },
     ],
   },
 

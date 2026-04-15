@@ -268,7 +268,64 @@ const STEAMBREACH = () => {
     return { error: `[-] Unknown virus id: ${input}. Type 'viruses' to list payloads.` };
   };
 
+const INFECTION_STATES = {
+  IDLE: 'idle',
+  INJECTING: 'injecting',
+  INFECTED: 'infected',
+  SPREADING: 'spreading',
+  EXFILTRATING: 'exfiltrating',
+  DETECTED: 'detected',
+  CONTESTED: 'contested',
+  QUARANTINED: 'quarantined',
+  BURNED: 'burned',
+  DEAD: 'dead',
+};
 
+const markNodeInfection = (graph, ip, virus, overrides = {}) => {
+  const node = graph?.[ip];
+  if (!node) return graph;
+
+  return {
+    ...graph,
+    [ip]: {
+      ...node,
+      infection: {
+        state: INFECTION_STATES.IDLE,
+        virusId: null,
+        virusType: null,
+        stage: 0,
+        timer: 0,
+        sourceNodeId: null,
+        spreadAttempted: false,
+        ...node.infection,
+        virusId: virus?.id || node?.infection?.virusId || null,
+        virusType: virus?.type || node?.infection?.virusType || null,
+        ...overrides,
+      },
+    },
+  };
+};
+
+const getConnectedNodeIPs = (graph, ip) => {
+  const node = graph?.[ip];
+  if (!node) return [];
+
+  const neighbors = new Set();
+
+  // parent link
+  if (node.parentIP && graph[node.parentIP] && node.parentIP !== 'local') {
+    neighbors.add(node.parentIP);
+  }
+
+  // child links
+  Object.entries(graph || {}).forEach(([otherIP, otherNode]) => {
+    if (otherIP === ip) return;
+    if (otherNode?.isHidden) return;
+    if (otherNode?.parentIP === ip) neighbors.add(otherIP);
+  });
+
+  return [...neighbors];
+};
   useEffect(() => {
     const hasActiveInfections = Object.values(world || {}).some((node) => node?.infection && node.infection.state !== INFECTION_STATES.IDLE);
     if (!hasActiveInfections) return undefined;

@@ -1,150 +1,117 @@
-import React, { useState } from 'react';
-import { COLORS } from '../constants/gameConstants';
+import React, { useMemo, useState } from 'react';
+import { COMMAND_REGISTRY } from '../constants/gameConstants';
 
-// Context-aware quick actions — buttons change based on game state
-const getQuickActions = ({ isInside, privilege, isChatting, targetIP, botnet }) => {
-  if (isChatting) {
-    return [
-      { label: 'YES', cmd: 'yes' },
-      { label: 'NO', cmd: 'no' },
-      { label: 'TRUST ME', cmd: 'trust me, this is routine maintenance' },
-      { label: 'EXIT CHAT', cmd: 'bye' },
-    ];
-  }
+const SECTION_ORDER = [
+  'RECON & ACCESS',
+  'WIFI HACKING',
+  'PRIVILEGE ESCALATION',
+  'BOTNET & C2',
+  'PAYLOADS & MALWARE',
+  'DATA & CRACKING',
+  'ECONOMY & ITEMS',
+  'RIVALS & ZERO-DAYS',
+  'MORALITY',
+  'STORY EVENTS',
+  'SYSTEM & NAV',
+];
 
-  if (isInside && privilege === 'root') {
-    return [
-      { label: 'LS', cmd: 'ls' },
-      { label: 'EXFIL', cmd: 'exfil ', partial: true },
-      { label: 'SLIVER', cmd: 'sliver' },
-      { label: 'CHISEL', cmd: 'chisel' },
-      { label: 'WIPE', cmd: 'wipe' },
-      { label: 'REPTILE', cmd: 'reptile' },
-      { label: 'EXIT', cmd: 'exit' },
-    ];
-  }
-
-  if (isInside && privilege === 'www-data') {
-    return [
-      { label: 'PWNKIT', cmd: 'pwnkit' },
-      { label: 'LS', cmd: 'ls' },
-      { label: 'CD', cmd: 'cd ', partial: true },
-      { label: 'CAT', cmd: 'cat ', partial: true },
-      { label: 'EXIT', cmd: 'exit' },
-    ];
-  }
-
-  // Outside — recon/access phase
-  return [
-    { label: 'NMAP', cmd: 'nmap' },
-    { label: 'HYDRA', cmd: 'hydra ', partial: true },
-    { label: 'SQLMAP', cmd: 'sqlmap ', partial: true },
-    { label: 'MARKET', cmd: 'market' },
-    { label: 'CONTRACTS', cmd: 'contracts' },
-    { label: 'STATUS', cmd: 'status' },
-  ];
+const EXTRA_SECTIONS = {
+  'RIVALS & ZERO-DAYS': [
+    { cmd: 'rivals', desc: 'List known rival hackers and threat status' },
+    { cmd: 'dossier <handle>', desc: 'Field mode dossier lookup' },
+    { cmd: 'raid <handle>', desc: 'Field mode rival attack' },
+    { cmd: 'taunt <handle>', desc: 'Field mode provocation; increases retaliation risk' },
+    { cmd: 'dossier --handle <h>', desc: 'Operator mode dossier lookup' },
+    { cmd: 'raid --target <h>', desc: 'Operator mode rival attack' },
+    { cmd: 'taunt --target <h>', desc: 'Operator mode provocation' },
+    { cmd: 'exploits', desc: 'Show collected zero-days and raid bonuses' },
+  ],
+  'WIFI HACKING': [
+    { cmd: 'Arcade flow', desc: 'airmon-ng → airodump-ng → aireplay-ng → aircrack-ng → nmcli' },
+    { cmd: 'Field flow', desc: 'airmon-ng start → airodump-ng scan/focus → aireplay-ng deauth → aircrack-ng crack → nmcli connect' },
+    { cmd: 'Operator flow', desc: 'Use full syntax with wlan0mon, --bssid, --deauth, and explicit password args' },
+  ],
 };
 
-// Secondary row for less common actions
-const getSecondaryActions = ({ isInside, privilege, botnet }) => {
-  if (!isInside) {
-    return [
-      { label: 'MSFCONSOLE', cmd: 'msfconsole ', partial: true },
-      { label: 'CURL', cmd: 'curl ', partial: true },
-      { label: 'SPEARPHISH', cmd: 'spearphish ', partial: true },
-      { label: 'HPING3', cmd: 'hping3 ', partial: true },
-      { label: 'HELP', cmd: 'help' },
-    ];
-  }
-  if (privilege === 'root') {
-    return [
-      { label: 'ETTERCAP', cmd: 'ettercap' },
-      { label: 'SHRED', cmd: 'shred' },
-      { label: 'OPENSSL', cmd: 'openssl' },
-      { label: 'MSFVENOM', cmd: 'msfvenom' },
-      { label: 'XMRIG', cmd: 'xmrig' },
-      { label: 'DOWNLOAD', cmd: 'download ', partial: true },
-    ];
-  }
-  return [];
-};
+export default function HelpMenu({ onClose, COLORS }) {
+  const [openSections, setOpenSections] = useState({});
 
-export default function MobileQuickBar({ isInside, privilege, isChatting, targetIP, botnet, onCommand, onPartial, inputRef }) {
-  const [showSecondary, setShowSecondary] = useState(false);
+  const groupedSections = useMemo(() => {
+    const grouped = {};
+    COMMAND_REGISTRY.forEach(({ category, cmd, desc }) => {
+      if (!grouped[category]) grouped[category] = [];
+      grouped[category].push({ cmd, desc });
+    });
 
-  const state = { isInside, privilege, isChatting, targetIP, botnet };
-  const primary = getQuickActions(state);
-  const secondary = getSecondaryActions(state);
+    Object.entries(EXTRA_SECTIONS).forEach(([category, rows]) => {
+      if (!grouped[category]) grouped[category] = [];
+      grouped[category] = [...grouped[category], ...rows];
+    });
 
-  const handleTap = (action) => {
-    if (action.partial) {
-      // Fill input with partial command so user can add the argument
-      onPartial(action.cmd);
-      if (inputRef?.current) inputRef.current.focus();
-    } else {
-      onCommand(action.cmd);
-    }
-  };
+    return grouped;
+  }, []);
 
-  const barStyle = {
-    display: 'flex',
-    gap: '4px',
-    overflowX: 'auto',
-    WebkitOverflowScrolling: 'touch',
-    scrollbarWidth: 'none',
-    padding: '6px 0',
-    flexShrink: 0,
-  };
-
-  const btnStyle = (isPartial) => ({
-    flexShrink: 0,
-    padding: '8px 12px',
-    background: isPartial ? `${COLORS.primary}15` : `${COLORS.primary}20`,
-    border: `1px solid ${isPartial ? COLORS.primary + '40' : COLORS.border}`,
-    borderRadius: '4px',
-    color: isPartial ? COLORS.primary : COLORS.text,
-    fontFamily: 'inherit',
-    fontSize: '11px',
-    fontWeight: 'bold',
-    letterSpacing: '1px',
-    cursor: 'pointer',
-    whiteSpace: 'nowrap',
-    WebkitTapHighlightColor: 'transparent',
-    touchAction: 'manipulation',
-  });
-
-  const toggleStyle = {
-    ...btnStyle(false),
-    background: showSecondary ? `${COLORS.secondary}30` : 'transparent',
-    color: COLORS.secondary,
-    border: `1px solid ${COLORS.secondary}40`,
-    fontSize: '10px',
-    padding: '8px 8px',
+  const toggleSection = (category) => {
+    setOpenSections(prev => ({ ...prev, [category]: !prev[category] }));
   };
 
   return (
-    <div style={{ flexShrink: 0, borderTop: `1px solid ${COLORS.border}`, marginTop: '4px' }}>
-      <div style={barStyle}>
-        {primary.map((a, i) => (
-          <button key={i} onClick={() => handleTap(a)} style={btnStyle(a.partial)}>
-            {a.label}{a.partial ? '…' : ''}
-          </button>
-        ))}
-        {secondary.length > 0 && (
-          <button onClick={() => setShowSecondary(s => !s)} style={toggleStyle}>
-            {showSecondary ? '▲' : '▼'} MORE
-          </button>
-        )}
-      </div>
-      {showSecondary && secondary.length > 0 && (
-        <div style={barStyle}>
-          {secondary.map((a, i) => (
-            <button key={i} onClick={() => handleTap(a)} style={btnStyle(a.partial)}>
-              {a.label}{a.partial ? '…' : ''}
-            </button>
-          ))}
+    <div style={{ position: 'absolute', inset: 0, zIndex: 60, display: 'flex', justifyContent:'flex-end', alignItems: 'center', background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(4px)', padding: '20px 5% 20px 20px'}}>
+      <div style={{ width: '100%', maxWidth: '800px', maxHeight: '90vh', background: COLORS.bg, border: `1px solid ${COLORS.primary}`, display: 'flex', flexDirection: 'column', boxShadow: `0 0 30px ${COLORS.primary}40` }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '15px', borderBottom: `1px solid ${COLORS.primary}80`, background: `${COLORS.primary}15` }}>
+          <span style={{ color: COLORS.primary, fontWeight: 'bold', letterSpacing: '2px' }}>[ STEAMBREACH OPERATOR MANUAL ]</span>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: COLORS.danger, cursor: 'pointer', fontWeight: 'bold' }}>[ X ] CLOSE</button>
         </div>
-      )}
+
+        <div style={{ padding: '16px 20px', overflowY: 'auto', color: COLORS.text, fontFamily: 'monospace', fontSize: '13px', lineHeight: '1.6' }}>
+          <div style={{ color: COLORS.textDim, marginBottom: '12px' }}>
+            Sections start collapsed. Click <span style={{ color: COLORS.primary }}>[+]</span> to expand.
+          </div>
+
+          {SECTION_ORDER.map((category) => {
+            const rows = groupedSections[category] || [];
+            if (rows.length === 0) return null;
+
+            const isOpen = !!openSections[category];
+            return (
+              <div key={category} style={{ marginBottom: '10px', border: `1px solid ${COLORS.border}`, background: COLORS.bgPanel }}>
+                <button
+                  onClick={() => toggleSection(category)}
+                  style={{
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    background: 'transparent',
+                    border: 'none',
+                    color: COLORS.secondary,
+                    padding: '10px 12px',
+                    cursor: 'pointer',
+                    fontFamily: 'inherit',
+                    textAlign: 'left',
+                  }}
+                >
+                  <span>[ {category} ]</span>
+                  <span style={{ color: COLORS.primary, fontWeight: 'bold' }}>{isOpen ? '−' : '+'}</span>
+                </button>
+
+                {isOpen && (
+                  <div style={{ borderTop: `1px solid ${COLORS.border}`, padding: '10px 12px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr', gap: '10px' }}>
+                      {rows.map((row, idx) => (
+                        <React.Fragment key={`${category}_${row.cmd}_${idx}`}>
+                          <span style={{ color: COLORS.primary }}>{row.cmd}</span>
+                          <span>{row.desc}</span>
+                        </React.Fragment>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }

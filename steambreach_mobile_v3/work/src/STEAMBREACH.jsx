@@ -448,7 +448,7 @@ const getConnectedNodeIPs = (graph, ip) => {
     }, 900);
 
     return () => clearInterval(tick);
-  }, [world, getConnectedNodeIPs, markNodeInfection]);
+  }, [world]);
 
 const generateStory = async (ip, orgData) => {
   const orgName = orgData?.org?.orgName || 'Unknown Corp';

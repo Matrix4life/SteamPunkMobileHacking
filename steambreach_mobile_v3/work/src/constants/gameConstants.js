@@ -74,6 +74,10 @@ const COMMAND_REGISTRY = [
   { cmd: 'openssl <arg>', desc: 'Deploy ransomware payload (root)', category: 'PAYLOADS & MALWARE' },
   { cmd: 'crontab <arg>', desc: 'Schedule logic bombs (root)', category: 'PAYLOADS & MALWARE' },
   { cmd: 'wipe', desc: 'Scrub system logs (root) — Heat -15%, Blue Team alert -30. One use per node.', category: 'PAYLOADS & MALWARE' },
+  { cmd: 'findvirus', desc: 'Harvest malware signatures/modules from compromised host', category: 'PAYLOADS & MALWARE' },
+  { cmd: 'craftvirus <type>', desc: 'Compile custom malware (worm/stealer/wiper/ransom)', category: 'PAYLOADS & MALWARE' },
+  { cmd: 'viruses', desc: 'List crafted malware payloads and trade value', category: 'PAYLOADS & MALWARE' },
+  { cmd: 'usevirus <id>', desc: 'Deploy crafted virus on active target node', category: 'PAYLOADS & MALWARE' },
 
   // --- DATA & CRACKING ---
   { cmd: 'exfil <file>', desc: 'Extract financial assets. Trace +25%, Heat +10%', category: 'DATA & CRACKING' },
@@ -91,6 +95,7 @@ const COMMAND_REGISTRY = [
   { cmd: 'market', desc: 'Open unified Market Hub — commodities, software, hardware, rig management', category: 'ECONOMY & ITEMS' },
   { cmd: 'buy <item> <qty>', desc: 'Buy a commodity at current market price', category: 'ECONOMY & ITEMS' },
   { cmd: 'sell <item> <qty>', desc: 'Sell a commodity from your stash', category: 'ECONOMY & ITEMS' },
+  { cmd: 'tradevirus <id>', desc: 'Trade crafted malware on darknet exchange for BTC', category: 'ECONOMY & ITEMS' },
   { cmd: 'shop / hardware / rig', desc: 'Legacy aliases → opens the unified Market Hub', category: 'ECONOMY & ITEMS' },
 
   // --- MORALITY ---

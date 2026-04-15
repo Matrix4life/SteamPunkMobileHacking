@@ -236,6 +236,37 @@ const STEAMBREACH = () => {
     const heatPenalty = clamp(1 - (heat / 180), 0.45, 1);
     return Math.max(250, Math.floor(base * marketMult * heatPenalty));
   };
+
+  const resolveVirusReference = (input) => {
+    const query = (input || '').trim().toLowerCase();
+    if (!query) return { error: "[-] Usage: usevirus <virus_id>" };
+
+    const exactIdx = virusInventory.findIndex(v => v.id.toLowerCase() === query);
+    if (exactIdx !== -1) return { idx: exactIdx, virus: virusInventory[exactIdx] };
+
+    const prefixMatches = virusInventory
+      .map((v, idx) => ({ v, idx }))
+      .filter(({ v }) => v.id.toLowerCase().startsWith(query));
+    if (prefixMatches.length === 1) return { idx: prefixMatches[0].idx, virus: prefixMatches[0].v };
+    if (prefixMatches.length > 1) {
+      return { error: `[-] Ambiguous virus id: ${input}.\n[*] Matches: ${prefixMatches.map(({ v }) => v.id).join(', ')}` };
+    }
+
+    const exactNameMatches = virusInventory
+      .map((v, idx) => ({ v, idx }))
+      .filter(({ v }) => (v.name || '').toLowerCase() === query);
+    if (exactNameMatches.length === 1) return { idx: exactNameMatches[0].idx, virus: exactNameMatches[0].v };
+
+    const typeMatches = virusInventory
+      .map((v, idx) => ({ v, idx }))
+      .filter(({ v }) => (v.type || '').toLowerCase() === query);
+    if (typeMatches.length === 1) return { idx: typeMatches[0].idx, virus: typeMatches[0].v };
+    if (typeMatches.length > 1) {
+      return { error: `[-] Multiple ${query} payloads found.\n[*] Use a unique id prefix from 'viruses'.` };
+    }
+
+    return { error: `[-] Unknown virus id: ${input}. Type 'viruses' to list payloads.` };
+  };
 const generateStory = async (ip, orgData) => {
   const orgName = orgData?.org?.orgName || 'Unknown Corp';
   const orgType = orgData?.org?.type || 'corporation';
@@ -1900,10 +1931,10 @@ const verifyContract = (ip, objectiveType) => {
           lines.push('  No crafted viruses available.', '', '  Build flow:', '  1) findvirus', '  2) craftvirus <type>', '  3) usevirus <id> or tradevirus <id>');
           return lines.join('\n');
         }
-        lines.push('  ID               TYPE      POT  STL   EST TRADE');
-        lines.push('  -----------------------------------------------------------');
+        lines.push('  ID                         TYPE      POT  STL   EST TRADE');
+        lines.push('  ------------------------------------------------------------------');
         virusInventory.forEach(v => {
-          lines.push(`  ${v.id.slice(0, 14).padEnd(14)} ${v.type.toUpperCase().padEnd(9)} ${String(v.potency).padStart(3)}  ${String(v.stealth).padStart(3)}   ₿${getVirusTradeValue(v).toLocaleString()}`);
+          lines.push(`  ${v.id.padEnd(26)} ${v.type.toUpperCase().padEnd(9)} ${String(v.potency).padStart(3)}  ${String(v.stealth).padStart(3)}   ₿${getVirusTradeValue(v).toLocaleString()}`);
         });
         return lines.join('\n');
       },
@@ -1911,9 +1942,9 @@ const verifyContract = (ip, objectiveType) => {
       tradevirus: async () => {
         if (isInside) return "[-] tradevirus: Disconnect first. Trade only from gateway.";
         if (!arg1) return "[-] Usage: tradevirus <virus_id>";
-        const idx = virusInventory.findIndex(v => v.id.toLowerCase() === arg1.toLowerCase());
-        if (idx === -1) return `[-] Unknown virus id: ${arg1}. Type 'viruses' to list payloads.`;
-        const virus = virusInventory[idx];
+        const resolved = resolveVirusReference(arg1);
+        if (resolved.error) return resolved.error;
+        const { idx, virus } = resolved;
         const payout = getVirusTradeValue(virus);
         setMoney(m => m + payout);
         setVirusInventory(prev => prev.filter((_, i) => i !== idx));
@@ -1923,9 +1954,9 @@ const verifyContract = (ip, objectiveType) => {
       usevirus: async () => {
         if (!isInside) return "[-] usevirus: Must be deployed from inside a target host.";
         if (!arg1) return "[-] Usage: usevirus <virus_id>";
-        const idx = virusInventory.findIndex(v => v.id.toLowerCase() === arg1.toLowerCase());
-        if (idx === -1) return `[-] Unknown virus id: ${arg1}.`;
-        const virus = virusInventory[idx];
+        const resolved = resolveVirusReference(arg1);
+        if (resolved.error) return resolved.error;
+        const { idx, virus } = resolved;
         const node = world[targetIP];
         let out = `[+] Deploying ${virus.name} to ${targetIP}...\n`;
         if (virus.type === 'worm') {

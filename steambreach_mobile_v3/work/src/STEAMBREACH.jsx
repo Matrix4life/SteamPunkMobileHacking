@@ -3191,7 +3191,8 @@ return `[+] ${actionResult}\n[+] CHAOS +10 | ₿${payout.toLocaleString()} credi
       },
 
       use: async () => {
-        if (!arg1) return `[-] Usage: use <item>\n[*] Available: decoy (${consumables.decoy}), burner (${consumables.burner}), 0day (${consumables.zeroday})`;
+        const usableZeroDays = consumables.zeroday + zeroDays.length;
+        if (!arg1) return `[-] Usage: use <item>\n[*] Available: decoy (${consumables.decoy}), burner (${consumables.burner}), 0day (${usableZeroDays})`;
         
         if (arg1 === 'decoy') {
             if (consumables.decoy <= 0) return `[-] You don't have any Trace Decoys. Find them hidden in network files.`;
@@ -3207,13 +3208,17 @@ return `[+] ${actionResult}\n[+] CHAOS +10 | ₿${payout.toLocaleString()} credi
             return `[*] Routing connection through Burner VPN...\n[+] Global Heat reduced by 25%.`;
         }
         if (arg1 === '0day') {
-            if (consumables.zeroday <= 0) return `[-] You don't have any Zero-Day exploits.`;
+            if (usableZeroDays <= 0) return `[-] You don't have any Zero-Day exploits.`;
             if (!isInside) return `[-] Zero-Days must be used while inside a target network.`;
             if (privilege === 'root') return `[-] You already have root access on this node.`;
-            setConsumables(c => ({ ...c, zeroday: c.zeroday - 1 }));
+            if (consumables.zeroday > 0) {
+              setConsumables(c => ({ ...c, zeroday: c.zeroday - 1 }));
+            } else {
+              setZeroDays(prev => prev.slice(1));
+            }
             setPrivilege('root');
             playRootShell();
-            return `[*] Executing unknown Zero-Day payload...\n[+] Buffer overflow successful.\n[+] Root privileges granted. Bypassed all logging.`;
+            return `[*] Executing unknown Zero-Day payload...\n[+] Buffer overflow successful.\n[+] Root privileges granted. Bypassed all logging.${consumables.zeroday > 0 ? '' : '\n[*] Consumed one exploit from your Zero-Day vault.'}`;
         }
         return `[-] Unknown consumable item: ${arg1}`;
       },
@@ -3500,7 +3505,7 @@ MORALITY: ${getMoralityRank()}
 SIGNAL: ${morality.signal} | CHAOS: ${morality.chaos}
 
 INVENTORY:
-  DECOYS: ${consumables.decoy} | BURNER VPNS: ${consumables.burner} | ZERO-DAYS: ${consumables.zeroday}
+  DECOYS: ${consumables.decoy} | BURNER VPNS: ${consumables.burner} | ZERO-DAYS: ${consumables.zeroday + zeroDays.length}
 ────────────────────────────────────
 ${wantedTier === 'MANHUNT' ? '[!!!] REDUCE HEAT IMMEDIATELY. Your entire network is being dismantled.' : ''}${wantedTier === 'CRITICAL' ? '[!] Wallet frozen. Use wipe on rooted nodes or Bribe SOC Insider to reduce heat.' : ''}${wantedTier === 'HOT' ? '[!] Botnet nodes are being raided. Consider wiping logs or bribing SOC.' : ''}${score >= 40 ? '[!] Blue Team response elevated due to your skill profile.' : ''}${score <= -15 ? '[*] Sector defenses weakened. Favorable conditions.' : ''}`;
 },

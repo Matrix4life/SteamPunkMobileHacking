@@ -30,6 +30,26 @@ export default function NetworkMap({
 
   const isHacking = Boolean(targetIP);
 
+  const getInfectionVisual = (node = {}) => {
+    const state = node?.infection?.state || 'idle';
+    switch (state) {
+      case 'injecting':
+        return { color: COLORS.warning, pulse: true, ring: COLORS.warning, label: 'INJECTING' };
+      case 'infected':
+        return { color: COLORS.infected, pulse: true, ring: COLORS.infected, label: 'INFECTED' };
+      case 'spreading':
+        return { color: COLORS.primary, pulse: true, ring: COLORS.primary, label: 'SPREADING' };
+      case 'detected':
+        return { color: COLORS.danger, pulse: true, ring: COLORS.danger, label: 'DETECTED' };
+      case 'quarantined':
+        return { color: '#9aa6ff', pulse: false, ring: '#9aa6ff', label: 'QUARANTINED' };
+      case 'dead':
+        return { color: COLORS.textDim, pulse: false, ring: COLORS.textDim, label: 'DEAD' };
+      default:
+        return { color: null, pulse: false, ring: null, label: null };
+    }
+  };
+
   // --- Helper to check if an IP is a contract target ---
   const isContractTarget = (ip) => {
     if (activeContract) {
@@ -245,6 +265,14 @@ export default function NetworkMap({
           0%, 100% { opacity: 0.8; }
           50% { opacity: 1; filter: drop-shadow(0 0 8px currentColor); }
         }
+        @keyframes infectPulse {
+          0%, 100% { transform: scale(1); opacity: 0.9; }
+          50% { transform: scale(1.18); opacity: 1; }
+        }
+        @keyframes quarantinePulse {
+          0%, 100% { opacity: 0.35; }
+          50% { opacity: 0.8; }
+        }
 
         /* --- LOOT ANIMATION --- */
         @keyframes floatUpLoot {
@@ -354,15 +382,18 @@ export default function NetworkMap({
             const startY = node.parentIP && world[node.parentIP] ? world[node.parentIP].y : (expanded ? "90%" : "85%");
             const isActive = targetIP === ip;
             const isInfected = botnet.includes(ip);
+            const infectionState = node?.infection?.state || 'idle';
+            const linkHot = infectionState !== 'idle';
             let lineColor = `${COLORS.border}60`;
-            if (isActive) lineColor = COLORS.primary;
+            if (linkHot) lineColor = getInfectionVisual(node).color || COLORS.primary;
+            else if (isActive) lineColor = COLORS.primary;
             else if (isInfected) lineColor = `${COLORS.infected}80`;
             
             return (
               <g key={`ln-${ip}`}>
-                <line x1={startX} y1={startY} x2={node.x} y2={node.y} stroke={lineColor} strokeWidth="0.5" opacity={isHacking && !isActive && !isInfected ? 0.1 : 0.3} style={{ transition: 'opacity 0.5s ease' }} />
-                {(isActive || isInfected) && (
-                  <line x1={startX} y1={startY} x2={node.x} y2={node.y} stroke={lineColor} strokeWidth={isActive ? 1.5 : 1} className="data-stream" />
+                <line x1={startX} y1={startY} x2={node.x} y2={node.y} stroke={lineColor} strokeWidth="0.5" opacity={isHacking && !isActive && !isInfected && !linkHot ? 0.1 : 0.3} style={{ transition: 'opacity 0.5s ease' }} />
+                {(isActive || isInfected || linkHot) && (
+                  <line x1={startX} y1={startY} x2={node.x} y2={node.y} stroke={lineColor} strokeWidth={linkHot ? 1.8 : (isActive ? 1.5 : 1)} className={infectionState === 'quarantined' ? 'proxy-stream' : 'data-stream'} opacity={infectionState === 'dead' ? 0.35 : 1} style={{ filter: linkHot ? `drop-shadow(0 0 5px ${lineColor})` : undefined }} />
                 )}
               </g>
             );
@@ -405,10 +436,12 @@ export default function NetworkMap({
             const node = world[ip];
             const isProxy = proxies.includes(ip);
             const isTarget = isContractTarget(ip); // <-- Check if it's a target
+            const infectionVisual = getInfectionVisual(node);
             let nodeColor = node.sec === 'high' ? COLORS.danger : COLORS.mapNode;
             
             // Color override logic
-            if (isTarget) nodeColor = COLORS.warning; // Highlight target in yellow
+            if (infectionVisual.color) nodeColor = infectionVisual.color;
+            else if (isTarget) nodeColor = COLORS.warning; // Highlight target in yellow
             else if (isProxy) nodeColor = COLORS.proxy;
             else if (botnet.includes(ip)) nodeColor = COLORS.infected;
             else if (looted.includes(ip)) nodeColor = COLORS.looted;
@@ -418,7 +451,7 @@ export default function NetworkMap({
             
             let r = expanded ? (isMobile ? (isProxy ? 10 : 8) : (isProxy ? 6 : 5)) : (isProxy ? 4 : 3);
             if (isTarget && expanded) r += 2; // Make target nodes slightly bigger
-            const dimInactive = isHacking && !isActive && !isProxy && !botnet.includes(ip);
+            const dimInactive = isHacking && !isActive && !isProxy && !botnet.includes(ip) && !infectionVisual.color;
             
             return (
               <g key={`nd-${ip}`} 
@@ -434,18 +467,20 @@ export default function NetworkMap({
                       opacity: dimInactive ? 0.3 : 1, 
                       transition: 'transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.5s ease', 
                       transform: isHovered ? 'scale(1.8)' : 'scale(1)',
-                      animation: !isHovered && !isActive ? 'nodeIdlePulse 4s infinite alternate' : 'none'
+                      animation: infectionVisual.pulse ? 'infectPulse 0.9s ease-in-out infinite' : (!isHovered && !isActive ? 'nodeIdlePulse 4s infinite alternate' : 'none')
                     }}
                   >
                     {isActive && expanded && <circle cx="0" cy="0" r="12" fill="none" stroke={COLORS.primary} strokeWidth="1" className="data-stream" />}
                     {isProxy && <circle cx="0" cy="0" r={r + 4} fill="none" stroke={COLORS.proxy} strokeWidth="1.5" opacity="0.4" className="proxy-stream" />}
+                    {infectionVisual.ring && <circle cx="0" cy="0" r={r + 5} fill="none" stroke={infectionVisual.ring} strokeWidth="1.5" opacity={node?.infection?.state === 'quarantined' ? 0.8 : 0.55} strokeDasharray={node?.infection?.state === 'quarantined' ? '3 3' : '4 6'} style={{ animation: node?.infection?.state === 'quarantined' ? 'quarantinePulse 1.1s ease-in-out infinite' : undefined }} />}
                     
                     {/* Extra target ring */}
-                    {isTarget && !isProxy && <circle cx="0" cy="0" r={r + 3} fill="none" stroke={COLORS.warning} strokeWidth="1" opacity="0.6" strokeDasharray="2 2" />}
+                    {isTarget && !isProxy && !infectionVisual.ring && <circle cx="0" cy="0" r={r + 3} fill="none" stroke={COLORS.warning} strokeWidth="1" opacity="0.6" strokeDasharray="2 2" />}
                     
-                    <circle cx="0" cy="0" r={r} fill={nodeColor} />
+                    <circle cx="0" cy="0" r={r} fill={nodeColor} opacity={node?.infection?.state === 'dead' ? 0.35 : 1} />
                     
-                    {expanded && r >= 5 && <circle cx="0" cy="0" r={r/2} fill="#111" opacity="0.8" />}
+                    {expanded && r >= 5 && <circle cx="0" cy="0" r={r/2} fill="#111" opacity={node?.infection?.state === 'dead' ? 0.35 : 0.8} />}
+                    {expanded && infectionVisual.label && !isMobile && <text x="0" y={-12 - r} fill={nodeColor} fontSize="6px" textAnchor="middle" fontFamily="inherit" opacity="0.95" style={{ fontWeight: 'bold', letterSpacing: '1px', filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.9))' }}>{infectionVisual.label}</text>}
                     {expanded && isProxy && (
                       <text x="0" y={isMobile ? -16 : -12} fill="#fff" fontSize={isMobile ? '9px' : '6px'} textAnchor="middle" fontFamily="inherit" style={{ fontWeight: 'bold', filter: 'drop-shadow(0 2px 2px rgba(0,0,0,0.8))' }}>
                           HOP {proxyChain.indexOf(ip) + 1}
@@ -618,6 +653,11 @@ export default function NetworkMap({
           <div style={{ margin: '4px 0' }}><span style={{ color: COLORS.textDim }}>IP:</span> <span style={{ color: COLORS.ip }}>{hoveredNode}</span></div>
           <div style={{ margin: '4px 0' }}><span style={{ color: COLORS.textDim }}>SEC:</span> {inventory.includes('Scanner') ? world[hoveredNode].sec?.toUpperCase() : '[ENCRYPTED]'}</div>
           {world[hoveredNode].org && <div style={{ margin: '4px 0' }}><span style={{ color: COLORS.textDim }}>TYPE:</span> {world[hoveredNode].org.type?.toUpperCase()}</div>}
+          {world[hoveredNode].infection?.state && world[hoveredNode].infection.state !== 'idle' && (
+            <div style={{ margin: '6px 0 4px 0' }}>
+              <span style={{ color: COLORS.textDim }}>STATE:</span> <span style={{ color: getInfectionVisual(world[hoveredNode]).color || COLORS.text }}>{getInfectionVisual(world[hoveredNode]).label}</span>
+            </div>
+          )}
           
           {botnet.includes(hoveredNode) && <div style={{ color: COLORS.bgDark, background: COLORS.infected, padding: '2px 4px', borderRadius: '2px', display: 'inline-block', marginTop: '6px', fontWeight: 'bold' }}>SLIVER C2 ACTIVE</div>}
           {proxies.includes(hoveredNode) && <div style={{ color: COLORS.bgDark, background: COLORS.proxy, padding: '2px 4px', borderRadius: '2px', display: 'inline-block', marginTop: '6px', fontWeight: 'bold' }}>PROXY TUNNEL ACTIVE</div>}

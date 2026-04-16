@@ -119,9 +119,10 @@ const STEAMBREACH = () => {
   
   const [currentRegion, setCurrentRegion] = useState('us-gov');
   const [marketPrices, setMarketPrices] = useState(generateMarketPrices(currentRegion));
-  const [stash, setStash] = useState({ cc_dumps: 0, botnets: 0, exploits: 0, zerodays: 0 });
+  const [stash, setStash] = useState({ cc_dumps: 0, ssn_fullz: 0, botnets: 0, exploits: 0, zerodays: 0 });
   const [empireListings, setEmpireListings] = useState({
     cc_dumps:  { listed: 0, priceMult: 1.0 },
+    ssn_fullz: { listed: 0, priceMult: 1.0 },
     botnets:   { listed: 0, priceMult: 1.0 },
     exploits:  { listed: 0, priceMult: 1.0 },
     zerodays:  { listed: 0, priceMult: 1.0 },
@@ -186,6 +187,7 @@ const STEAMBREACH = () => {
   const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
   const STASH_LABELS = {
     cc_dumps: 'CC Dumps',
+    ssn_fullz: 'SSN Fullz',
     botnets: 'Botnet Access',
     exploits: 'Exploit Kits',
     zerodays: 'Weaponized 0-Days',
@@ -197,6 +199,7 @@ const STEAMBREACH = () => {
         ...rival,
         stash: {
           cc_dumps: Math.max(0, rival.stash.cc_dumps || 0),
+          ssn_fullz: Math.max(0, rival.stash.ssn_fullz || 0),
           botnets: Math.max(0, rival.stash.botnets || 0),
           exploits: Math.max(0, rival.stash.exploits || 0),
           zerodays: Math.max(0, rival.stash.zerodays || 0),
@@ -208,6 +211,7 @@ const STEAMBREACH = () => {
       ...rival,
       stash: {
         cc_dumps: Math.floor(4 + skill * 8 + Math.random() * 8),
+        ssn_fullz: Math.floor(2 + skill * 4 + Math.random() * 5),
         botnets: Math.floor(1 + skill * 3 + Math.random() * 4),
         exploits: Math.floor(skill + Math.random() * 3),
         zerodays: Math.floor(Math.random() * Math.max(1, Math.floor(skill / 2))),
@@ -622,7 +626,7 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
     setSoftwareOwned(data.softwareOwned || []);
     setBtcIndex(data.btcIndex || 1.0);
     setConsumables(data.consumables || { decoy: 0, burner: 0, zeroday: 0 });
-    setStash(data.stash || { cc_dumps: 0, botnets: 0, exploits: 0, zerodays: 0 });
+    setStash(data.stash || { cc_dumps: 0, ssn_fullz: 0, botnets: 0, exploits: 0, zerodays: 0 });
     setCurrentRegion(data.currentRegion || 'us-gov');
     if (data.marketPrices) setMarketPrices(data.marketPrices);
     setUnlockedFiles(data.unlockedFiles || []);
@@ -690,7 +694,7 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
     setRig({ cpu:null, gpu:null, ram:null, ssd:null, psu:null, cool:null, net:null, case:null });
     setPartsBag([]); setHwMarketData(null);
     setSoftwareOwned([]); setBtcIndex(1.0);
-    setStash({ cc_dumps: 0, botnets: 0, exploits: 0, zerodays: 0 });
+    setStash({ cc_dumps: 0, ssn_fullz: 0, botnets: 0, exploits: 0, zerodays: 0 });
     setCurrentRegion('us-gov'); setMarketPrices(generateMarketPrices(currentRegion));
     setUnlockedFiles([]); setContracts([]);
     setWorld(DEFAULT_WORLD);
@@ -718,8 +722,8 @@ useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
   // ── DARKNET AUTO-SELL TICK (tycoon layer) ────────────
   useEffect(() => {
     if (!operator) return;
-    const BASE_DEMAND = { cc_dumps: 0.78, botnets: 0.52, exploits: 0.34, zerodays: 0.14 };
-    const NAMES = { cc_dumps: 'CC Dumps', botnets: 'Botnet Access', exploits: 'Exploit Kits', zerodays: 'Weaponized 0-Days' };
+    const BASE_DEMAND = { cc_dumps: 0.78, ssn_fullz: 0.61, botnets: 0.52, exploits: 0.34, zerodays: 0.14 };
+    const NAMES = { cc_dumps: 'CC Dumps', ssn_fullz: 'SSN Fullz', botnets: 'Botnet Access', exploits: 'Exploit Kits', zerodays: 'Weaponized 0-Days' };
     const tick = setInterval(() => {
       setEmpireListings(prev => {
         const next = { ...prev };
@@ -1798,7 +1802,7 @@ const verifyContract = (ip, objectiveType) => {
       buy: async () => {
         if (isInside) return `[-] Cannot trade while inside a target.`;
         if (walletFrozen) return `[-] WALLET FROZEN: Transaction channels blocked by law enforcement.\n[*] Reduce heat below 75% to restore access. Try 'wipe' on rooted nodes or Bribe SOC Insider.`;
-        if (!arg1 || !args[2]) return `[-] Usage: buy <item> <qty>\n[*] Items: cc_dumps, botnets, exploits, zerodays`;
+        if (!arg1 || !args[2]) return `[-] Usage: buy <item> <qty>\n[*] Items: cc_dumps, ssn_fullz, botnets, exploits, zerodays`;
         const itemKey = arg1.toLowerCase();
         const qty = parseInt(args[2]);
         if (!COMMODITIES[itemKey]) return `[-] Unknown commodity: ${itemKey}`;
@@ -1819,7 +1823,7 @@ const verifyContract = (ip, objectiveType) => {
 
       sell: async () => {
         if (isInside) return `[-] Cannot trade while inside a target.`;
-        if (!arg1 || !args[2]) return `[-] Usage: sell <item> <qty>\n[*] Items: cc_dumps, botnets, exploits, zerodays`;
+        if (!arg1 || !args[2]) return `[-] Usage: sell <item> <qty>\n[*] Items: cc_dumps, ssn_fullz, botnets, exploits, zerodays`;
         const itemKey = arg1.toLowerCase();
         let qty = parseInt(args[2]);
         if (!COMMODITIES[itemKey]) return `[-] Unknown commodity: ${itemKey}`;
@@ -1951,17 +1955,18 @@ const verifyContract = (ip, objectiveType) => {
           }
           setHeat(h => Math.min(100, h + 6));
         } else if (virus.type === 'stealer') {
-          const cash = Math.floor((virus.potency * 900) * getEconomyMarketMult());
           const dumps = Math.max(1, Math.floor(virus.potency / 3));
-          setMoney(m => m + cash);
-          setStash(prev => ({ ...prev, cc_dumps: (prev.cc_dumps || 0) + dumps }));
+          const fullz = Math.max(1, Math.floor(virus.potency / 4));
+          setStash(prev => ({
+            ...prev,
+            cc_dumps: (prev.cc_dumps || 0) + dumps,
+            ssn_fullz: (prev.ssn_fullz || 0) + fullz
+          }));
           setHeat(h => Math.min(100, h + 4));
-          out += `[+] Credential vault exfiltrated: +₿${cash.toLocaleString()} and +${dumps} CC dumps.\n`;
+          out += `[+] Credential vault exfiltrated: +${dumps} CC dumps and +${fullz} SSN fullz.\n[*] Sell via market to monetize.\n`;
         } else if (virus.type === 'wiper') {
-          const bounty = Math.floor((virus.potency * 1200) * getHeatRiskMult());
-          setMoney(m => m + bounty);
           setHeat(h => Math.min(100, h + 12));
-          out += `[+] Wiper triggered. Target infrastructure bricked.\n[+] Chaos bounty: ₿${bounty.toLocaleString()}.\n[!] Heat +12%.\n`;
+          out += `[+] Wiper triggered. Target infrastructure bricked.\n[!] No direct payout. Destruction raises pressure and heat.\n[!] Heat +12%.\n`;
         } else if (virus.type === 'ransom') {
           const payout = Math.floor((virus.potency * 1500) * getEconomyMarketMult());
           setMoney(m => m + payout);
@@ -2437,8 +2442,6 @@ if (choice !== '1' && choice !== '2') {
     }));
 
     // Use the payout from the story generator, or fall back to 5k
-    const payout = activeStory.good_payout || 5000;
-    setMoney(m => m + payout);
     
     // Clear the story so it can't be spammed
    const actionResult = activeStory.good_action;
@@ -2449,7 +2452,7 @@ setWorld(prev => {
   if (nw[storyIP]) nw[storyIP].storyCompleted = true;
   return nw;
 });
-return `[+] ${actionResult}\n[+] SIGNAL +10 | ₿${payout.toLocaleString()} credits transferred.`;
+return `[+] ${actionResult}\n[+] SIGNAL +10`;
     }
 
   if (choice === '2') {
@@ -2460,8 +2463,6 @@ return `[+] ${actionResult}\n[+] SIGNAL +10 | ₿${payout.toLocaleString()} cred
     }));
 
     // Chaos usually pays better in cyberpunk—it's high risk, high reward
-    const payout = activeStory.evil_payout || 25000;
-    setMoney(m => m + payout);
     
     const actionResult = activeStory.evil_action;
 const storyIP = activeStory.ip;
@@ -2471,7 +2472,7 @@ setWorld(prev => {
   if (nw[storyIP]) nw[storyIP].storyCompleted = true;
   return nw;
 });
-return `[+] ${actionResult}\n[+] CHAOS +10 | ₿${payout.toLocaleString()} credits laundered.`;
+return `[+] ${actionResult}\n[+] CHAOS +10`;
   }
 },
       stash: async () => {
@@ -2796,14 +2797,12 @@ return `[+] ${actionResult}\n[+] CHAOS +10 | ₿${payout.toLocaleString()} credi
           setTimeout(() => {
             const mult = getRewardMult(gameMode);
             if (payload === 'shred') {
-              const bounty = Math.floor(bombVal * 1.5 * mult);
-              setMoney(m => m + bounty);
               setHeat(h => Math.min(h + 15, 100));
               setBotnet(prev => prev.filter(ip => ip !== bombIP));
               setProxies(prev => prev.filter(ip => ip !== bombIP));
               setWorld(prev => { const nw = { ...prev }; delete nw[bombIP]; return nw; });
               playDestroy();
-              setTerminal(prev => [...prev, { type: 'out', text: `\n[DETONATION] Logic bomb triggered on ${bombOrg} (${bombIP}).\n[+] shred executed. System destroyed. Bounty: ₿${bounty.toLocaleString()}. Heat +15%.`, isNew: true }]);
+              setTerminal(prev => [...prev, { type: 'out', text: `\n[DETONATION] Logic bomb triggered on ${bombOrg} (${bombIP}).\n[+] shred executed. System destroyed. No direct payout. Heat +15%.`, isNew: true }]);
             } else {
               const ransomAsk = Math.floor(120000 * mult);
               const paid = Math.random() < 0.6;
@@ -2829,14 +2828,12 @@ return `[+] ${actionResult}\n[+] CHAOS +10 | ₿${payout.toLocaleString()} credi
           setTimeout(() => {
             const mult = getRewardMult(gameMode);
             if (payload === 'shred') {
-              const bounty = Math.floor(bombVal * 1.5 * mult);
-              setMoney(m => m + bounty);
               setHeat(h => Math.min(h + 12, 100));
               setBotnet(prev => prev.filter(ip => ip !== bombIP));
               setProxies(prev => prev.filter(ip => ip !== bombIP));
               setWorld(prev => { const nw = { ...prev }; delete nw[bombIP]; return nw; });
               playDestroy();
-              setTerminal(prev => [...prev, { type: 'out', text: `\n[DETONATION] Cron job fired on ${bombOrg}. shred complete. Bounty: ₿${bounty.toLocaleString()}. Heat +12%.`, isNew: true }]);
+              setTerminal(prev => [...prev, { type: 'out', text: `\n[DETONATION] Cron job fired on ${bombOrg}. shred complete. No direct payout. Heat +12%.`, isNew: true }]);
             } else {
               const ransomAsk = Math.floor(120000 * mult);
               const paid = Math.random() < 0.6;
@@ -2855,14 +2852,12 @@ return `[+] ${actionResult}\n[+] CHAOS +10 | ₿${payout.toLocaleString()} credi
         
         setTimeout(() => {
           if (payload === 'shred') {
-            const bounty = Math.floor(bombVal * 1.5);
-            setMoney(m => m + bounty);
             setHeat(h => Math.min(h + 10, 100));
             setBotnet(prev => prev.filter(ip => ip !== bombIP));
             setProxies(prev => prev.filter(ip => ip !== bombIP));
             setWorld(prev => { const nw = { ...prev }; delete nw[bombIP]; return nw; });
             playDestroy();
-            setTerminal(prev => [...prev, { type: 'out', text: `\n[DETONATION] Logic bomb on ${bombOrg} — DESTROYED. Bounty: ₿${bounty.toLocaleString()}.`, isNew: true }]);
+            setTerminal(prev => [...prev, { type: 'out', text: `\n[DETONATION] Logic bomb on ${bombOrg} — DESTROYED. No direct payout.`, isNew: true }]);
           } else {
             const ransomAsk = 120000;
             const paid = Math.random() < 0.6;
@@ -3252,9 +3247,7 @@ return `[+] ${actionResult}\n[+] CHAOS +10 | ₿${payout.toLocaleString()} credi
         if (!isInside || targetIP !== pendingInteraction.id.split(':')[0]) return '[-] You need to be on the exposed civilian machine to do that.';
         const chaosGain = pendingInteraction.chaos || 0;
         const heatDelta = pendingInteraction.heatDelta || 0;
-        const payout = Math.floor(Math.random() * 45) + 15;
         setMorality(prev => ({ ...prev, chaos: prev.chaos + chaosGain }));
-        setMoney(m => m + payout);
         if (heatDelta) setHeat(h => Math.max(0, Math.min(100, h + heatDelta)));
         const doomedIP = targetIP;
         const doomedName = world[doomedIP]?.org?.orgName || doomedIP;
@@ -3265,7 +3258,7 @@ return `[+] ${actionResult}\n[+] CHAOS +10 | ₿${payout.toLocaleString()} credi
         setWorld(prev => { const nw = { ...prev }; delete nw[doomedIP]; return nw; });
         playDestroy();
         return `[+] Kernel panic induced on ${doomedName}. Endpoint crashed hard and dropped off the grid.
-[+] CHAOS +${chaosGain} | ₿${payout.toLocaleString()} scavenged.`;
+[+] CHAOS +${chaosGain}`;
       },
 
       salvage: async () => {
@@ -3282,10 +3275,10 @@ return `[+] ${actionResult}\n[+] CHAOS +10 | ₿${payout.toLocaleString()} credi
           out += `
 [+] Recovered: Burner VPN x1`;
         } else if (roll < 0.92) {
-          const amt = Math.floor(Math.random() * 350) + 150;
-          setMoney(m => m + amt);
+          const fullz = Math.floor(Math.random() * 3) + 1;
+          setStash(s => ({ ...s, ssn_fullz: (s.ssn_fullz || 0) + fullz }));
           out += `
-[+] Liquidated hidden wallet data for ₿${amt.toLocaleString()}`;
+[+] Recovered identity archive: SSN Fullz x${fullz}`;
         } else {
           setConsumables(c => ({ ...c, zeroday: c.zeroday + 1 }));
           out += `
@@ -3326,10 +3319,10 @@ return `[+] ${actionResult}\n[+] CHAOS +10 | ₿${payout.toLocaleString()} credi
       });
 
       if (fileName === 'wallet.dat') {
-        const amt = Math.floor(Math.random() * 800 + 200);
-        setMoney(m => m + amt);
+        const fullz = Math.floor(Math.random() * 4) + 2;
+        setStash(s => ({ ...s, ssn_fullz: (s.ssn_fullz || 0) + fullz }));
         playSuccess();
-        return `[+] SUCCESS: Decrypted slush fund wallet.\n[+] ₿${amt.toLocaleString()} added to your account.`;
+        return `[+] SUCCESS: Decrypted hidden archive.\n[+] SSN Fullz x${fullz} added to stash. Sell via market.`;
       } else if (fileName === 'decoy.bin') {
         setConsumables(c => ({ ...c, decoy: c.decoy + 1 }));
         playSuccess();

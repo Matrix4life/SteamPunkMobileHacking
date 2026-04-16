@@ -129,6 +129,7 @@ const DEV_COMMANDS = [
 const REGIONS = ['us-gov', 'ru-darknet', 'cn-financial', 'eu-central'];
 const COMMODITIES = {
   cc_dumps: { name: 'CC Dumps', base: 20, vol: 15 },
+  ssn_fullz: { name: 'SSN Fullz', base: 60, vol: 40 },
   botnets: { name: 'Botnet Access', base: 300, vol: 200 },
   exploits: { name: 'Exploit Kits', base: 1500, vol: 800 },
   zerodays: { name: 'Weaponized 0-Days', base: 25000, vol: 15000 },

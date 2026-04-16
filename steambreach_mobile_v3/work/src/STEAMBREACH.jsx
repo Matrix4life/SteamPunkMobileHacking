@@ -47,7 +47,7 @@ import {
   generateDirectorNarrative,
 } from './ai/director';
 import { generateNewTarget, DEFAULT_WORLD } from './world/generation';
-import { SyntaxText, Typewriter} from './components/TerminalBits';
+import { SyntaxText, Typewriter, HelpPanel } from './components/TerminalBits';
 import RigDisplay from './components/RigDisplay';
 import NetworkMap from './components/NetworkMap';
 import Header from './components/Header';

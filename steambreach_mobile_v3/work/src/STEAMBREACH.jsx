@@ -1900,19 +1900,25 @@ const verifyContract = (ip, objectiveType) => {
           lines.push('  No crafted viruses available.', '', '  Build flow:', '  1) findvirus', '  2) craftvirus <type>', '  3) usevirus <id> or tradevirus <id>');
           return lines.join('\n');
         }
-        lines.push('  ID               TYPE      POT  STL   EST TRADE');
-        lines.push('  -----------------------------------------------------------');
+        lines.push('  ID                          TYPE      POT  STL   EST TRADE');
+        lines.push('  -----------------------------------------------------------------');
         virusInventory.forEach(v => {
-          lines.push(`  ${v.id.slice(0, 14).padEnd(14)} ${v.type.toUpperCase().padEnd(9)} ${String(v.potency).padStart(3)}  ${String(v.stealth).padStart(3)}   ₿${getVirusTradeValue(v).toLocaleString()}`);
+          lines.push(`  ${v.id.padEnd(27)} ${v.type.toUpperCase().padEnd(9)} ${String(v.potency).padStart(3)}  ${String(v.stealth).padStart(3)}   ₿${getVirusTradeValue(v).toLocaleString()}`);
         });
+        lines.push('', '  TIP: usevirus accepts full ID, ID prefix, or virus type if unique.');
         return lines.join('\n');
       },
 
       tradevirus: async () => {
         if (isInside) return "[-] tradevirus: Disconnect first. Trade only from gateway.";
-        if (!arg1) return "[-] Usage: tradevirus <virus_id>";
-        const idx = virusInventory.findIndex(v => v.id.toLowerCase() === arg1.toLowerCase());
-        if (idx === -1) return `[-] Unknown virus id: ${arg1}. Type 'viruses' to list payloads.`;
+        if (!arg1) return "[-] Usage: tradevirus <virus_id|id_prefix|type>";
+        const query = arg1.toLowerCase();
+        let matches = virusInventory.map((v, i) => ({ v, i })).filter(({ v }) => v.id.toLowerCase() === query);
+        if (matches.length === 0) matches = virusInventory.map((v, i) => ({ v, i })).filter(({ v }) => v.id.toLowerCase().startsWith(query));
+        if (matches.length === 0) matches = virusInventory.map((v, i) => ({ v, i })).filter(({ v }) => v.type.toLowerCase() === query || v.name.toLowerCase().includes(query));
+        if (matches.length === 0) return `[-] Unknown virus selector: ${arg1}. Type 'viruses' to list payloads.`;
+        if (matches.length > 1) return `[-] Ambiguous selector '${arg1}'. Multiple payloads match. Use full ID from 'viruses'.`;
+        const idx = matches[0].i;
         const virus = virusInventory[idx];
         const payout = getVirusTradeValue(virus);
         setMoney(m => m + payout);
@@ -1922,9 +1928,14 @@ const verifyContract = (ip, objectiveType) => {
 
       usevirus: async () => {
         if (!isInside) return "[-] usevirus: Must be deployed from inside a target host.";
-        if (!arg1) return "[-] Usage: usevirus <virus_id>";
-        const idx = virusInventory.findIndex(v => v.id.toLowerCase() === arg1.toLowerCase());
-        if (idx === -1) return `[-] Unknown virus id: ${arg1}.`;
+        if (!arg1) return "[-] Usage: usevirus <virus_id|id_prefix|type>";
+        const query = arg1.toLowerCase();
+        let matches = virusInventory.map((v, i) => ({ v, i })).filter(({ v }) => v.id.toLowerCase() === query);
+        if (matches.length === 0) matches = virusInventory.map((v, i) => ({ v, i })).filter(({ v }) => v.id.toLowerCase().startsWith(query));
+        if (matches.length === 0) matches = virusInventory.map((v, i) => ({ v, i })).filter(({ v }) => v.type.toLowerCase() === query || v.name.toLowerCase().includes(query));
+        if (matches.length === 0) return `[-] Unknown virus selector: ${arg1}.`;
+        if (matches.length > 1) return `[-] Ambiguous selector '${arg1}'. Multiple payloads match. Use full ID from 'viruses'.`;
+        const idx = matches[0].i;
         const virus = virusInventory[idx];
         const node = world[targetIP];
         let out = `[+] Deploying ${virus.name} to ${targetIP}...\n`;

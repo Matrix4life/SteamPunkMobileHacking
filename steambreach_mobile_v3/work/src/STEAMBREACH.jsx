@@ -236,220 +236,6 @@ const STEAMBREACH = () => {
     const heatPenalty = clamp(1 - (heat / 180), 0.45, 1);
     return Math.max(250, Math.floor(base * marketMult * heatPenalty));
   };
-
-  const resolveVirusReference = (input) => {
-    const query = (input || '').trim().toLowerCase();
-    if (!query) return { error: "[-] Usage: usevirus <virus_id>" };
-
-    const exactIdx = virusInventory.findIndex(v => v.id.toLowerCase() === query);
-    if (exactIdx !== -1) return { idx: exactIdx, virus: virusInventory[exactIdx] };
-
-    const prefixMatches = virusInventory
-      .map((v, idx) => ({ v, idx }))
-      .filter(({ v }) => v.id.toLowerCase().startsWith(query));
-    if (prefixMatches.length === 1) return { idx: prefixMatches[0].idx, virus: prefixMatches[0].v };
-    if (prefixMatches.length > 1) {
-      return { error: `[-] Ambiguous virus id: ${input}.\n[*] Matches: ${prefixMatches.map(({ v }) => v.id).join(', ')}` };
-    }
-
-    const exactNameMatches = virusInventory
-      .map((v, idx) => ({ v, idx }))
-      .filter(({ v }) => (v.name || '').toLowerCase() === query);
-    if (exactNameMatches.length === 1) return { idx: exactNameMatches[0].idx, virus: exactNameMatches[0].v };
-
-    const typeMatches = virusInventory
-      .map((v, idx) => ({ v, idx }))
-      .filter(({ v }) => (v.type || '').toLowerCase() === query);
-    if (typeMatches.length === 1) return { idx: typeMatches[0].idx, virus: typeMatches[0].v };
-    if (typeMatches.length > 1) {
-      return { error: `[-] Multiple ${query} payloads found.\n[*] Use a unique id prefix from 'viruses'.` };
-    }
-
-    return { error: `[-] Unknown virus id: ${input}. Type 'viruses' to list payloads.` };
-  };
-
-const INFECTION_STATES = {
-  IDLE: 'idle',
-  INJECTING: 'injecting',
-  INFECTED: 'infected',
-  SPREADING: 'spreading',
-  EXFILTRATING: 'exfiltrating',
-  DETECTED: 'detected',
-  CONTESTED: 'contested',
-  QUARANTINED: 'quarantined',
-  BURNED: 'burned',
-  DEAD: 'dead',
-};
-
-const markNodeInfection = (graph, ip, virus, overrides = {}) => {
-  const node = graph?.[ip];
-  if (!node) return graph;
-
-  return {
-    ...graph,
-    [ip]: {
-      ...node,
-      infection: {
-        state: INFECTION_STATES.IDLE,
-        virusId: null,
-        virusType: null,
-        stage: 0,
-        timer: 0,
-        sourceNodeId: null,
-        spreadAttempted: false,
-        ...node.infection,
-        virusId: virus?.id || node?.infection?.virusId || null,
-        virusType: virus?.type || node?.infection?.virusType || null,
-        ...overrides,
-      },
-    },
-  };
-};
-
-const getConnectedNodeIPs = (graph, ip) => {
-  const node = graph?.[ip];
-  if (!node) return [];
-
-  const neighbors = new Set();
-
-  // parent link
-  if (node.parentIP && graph[node.parentIP] && node.parentIP !== 'local') {
-    neighbors.add(node.parentIP);
-  }
-
-  // child links
-  Object.entries(graph || {}).forEach(([otherIP, otherNode]) => {
-    if (otherIP === ip) return;
-    if (otherNode?.isHidden) return;
-    if (otherNode?.parentIP === ip) neighbors.add(otherIP);
-  });
-
-  return [...neighbors];
-};
-  useEffect(() => {
-    const hasActiveInfections = Object.values(world || {}).some((node) => node?.infection && node.infection.state !== INFECTION_STATES.IDLE);
-    if (!hasActiveInfections) return undefined;
-
-    const tick = setInterval(() => {
-      setWorld((prev) => {
-        let next = prev;
-        let changed = false;
-        const infectNode = (graph, ip, virus, sourceNodeId = null) => markNodeInfection(graph, ip, virus, {
-          state: INFECTION_STATES.INJECTING,
-          stage: 0.12,
-          timer: virus.type === 'worm' ? 2 : 0,
-          sourceNodeId,
-          spreadAttempted: false,
-        });
-
-        for (const [ip, node] of Object.entries(prev || {})) {
-          if (ip === 'local' || !node?.infection) continue;
-          const infection = node.infection;
-
-          if (infection.state === INFECTION_STATES.INJECTING) {
-            changed = true;
-            const nextStage = (infection.stage || 0) + 0.45;
-            next = {
-              ...next,
-              [ip]: {
-                ...next[ip],
-                infection: {
-                  ...infection,
-                  state: nextStage >= 1 ? INFECTION_STATES.INFECTED : INFECTION_STATES.INJECTING,
-                  stage: Math.min(1, nextStage),
-                },
-              },
-            };
-            continue;
-          }
-
-          if (infection.state === INFECTION_STATES.INFECTED) {
-            changed = true;
-            const nextTimer = Math.max(0, (infection.timer || 0) - 1);
-            let nextState = infection.state;
-            if (infection.virusType === 'worm' && nextTimer <= 0) nextState = INFECTION_STATES.SPREADING;
-            else if (infection.virusType === 'wiper' && (infection.stage || 0) >= 1) nextState = INFECTION_STATES.DEAD;
-            else if (Math.random() < (infection.virusType === 'stealer' ? 0.18 : 0.12)) nextState = INFECTION_STATES.DETECTED;
-            next = {
-              ...next,
-              [ip]: {
-                ...next[ip],
-                infection: {
-                  ...infection,
-                  state: nextState,
-                  timer: nextTimer,
-                  stage: Math.min(1, (infection.stage || 0) + 0.2),
-                },
-              },
-            };
-            continue;
-          }
-
-          if (infection.state === INFECTION_STATES.SPREADING) {
-            changed = true;
-            let updatedInfection = {
-              ...infection,
-              stage: 1,
-              spreadAttempted: true,
-            };
-            let graph = next;
-            if (!infection.spreadAttempted && infection.virusType === 'worm') {
-              const neighbors = getConnectedNodeIPs(next, ip)
-                .filter((nodeIP) => !next[nodeIP]?.infection || next[nodeIP].infection.state === INFECTION_STATES.IDLE);
-              if (neighbors.length > 0) {
-                const targetNeighbor = neighbors[Math.floor(Math.random() * neighbors.length)];
-                graph = infectNode(graph, targetNeighbor, { id: infection.virusId, type: infection.virusType }, ip);
-              }
-            }
-            next = {
-              ...graph,
-              [ip]: {
-                ...graph[ip],
-                infection: updatedInfection,
-              },
-            };
-            continue;
-          }
-
-          if (infection.state === INFECTION_STATES.DETECTED) {
-            changed = true;
-            next = {
-              ...next,
-              [ip]: {
-                ...next[ip],
-                infection: {
-                  ...infection,
-                  state: INFECTION_STATES.QUARANTINED,
-                  timer: 0,
-                },
-              },
-            };
-            continue;
-          }
-
-          if (infection.state === INFECTION_STATES.QUARANTINED) {
-            if (infection.virusType !== 'wiper') continue;
-            changed = true;
-            next = {
-              ...next,
-              [ip]: {
-                ...next[ip],
-                infection: {
-                  ...infection,
-                  state: INFECTION_STATES.DEAD,
-                },
-              },
-            };
-          }
-        }
-
-        return changed ? next : prev;
-      });
-    }, 900);
-
-    return () => clearInterval(tick);
-  }, [world]);
-
 const generateStory = async (ip, orgData) => {
   const orgName = orgData?.org?.orgName || 'Unknown Corp';
   const orgType = orgData?.org?.type || 'corporation';
@@ -2114,20 +1900,26 @@ const verifyContract = (ip, objectiveType) => {
           lines.push('  No crafted viruses available.', '', '  Build flow:', '  1) findvirus', '  2) craftvirus <type>', '  3) usevirus <id> or tradevirus <id>');
           return lines.join('\n');
         }
-        lines.push('  ID                         TYPE      POT  STL   EST TRADE');
-        lines.push('  ------------------------------------------------------------------');
+        lines.push('  ID                          TYPE      POT  STL   EST TRADE');
+        lines.push('  -----------------------------------------------------------------');
         virusInventory.forEach(v => {
-          lines.push(`  ${v.id.padEnd(26)} ${v.type.toUpperCase().padEnd(9)} ${String(v.potency).padStart(3)}  ${String(v.stealth).padStart(3)}   ₿${getVirusTradeValue(v).toLocaleString()}`);
+          lines.push(`  ${v.id.padEnd(27)} ${v.type.toUpperCase().padEnd(9)} ${String(v.potency).padStart(3)}  ${String(v.stealth).padStart(3)}   ₿${getVirusTradeValue(v).toLocaleString()}`);
         });
+        lines.push('', '  TIP: usevirus accepts full ID, ID prefix, or virus type if unique.');
         return lines.join('\n');
       },
 
       tradevirus: async () => {
         if (isInside) return "[-] tradevirus: Disconnect first. Trade only from gateway.";
-        if (!arg1) return "[-] Usage: tradevirus <virus_id>";
-        const resolved = resolveVirusReference(arg1);
-        if (resolved.error) return resolved.error;
-        const { idx, virus } = resolved;
+        if (!arg1) return "[-] Usage: tradevirus <virus_id|id_prefix|type>";
+        const query = arg1.toLowerCase();
+        let matches = virusInventory.map((v, i) => ({ v, i })).filter(({ v }) => v.id.toLowerCase() === query);
+        if (matches.length === 0) matches = virusInventory.map((v, i) => ({ v, i })).filter(({ v }) => v.id.toLowerCase().startsWith(query));
+        if (matches.length === 0) matches = virusInventory.map((v, i) => ({ v, i })).filter(({ v }) => v.type.toLowerCase() === query || v.name.toLowerCase().includes(query));
+        if (matches.length === 0) return `[-] Unknown virus selector: ${arg1}. Type 'viruses' to list payloads.`;
+        if (matches.length > 1) return `[-] Ambiguous selector '${arg1}'. Multiple payloads match. Use full ID from 'viruses'.`;
+        const idx = matches[0].i;
+        const virus = virusInventory[idx];
         const payout = getVirusTradeValue(virus);
         setMoney(m => m + payout);
         setVirusInventory(prev => prev.filter((_, i) => i !== idx));
@@ -2136,10 +1928,15 @@ const verifyContract = (ip, objectiveType) => {
 
       usevirus: async () => {
         if (!isInside) return "[-] usevirus: Must be deployed from inside a target host.";
-        if (!arg1) return "[-] Usage: usevirus <virus_id>";
-        const resolved = resolveVirusReference(arg1);
-        if (resolved.error) return resolved.error;
-        const { idx, virus } = resolved;
+        if (!arg1) return "[-] Usage: usevirus <virus_id|id_prefix|type>";
+        const query = arg1.toLowerCase();
+        let matches = virusInventory.map((v, i) => ({ v, i })).filter(({ v }) => v.id.toLowerCase() === query);
+        if (matches.length === 0) matches = virusInventory.map((v, i) => ({ v, i })).filter(({ v }) => v.id.toLowerCase().startsWith(query));
+        if (matches.length === 0) matches = virusInventory.map((v, i) => ({ v, i })).filter(({ v }) => v.type.toLowerCase() === query || v.name.toLowerCase().includes(query));
+        if (matches.length === 0) return `[-] Unknown virus selector: ${arg1}.`;
+        if (matches.length > 1) return `[-] Ambiguous selector '${arg1}'. Multiple payloads match. Use full ID from 'viruses'.`;
+        const idx = matches[0].i;
+        const virus = virusInventory[idx];
         const node = world[targetIP];
         let out = `[+] Deploying ${virus.name} to ${targetIP}...\n`;
         if (virus.type === 'worm') {
@@ -3821,7 +3618,8 @@ phy0    wlan0           ath9k_htc       Qualcomm Atheros AR9271
       'airodump-ng': async () => {
         if (!wifiState.mon) {
           playFailure();
-          return `[!] Error: Not in monitor mode.\n[*] Enable monitor mode first: airmon-ng start wlan0`;
+          return `[!] Error: Not in monitor mode.
+[*] Enable monitor mode first: airmon-ng start wlan0`;
         }
 
         // Generate WiFi networks if empty (first scan in region)
@@ -3841,12 +3639,11 @@ phy0    wlan0           ath9k_htc       Qualcomm Atheros AR9271
 
         // ═══ ARCADE MODE: Auto-scan or manual target selection ═══
         if (gameMode === 'arcade') {
-          // Check if user specified a target network by name OR MAC Address!
+          // Check if user specified a target network by name
           if (arg1) {
             const selectedNet = nets.find(n => 
               n.essid.toLowerCase() === arg1.toLowerCase() || 
-              n.essid.toLowerCase().includes(arg1.toLowerCase()) ||
-              n.bssid.toLowerCase() === arg1.toLowerCase() // <-- THE MAC ADDRESS FIX
+              n.essid.toLowerCase().includes(arg1.toLowerCase())
             );
             if (!selectedNet) {
               const available = nets.filter(n => n.discovered).map(n => n.essid).join(', ');
@@ -3863,6 +3660,7 @@ phy0    wlan0           ath9k_htc       Qualcomm Atheros AR9271
             clients.forEach(c => { output += ` ${c.mac}  ${String(c.pwr || c.signal || -40).padStart(3)}   ${String(c.frames || 1000).padStart(6)}  ${c.dev || c.device || 'Unknown'}\n`; });
             
             setWifiState(prev => ({ ...prev, scanned: true, focused: true, capFile: true, targetBssid: selectedNet.bssid }));
+            // Update the target in wifiNetworks
             setWifiNetworks(prev => prev.map(n => ({ ...n, target: n.bssid === selectedNet.bssid })));
             playSuccess();
             if (selectedNet.target || Math.random() < 0.35) {
@@ -3873,21 +3671,26 @@ phy0    wlan0           ath9k_htc       Qualcomm Atheros AR9271
             if (encLabel === 'OPEN') {
               output += `\n[!] OPEN NETWORK — No password required!\n[*] Run 'nmcli' to connect directly`;
             } else if (encLabel === 'WPA3' || encLabel === 'WPA3-SAE') {
+              // Show phishable clients for WPA3
               const phishableClients = clients.filter(c => c.phishable && c.email);
               output += `\n[!] WPA3 ENCRYPTION — Cannot crack with aircrack-ng`;
               if (phishableClients.length > 0) {
                 output += `\n\n[*] CONNECTED USERS (phishable):`;
-                phishableClients.forEach(c => { output += `\n    ${c.name || 'Unknown'} <${c.email}> — ${c.role || 'Employee'}`; });
-                output += `\n\n[*] Social engineer for password: wifiphish <email>\n[*] Example: wifiphish ${phishableClients[0].email}`;
+                phishableClients.forEach(c => {
+                  output += `\n    ${c.name || 'Unknown'} <${c.email}> — ${c.role || 'Employee'}`;
+                });
+                output += `\n\n[*] Social engineer for password: wifiphish <email>`;
+                output += `\n[*] Example: wifiphish ${phishableClients[0].email}`;
               } else {
                 output += `\n[*] No phishable targets connected. Try again later.`;
               }
             } else {
               output += `\n[+] Capture file: capture-01.cap\n[*] Run 'aireplay-ng' to force handshake capture`;
             }
-            return output + (contractMsg ? '\n' + contractMsg : '');
+            return output + contractMsg;
           }
           
+          // No arg — normal scan/focus flow
           if (!wifiState.scanned) {
             let output = `\n CH  6 ][ Elapsed: 12s ][ ${new Date().toTimeString().slice(0,8)}\n\n BSSID              PWR  Beacons  #Data   #/s  CH   ENC    ESSID\n`;
             nets.filter(n => n.discovered).forEach(n => {
@@ -3901,28 +3704,34 @@ phy0    wlan0           ath9k_htc       Qualcomm Atheros AR9271
             const openNets = nets.filter(n => n.discovered && n.enc === 'OPEN');
             const wpa2Nets = nets.filter(n => n.discovered && (n.enc === 'WPA2' || n.enc === 'WEP'));
             const wpa3Nets = nets.filter(n => n.discovered && (n.enc === 'WPA3' || n.enc === 'WPA3-SAE'));
-            let hint = `\n[+] Found ${nets.filter(n => n.discovered).length} networks\n[*] SELECT TARGET: airodump-ng <bssid>\n[*] Example: airodump-ng ${wpa2Nets[0]?.bssid || 'DC:A6:32:B2:9A:DC'}\n`;
+            let hint = `\n[+] Found ${nets.filter(n => n.discovered).length} networks\n`;
+            hint += `[*] SELECT TARGET: airodump-ng <network_name>\n`;
+            hint += `[*] Example: airodump-ng DC_Metro_Public\n`;
             if (openNets.length > 0) hint += `[!] OPEN NETWORKS (no password): ${openNets.map(n => n.essid).join(', ')}\n`;
             if (wpa2Nets.length > 0) hint += `[!] CRACKABLE (WPA2/WEP): ${wpa2Nets.slice(0,3).map(n => n.essid).join(', ')}${wpa2Nets.length > 3 ? '...' : ''}\n`;
             if (wpa3Nets.length > 0) hint += `[!] WPA3 (need social engineering): ${wpa3Nets.slice(0,3).map(n => n.essid).join(', ')}`;
-            return output + hint + (contractMsg ? '\n' + contractMsg : '');
+            return output + hint + contractMsg;
           } else if (!wifiState.focused) {
+            // Already scanned but no target selected — prompt for selection
             const openNets = nets.filter(n => n.discovered && n.enc === 'OPEN');
             const wpa2Nets = nets.filter(n => n.discovered && (n.enc === 'WPA2' || n.enc === 'WEP'));
-            let hint = `[*] SELECT TARGET: airodump-ng <bssid>\n\n`;
-            if (openNets.length > 0) hint += `OPEN (instant connect):\n  ${openNets.map(n => `  airodump-ng ${n.bssid}`).join('\n')}\n\n`;
-            if (wpa2Nets.length > 0) hint += `CRACKABLE (WPA2/WEP):\n${wpa2Nets.slice(0,5).map(n => `  airodump-ng ${n.bssid}`).join('\n')}`;
+            let hint = `[*] SELECT TARGET: airodump-ng <network_name>\n\n`;
+            if (openNets.length > 0) hint += `OPEN (instant connect):\n  ${openNets.map(n => `  airodump-ng ${n.essid}`).join('\n')}\n\n`;
+            if (wpa2Nets.length > 0) hint += `CRACKABLE (WPA2/WEP):\n${wpa2Nets.slice(0,5).map(n => `  airodump-ng ${n.essid}`).join('\n')}`;
             return hint;
           } else {
             return `[*] Already capturing on ${targetNet?.essid || 'target'}\n[*] ${wifiState.hshake ? 'Handshake captured! Run aircrack-ng to crack.' : 'Waiting for handshake. Run aireplay-ng to force it.'}`;
           }
         }
 
-        // ═══ FIELD MODE ═══
+        // ═══ FIELD MODE: Requires scan/focus flag ═══
         if (gameMode === 'field') {
           if (!arg1 || !['scan', 'focus'].includes(arg1)) {
-            return `[-] airodump-ng: Specify mode:\n    airodump-ng scan    — Scan all networks in range\n    airodump-ng focus   — Focus capture on target`;
+            return `[-] airodump-ng: Specify mode:
+    airodump-ng scan    — Scan all networks in range
+    airodump-ng focus   — Focus capture on target`;
           }
+          
           if (arg1 === 'scan') {
             let output = `\n CH  6 ][ Elapsed: 12s ][ ${new Date().toTimeString().slice(0,8)}\n\n BSSID              PWR  Beacons  #Data   #/s  CH   ENC    ESSID\n`;
             nets.filter(n => n.discovered).forEach(n => {
@@ -3945,13 +3754,15 @@ phy0    wlan0           ath9k_htc       Qualcomm Atheros AR9271
             clients.forEach(c => { output += ` ${c.mac}  ${String(c.pwr || c.signal || -40).padStart(3)}   ${String(c.frames || 1000).padStart(6)}  ${c.dev || c.device || 'Unknown'}\n`; });
             setWifiState(prev => ({ ...prev, focused: true, capFile: true, targetBssid: targetNet.bssid }));
             playSuccess();
-            if (targetNet.target || Math.random() < 0.35) maybeCreateWiFiContract(targetNet);
+            if (targetNet.target || Math.random() < 0.35) {
+              maybeCreateWiFiContract(targetNet);
+            }
             const contractMsg = verifyContract(null, 'focus');
-            return output + `\n[+] Focused capture on ${targetNet.essid}\n[+] Capture file: capture-01.cap\n[*] Force handshake: aireplay-ng deauth${contractMsg ? '\n' + contractMsg : ''}`;
+            return output + `\n[+] Focused capture on ${targetNet.essid}\n[+] Capture file: capture-01.cap\n[*] Force handshake: aireplay-ng deauth${contractMsg}`;
           }
         }
 
-        // ═══ OPERATOR MODE ═══
+        // ═══ OPERATOR MODE: Full syntax required ═══
         const hasBssid = args.includes('--bssid');
         const hasWrite = args.includes('-w');
         const bssidIdx = args.indexOf('--bssid');
@@ -3959,7 +3770,16 @@ phy0    wlan0           ath9k_htc       Qualcomm Atheros AR9271
         const lastArg = args[args.length - 1];
         
         if (lastArg !== 'wlan0mon') {
-          return `[-] Missing interface. Usage: airodump-ng [options] wlan0mon\n\nOptions:\n  --bssid <MAC>   Focus on specific access point\n  -c <channel>    Lock to specific channel\n  -w <prefix>     Write capture to file\n\nExamples:\n  airodump-ng wlan0mon\n  airodump-ng --bssid ${targetNet?.bssid || 'AA:BB:CC:DD:EE:FF'} -c 6 -w capture wlan0mon`;
+          return `[-] Missing interface. Usage: airodump-ng [options] wlan0mon
+  
+Options:
+  --bssid <MAC>   Focus on specific access point
+  -c <channel>    Lock to specific channel
+  -w <prefix>     Write capture to file
+
+Examples:
+  airodump-ng wlan0mon
+  airodump-ng --bssid ${targetNet?.bssid || 'AA:BB:CC:DD:EE:FF'} -c 6 -w capture wlan0mon`;
         }
         
         if (hasBssid && targetBssid) {
@@ -3968,14 +3788,15 @@ phy0    wlan0           ath9k_htc       Qualcomm Atheros AR9271
           const clients = getClients(targetBssid);
           const pwr = foundNet.signal || foundNet.pwr || -42;
           const ch = foundNet.channel || foundNet.ch || 6;
-          let output = `\n CH ${String(ch).padStart(2)} ][ Elapsed: 45s ][ ${new Date().toTimeString().slice(0,8)}${wifiState.hshake ? ` ][ WPA handshake: ${targetBssid}` : ''}\n\n BSSID              PWR  Beacons  #Data   #/s  CH   ENC    CIPHER  AUTH  ESSID\n\n ${targetBssid}  ${String(pwr).padStart(3)}     1523    8847   124  ${String(ch).padStart(2)}   ${foundNet.enc || 'WPA2'}    CCMP    PSK   ${foundNet.essid}\n\n STATION            PWR   Rate    Lost    Frames  Notes\n`;
+          let output = `\n CH ${String(ch).padStart(2)} ][ Elapsed: 45s ][ ${new Date().toTimeString().slice(0,8)}${wifiState.hshake ? ` ][ WPA handshake: ${targetBssid}` : ''}\n\n BSSID              PWR  Beacons  #Data   #/s  CH   ENC    CIPHER  AUTH  ESSID\n\n ${targetBssid}  ${String(pwr).padStart(3)}     1523    8847   124  ${String(ch).padStart(2)}   ${foundNet.enc || 'WPA2'}    CCMP    PSK   ${foundNet.essid}\n\n STATION            PWR   Rate    Lost   Frames  Notes\n`;
           clients.forEach(c => { output += ` ${c.mac}  ${String(c.pwr || c.signal || -40).padStart(3)}   54e-24e     0   ${String(c.frames || 1000).padStart(6)}  ${c.dev || c.device || 'Unknown'}\n`; });
           if (hasWrite) {
             setWifiState(prev => ({ ...prev, focused: true, capFile: true, targetBssid: targetBssid }));
             output += `\n[+] Focused capture active — writing to capture-01.cap\n[*] Monitoring ${clients.length} clients on ${foundNet.essid}`;
-            if (foundNet.target || Math.random() < 0.35) maybeCreateWiFiContract(foundNet);
-            const contractMsg = verifyContract(null, 'focus');
-            output += (contractMsg ? '\n' + contractMsg : '');
+            if (foundNet.target || Math.random() < 0.35) {
+              maybeCreateWiFiContract(foundNet);
+            }
+            output += verifyContract(null, 'focus');
           }
           playSuccess();
           return output;
@@ -3997,6 +3818,86 @@ phy0    wlan0           ath9k_htc       Qualcomm Atheros AR9271
         }
         playSuccess();
         return output;
+      },
+
+      'aireplay-ng': async () => {
+        if (!wifiState.mon) { playFailure(); return `[!] Monitor mode required. Run 'airmon-ng start wlan0' first.`; }
+        if (!wifiState.focused) { playFailure(); return `[!] Start focused capture first.\n[*] Run: airodump-ng --bssid A4:CF:12:8B:3E:01 -c 6 -w capture wlan0mon`; }
+
+        // ═══ ARCADE MODE: Just type 'aireplay-ng' to auto-deauth ═══
+        if (gameMode === 'arcade') {
+          if (wifiState.hshake) return `[*] Handshake already captured. Run 'aircrack-ng' to crack it.`;
+          setIsProcessing(true);
+          const targetClient = WIFI_CLIENTS[0];
+          setTerminal(prev => [...prev, { type: 'out', text: `[*] ARCADE MODE — Auto-targeting ${targetClient.dev}\n[*] Sending deauth packets...`, isNew: true }]);
+          await new Promise(r => setTimeout(r, 1500));
+          setWifiState(prev => ({ ...prev, hshake: true }));
+          setIsProcessing(false);
+          playSuccess();
+          setHeat(h => Math.min(h + 3, 100));
+          const contractMsg = verifyContract(null, 'deauth');
+          return `[+] Client disconnected: ${targetClient.dev}\n[+] Client reassociated — WPA handshake CAPTURED!\n[+] Saved to: capture-01.cap\n[*] Run 'aircrack-ng' to crack the password.${contractMsg}`;
+        }
+
+        // ═══ FIELD MODE: Requires deauth flag ═══
+        if (gameMode === 'field') {
+          if (!arg1 || arg1 !== 'deauth') {
+            return `[-] aireplay-ng: Specify attack type:
+    aireplay-ng deauth          — Deauth all clients (broadcast)
+    aireplay-ng deauth <MAC>    — Deauth specific client
+    
+[*] Available clients:
+${WIFI_CLIENTS.slice(0, 4).map(c => `    ${c.mac}  ${c.dev}`).join('\n')}`;
+          }
+          if (wifiState.hshake) return `[*] Handshake already captured. Run 'aircrack-ng crack' to crack.`;
+          const targetMac = arg2 || 'FF:FF:FF:FF:FF:FF';
+          const client = WIFI_CLIENTS.find(c => c.mac === targetMac);
+          setIsProcessing(true);
+          setTerminal(prev => [...prev, { type: 'out', text: `[*] Sending deauth to ${targetMac}...`, isNew: true }]);
+          await new Promise(r => setTimeout(r, 1500));
+          setWifiState(prev => ({ ...prev, hshake: true }));
+          setIsProcessing(false);
+          playSuccess();
+          setHeat(h => Math.min(h + 5, 100));
+          const contractMsg = verifyContract(null, 'deauth');
+          return `[+] Deauth sent!${client ? `\n[+] Device: ${client.dev}` : ''}\n[+] Client reassociated — WPA handshake CAPTURED!\n[+] Saved to: capture-01.cap\n[*] Crack: aircrack-ng crack${contractMsg}`;
+        }
+
+        // ═══ OPERATOR MODE: Full syntax required ═══
+        const hasDeauth = args.includes('--deauth');
+        const hasBssid = args.includes('-a');
+        if (!hasDeauth) {
+          return `Usage: aireplay-ng --deauth <count> -a <BSSID> [-c <CLIENT>] <interface>
+
+  --deauth count  : Number of deauth packets to send (0 = continuous)
+  -a bssid        : Access Point MAC address
+  -c client       : Target client MAC (optional, broadcast if omitted)
+
+Example: aireplay-ng --deauth 10 -a A4:CF:12:8B:3E:01 -c 4C:EB:42:DE:AD:01 wlan0mon
+
+[*] Available clients on target:
+${WIFI_CLIENTS.slice(0, 4).map(c => `    ${c.mac}  ${c.dev}`).join('\n')}`;
+        }
+        const bssidIdx = args.indexOf('-a');
+        const targetBssid = bssidIdx !== -1 ? args[bssidIdx + 1] : null;
+        const clientIdx = args.indexOf('-c');
+        const targetClient = clientIdx !== -1 ? args[clientIdx + 1] : 'FF:FF:FF:FF:FF:FF';
+        if (!targetBssid || !hasBssid) return `[!] Missing target BSSID. Use -a <BSSID>`;
+        const client = WIFI_CLIENTS.find(c => c.mac === targetClient);
+        const deauthCount = parseInt(args[args.indexOf('--deauth') + 1]) || 10;
+        setIsProcessing(true);
+        setTerminal(prev => [...prev, { type: 'out', text: `[*] Sending ${deauthCount} directed DeAuth (code 7). STMAC: [${targetClient}]`, isNew: true }]);
+        await new Promise(r => setTimeout(r, 1500));
+        let output = ``;
+        for (let i = 0; i < Math.min(deauthCount, 6); i++) { output += `  [${i+1}|${deauthCount}] DeAuth → [${targetClient}]  ACK\n`; }
+        output += `\n  [+] Client disconnected!`;
+        if (client) output += `\n  [*] Device: ${client.dev}`;
+        output += `\n  [*] Waiting for reconnect...\n  [+] Client reassociated — WPA 4-way handshake CAPTURED!\n  [+] Handshake saved to: capture-01.cap\n\n[*] Crack: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
+        setWifiState(prev => ({ ...prev, hshake: true }));
+        setIsProcessing(false);
+        playSuccess();
+        setHeat(h => Math.min(h + 5, 100));
+        return output + verifyContract(null, 'deauth');
       },
 
       'aircrack-ng': async () => {
@@ -4068,9 +3969,10 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
         if (!isOpen && !wifiState.cracked) { 
           return `[!] No cracked password available.\n[*] For encrypted networks: Run the full attack chain first.\n[*] For OPEN networks: Select with 'airodump-ng <network_name>' then 'nmcli'`;
         }
-        if (wifiState.connected && wifiState.connected.bssid === targetNet.bssid) {
-        return `[*] Already connected to ${targetNet.essid}...`;
-      }
+        if (wifiState.connected) { 
+          return `[*] Already connected to ${targetName} (10.0.0.187)\n[*] Gateway: 10.0.0.1\n[*] Internal hosts are accessible via nmap.`; 
+        }
+
         const spawnInternalNodes = () => {
           const orgName = currentTarget?.linkedOrg || currentTarget?.essid || 'WiFi-Network';
           const newTargets = [

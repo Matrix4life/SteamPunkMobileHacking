@@ -3821,8 +3821,7 @@ phy0    wlan0           ath9k_htc       Qualcomm Atheros AR9271
       'airodump-ng': async () => {
         if (!wifiState.mon) {
           playFailure();
-          return `[!] Error: Not in monitor mode.
-[*] Enable monitor mode first: airmon-ng start wlan0`;
+          return `[!] Error: Not in monitor mode.\n[*] Enable monitor mode first: airmon-ng start wlan0`;
         }
 
         // Generate WiFi networks if empty (first scan in region)
@@ -3842,11 +3841,12 @@ phy0    wlan0           ath9k_htc       Qualcomm Atheros AR9271
 
         // ═══ ARCADE MODE: Auto-scan or manual target selection ═══
         if (gameMode === 'arcade') {
-          // Check if user specified a target network by name
+          // Check if user specified a target network by name OR MAC Address!
           if (arg1) {
             const selectedNet = nets.find(n => 
               n.essid.toLowerCase() === arg1.toLowerCase() || 
-              n.essid.toLowerCase().includes(arg1.toLowerCase())
+              n.essid.toLowerCase().includes(arg1.toLowerCase()) ||
+              n.bssid.toLowerCase() === arg1.toLowerCase() // <-- THE MAC ADDRESS FIX
             );
             if (!selectedNet) {
               const available = nets.filter(n => n.discovered).map(n => n.essid).join(', ');
@@ -3863,7 +3863,6 @@ phy0    wlan0           ath9k_htc       Qualcomm Atheros AR9271
             clients.forEach(c => { output += ` ${c.mac}  ${String(c.pwr || c.signal || -40).padStart(3)}   ${String(c.frames || 1000).padStart(6)}  ${c.dev || c.device || 'Unknown'}\n`; });
             
             setWifiState(prev => ({ ...prev, scanned: true, focused: true, capFile: true, targetBssid: selectedNet.bssid }));
-            // Update the target in wifiNetworks
             setWifiNetworks(prev => prev.map(n => ({ ...n, target: n.bssid === selectedNet.bssid })));
             playSuccess();
             if (selectedNet.target || Math.random() < 0.35) {
@@ -3874,26 +3873,21 @@ phy0    wlan0           ath9k_htc       Qualcomm Atheros AR9271
             if (encLabel === 'OPEN') {
               output += `\n[!] OPEN NETWORK — No password required!\n[*] Run 'nmcli' to connect directly`;
             } else if (encLabel === 'WPA3' || encLabel === 'WPA3-SAE') {
-              // Show phishable clients for WPA3
               const phishableClients = clients.filter(c => c.phishable && c.email);
               output += `\n[!] WPA3 ENCRYPTION — Cannot crack with aircrack-ng`;
               if (phishableClients.length > 0) {
                 output += `\n\n[*] CONNECTED USERS (phishable):`;
-                phishableClients.forEach(c => {
-                  output += `\n    ${c.name || 'Unknown'} <${c.email}> — ${c.role || 'Employee'}`;
-                });
-                output += `\n\n[*] Social engineer for password: wifiphish <email>`;
-                output += `\n[*] Example: wifiphish ${phishableClients[0].email}`;
+                phishableClients.forEach(c => { output += `\n    ${c.name || 'Unknown'} <${c.email}> — ${c.role || 'Employee'}`; });
+                output += `\n\n[*] Social engineer for password: wifiphish <email>\n[*] Example: wifiphish ${phishableClients[0].email}`;
               } else {
                 output += `\n[*] No phishable targets connected. Try again later.`;
               }
             } else {
               output += `\n[+] Capture file: capture-01.cap\n[*] Run 'aireplay-ng' to force handshake capture`;
             }
-            return output + contractMsg;
+            return output + (contractMsg ? '\n' + contractMsg : '');
           }
           
-          // No arg — normal scan/focus flow
           if (!wifiState.scanned) {
             let output = `\n CH  6 ][ Elapsed: 12s ][ ${new Date().toTimeString().slice(0,8)}\n\n BSSID              PWR  Beacons  #Data   #/s  CH   ENC    ESSID\n`;
             nets.filter(n => n.discovered).forEach(n => {
@@ -3907,34 +3901,28 @@ phy0    wlan0           ath9k_htc       Qualcomm Atheros AR9271
             const openNets = nets.filter(n => n.discovered && n.enc === 'OPEN');
             const wpa2Nets = nets.filter(n => n.discovered && (n.enc === 'WPA2' || n.enc === 'WEP'));
             const wpa3Nets = nets.filter(n => n.discovered && (n.enc === 'WPA3' || n.enc === 'WPA3-SAE'));
-            let hint = `\n[+] Found ${nets.filter(n => n.discovered).length} networks\n`;
-            hint += `[*] SELECT TARGET: airodump-ng <network_name>\n`;
-            hint += `[*] Example: airodump-ng DC_Metro_Public\n`;
+            let hint = `\n[+] Found ${nets.filter(n => n.discovered).length} networks\n[*] SELECT TARGET: airodump-ng <bssid>\n[*] Example: airodump-ng ${wpa2Nets[0]?.bssid || 'DC:A6:32:B2:9A:DC'}\n`;
             if (openNets.length > 0) hint += `[!] OPEN NETWORKS (no password): ${openNets.map(n => n.essid).join(', ')}\n`;
             if (wpa2Nets.length > 0) hint += `[!] CRACKABLE (WPA2/WEP): ${wpa2Nets.slice(0,3).map(n => n.essid).join(', ')}${wpa2Nets.length > 3 ? '...' : ''}\n`;
             if (wpa3Nets.length > 0) hint += `[!] WPA3 (need social engineering): ${wpa3Nets.slice(0,3).map(n => n.essid).join(', ')}`;
-            return output + hint + contractMsg;
+            return output + hint + (contractMsg ? '\n' + contractMsg : '');
           } else if (!wifiState.focused) {
-            // Already scanned but no target selected — prompt for selection
             const openNets = nets.filter(n => n.discovered && n.enc === 'OPEN');
             const wpa2Nets = nets.filter(n => n.discovered && (n.enc === 'WPA2' || n.enc === 'WEP'));
-            let hint = `[*] SELECT TARGET: airodump-ng <network_name>\n\n`;
-            if (openNets.length > 0) hint += `OPEN (instant connect):\n  ${openNets.map(n => `  airodump-ng ${n.essid}`).join('\n')}\n\n`;
-            if (wpa2Nets.length > 0) hint += `CRACKABLE (WPA2/WEP):\n${wpa2Nets.slice(0,5).map(n => `  airodump-ng ${n.essid}`).join('\n')}`;
+            let hint = `[*] SELECT TARGET: airodump-ng <bssid>\n\n`;
+            if (openNets.length > 0) hint += `OPEN (instant connect):\n  ${openNets.map(n => `  airodump-ng ${n.bssid}`).join('\n')}\n\n`;
+            if (wpa2Nets.length > 0) hint += `CRACKABLE (WPA2/WEP):\n${wpa2Nets.slice(0,5).map(n => `  airodump-ng ${n.bssid}`).join('\n')}`;
             return hint;
           } else {
             return `[*] Already capturing on ${targetNet?.essid || 'target'}\n[*] ${wifiState.hshake ? 'Handshake captured! Run aircrack-ng to crack.' : 'Waiting for handshake. Run aireplay-ng to force it.'}`;
           }
         }
 
-        // ═══ FIELD MODE: Requires scan/focus flag ═══
+        // ═══ FIELD MODE ═══
         if (gameMode === 'field') {
           if (!arg1 || !['scan', 'focus'].includes(arg1)) {
-            return `[-] airodump-ng: Specify mode:
-    airodump-ng scan    — Scan all networks in range
-    airodump-ng focus   — Focus capture on target`;
+            return `[-] airodump-ng: Specify mode:\n    airodump-ng scan    — Scan all networks in range\n    airodump-ng focus   — Focus capture on target`;
           }
-          
           if (arg1 === 'scan') {
             let output = `\n CH  6 ][ Elapsed: 12s ][ ${new Date().toTimeString().slice(0,8)}\n\n BSSID              PWR  Beacons  #Data   #/s  CH   ENC    ESSID\n`;
             nets.filter(n => n.discovered).forEach(n => {
@@ -3957,15 +3945,13 @@ phy0    wlan0           ath9k_htc       Qualcomm Atheros AR9271
             clients.forEach(c => { output += ` ${c.mac}  ${String(c.pwr || c.signal || -40).padStart(3)}   ${String(c.frames || 1000).padStart(6)}  ${c.dev || c.device || 'Unknown'}\n`; });
             setWifiState(prev => ({ ...prev, focused: true, capFile: true, targetBssid: targetNet.bssid }));
             playSuccess();
-            if (targetNet.target || Math.random() < 0.35) {
-              maybeCreateWiFiContract(targetNet);
-            }
+            if (targetNet.target || Math.random() < 0.35) maybeCreateWiFiContract(targetNet);
             const contractMsg = verifyContract(null, 'focus');
-            return output + `\n[+] Focused capture on ${targetNet.essid}\n[+] Capture file: capture-01.cap\n[*] Force handshake: aireplay-ng deauth${contractMsg}`;
+            return output + `\n[+] Focused capture on ${targetNet.essid}\n[+] Capture file: capture-01.cap\n[*] Force handshake: aireplay-ng deauth${contractMsg ? '\n' + contractMsg : ''}`;
           }
         }
 
-        // ═══ OPERATOR MODE: Full syntax required ═══
+        // ═══ OPERATOR MODE ═══
         const hasBssid = args.includes('--bssid');
         const hasWrite = args.includes('-w');
         const bssidIdx = args.indexOf('--bssid');
@@ -3973,16 +3959,7 @@ phy0    wlan0           ath9k_htc       Qualcomm Atheros AR9271
         const lastArg = args[args.length - 1];
         
         if (lastArg !== 'wlan0mon') {
-          return `[-] Missing interface. Usage: airodump-ng [options] wlan0mon
-  
-Options:
-  --bssid <MAC>   Focus on specific access point
-  -c <channel>    Lock to specific channel
-  -w <prefix>     Write capture to file
-
-Examples:
-  airodump-ng wlan0mon
-  airodump-ng --bssid ${targetNet?.bssid || 'AA:BB:CC:DD:EE:FF'} -c 6 -w capture wlan0mon`;
+          return `[-] Missing interface. Usage: airodump-ng [options] wlan0mon\n\nOptions:\n  --bssid <MAC>   Focus on specific access point\n  -c <channel>    Lock to specific channel\n  -w <prefix>     Write capture to file\n\nExamples:\n  airodump-ng wlan0mon\n  airodump-ng --bssid ${targetNet?.bssid || 'AA:BB:CC:DD:EE:FF'} -c 6 -w capture wlan0mon`;
         }
         
         if (hasBssid && targetBssid) {
@@ -3991,15 +3968,14 @@ Examples:
           const clients = getClients(targetBssid);
           const pwr = foundNet.signal || foundNet.pwr || -42;
           const ch = foundNet.channel || foundNet.ch || 6;
-          let output = `\n CH ${String(ch).padStart(2)} ][ Elapsed: 45s ][ ${new Date().toTimeString().slice(0,8)}${wifiState.hshake ? ` ][ WPA handshake: ${targetBssid}` : ''}\n\n BSSID              PWR  Beacons  #Data   #/s  CH   ENC    CIPHER  AUTH  ESSID\n\n ${targetBssid}  ${String(pwr).padStart(3)}     1523    8847   124  ${String(ch).padStart(2)}   ${foundNet.enc || 'WPA2'}    CCMP    PSK   ${foundNet.essid}\n\n STATION            PWR   Rate    Lost   Frames  Notes\n`;
+          let output = `\n CH ${String(ch).padStart(2)} ][ Elapsed: 45s ][ ${new Date().toTimeString().slice(0,8)}${wifiState.hshake ? ` ][ WPA handshake: ${targetBssid}` : ''}\n\n BSSID              PWR  Beacons  #Data   #/s  CH   ENC    CIPHER  AUTH  ESSID\n\n ${targetBssid}  ${String(pwr).padStart(3)}     1523    8847   124  ${String(ch).padStart(2)}   ${foundNet.enc || 'WPA2'}    CCMP    PSK   ${foundNet.essid}\n\n STATION            PWR   Rate    Lost    Frames  Notes\n`;
           clients.forEach(c => { output += ` ${c.mac}  ${String(c.pwr || c.signal || -40).padStart(3)}   54e-24e     0   ${String(c.frames || 1000).padStart(6)}  ${c.dev || c.device || 'Unknown'}\n`; });
           if (hasWrite) {
             setWifiState(prev => ({ ...prev, focused: true, capFile: true, targetBssid: targetBssid }));
             output += `\n[+] Focused capture active — writing to capture-01.cap\n[*] Monitoring ${clients.length} clients on ${foundNet.essid}`;
-            if (foundNet.target || Math.random() < 0.35) {
-              maybeCreateWiFiContract(foundNet);
-            }
-            output += verifyContract(null, 'focus');
+            if (foundNet.target || Math.random() < 0.35) maybeCreateWiFiContract(foundNet);
+            const contractMsg = verifyContract(null, 'focus');
+            output += (contractMsg ? '\n' + contractMsg : '');
           }
           playSuccess();
           return output;
@@ -4021,96 +3997,6 @@ Examples:
         }
         playSuccess();
         return output;
-      },
-
-      'aireplay-ng': async () => {
-        if (!wifiState.mon) { playFailure(); return `[!] Monitor mode required. Run 'airmon-ng start wlan0' first.`; }
-        if (!wifiState.focused) { playFailure(); return `[!] Start focused capture first.\n[*] Run: airodump-ng --bssid A4:CF:12:8B:3E:01 -c 6 -w capture wlan0mon`; }
-
-        // ═══ ARCADE MODE: Just type 'aireplay-ng' to auto-deauth ═══
-        if (gameMode === 'arcade') {
-         if (wifiState.hshake) {
-        const contractMsg = verifyContract(null, 'deauth');
-        return `[*] Handshake already captured. Run 'aircrack-ng' to crack it.${contractMsg}`;
-      }
-          setIsProcessing(true);
-          const targetClient = WIFI_CLIENTS[0];
-          setTerminal(prev => [...prev, { type: 'out', text: `[*] ARCADE MODE — Auto-targeting ${targetClient.dev}\n[*] Sending deauth packets...`, isNew: true }]);
-          await new Promise(r => setTimeout(r, 1500));
-          setWifiState(prev => ({ ...prev, hshake: true }));
-          setIsProcessing(false);
-          playSuccess();
-          setHeat(h => Math.min(h + 3, 100));
-          const contractMsg = verifyContract(null, 'deauth');
-          return `[+] Client disconnected: ${targetClient.dev}\n[+] Client reassociated — WPA handshake CAPTURED!\n[+] Saved to: capture-01.cap\n[*] Run 'aircrack-ng' to crack the password.${contractMsg}`;
-        }
-
-        // ═══ FIELD MODE: Requires deauth flag ═══
-        if (gameMode === 'field') {
-          if (!arg1 || arg1 !== 'deauth') {
-            return `[-] aireplay-ng: Specify attack type:
-    aireplay-ng deauth          — Deauth all clients (broadcast)
-    aireplay-ng deauth <MAC>    — Deauth specific client
-    
-[*] Available clients:
-${WIFI_CLIENTS.slice(0, 4).map(c => `    ${c.mac}  ${c.dev}`).join('\n')}`;
-          }
-          if (wifiState.hshake) {
-        const contractMsg = verifyContract(null, 'deauth');
-        return `[*] Handshake already captured. Run 'aircrack-ng crack' to crack.${contractMsg}`;
-      }
-          const targetMac = arg2 || 'FF:FF:FF:FF:FF:FF';
-          const client = WIFI_CLIENTS.find(c => c.mac === targetMac);
-          setIsProcessing(true);
-          setTerminal(prev => [...prev, { type: 'out', text: `[*] Sending deauth to ${targetMac}...`, isNew: true }]);
-          await new Promise(r => setTimeout(r, 1500));
-          setWifiState(prev => ({ ...prev, hshake: true }));
-          setIsProcessing(false);
-          playSuccess();
-          setHeat(h => Math.min(h + 5, 100));
-          const contractMsg = verifyContract(null, 'deauth');
-          return `[+] Deauth sent!${client ? `\n[+] Device: ${client.dev}` : ''}\n[+] Client reassociated — WPA handshake CAPTURED!\n[+] Saved to: capture-01.cap\n[*] Crack: aircrack-ng crack${contractMsg}`;
-        }
-
-        // ═══ OPERATOR MODE: Full syntax required ═══
-        const hasDeauth = args.includes('--deauth');
-        const hasBssid = args.includes('-a');
-        if (!hasDeauth) {
-          return `Usage: aireplay-ng --deauth <count> -a <BSSID> [-c <CLIENT>] <interface>
-
-  --deauth count  : Number of deauth packets to send (0 = continuous)
-  -a bssid        : Access Point MAC address
-  -c client       : Target client MAC (optional, broadcast if omitted)
-
-Example: aireplay-ng --deauth 10 -a A4:CF:12:8B:3E:01 -c 4C:EB:42:DE:AD:01 wlan0mon
-
-[*] Available clients on target:
-${WIFI_CLIENTS.slice(0, 4).map(c => `    ${c.mac}  ${c.dev}`).join('\n')}`;
-        }
-        const bssidIdx = args.indexOf('-a');
-        const targetBssid = bssidIdx !== -1 ? args[bssidIdx + 1] : null;
-        const clientIdx = args.indexOf('-c');
-        const targetClient = clientIdx !== -1 ? args[clientIdx + 1] : 'FF:FF:FF:FF:FF:FF';
-        if (!targetBssid || !hasBssid) return `[!] Missing target BSSID. Use -a <BSSID>`;
-        const client = WIFI_CLIENTS.find(c => c.mac === targetClient);
-        const deauthCount = parseInt(args[args.indexOf('--deauth') + 1]) || 10;
-        if (wifiState.hshake) {
-          const contractMsg = verifyContract(null, 'deauth');
-          return `[*] Handshake already captured. Run 'aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap' to crack.${contractMsg ? '\n' + contractMsg : ''}`;
-        }
-        setIsProcessing(true);
-        setTerminal(prev => [...prev, { type: 'out', text: `[*] Sending ${deauthCount} directed DeAuth (code 7). STMAC: [${targetClient}]`, isNew: true }]);
-        await new Promise(r => setTimeout(r, 1500));
-        let output = ``;
-        for (let i = 0; i < Math.min(deauthCount, 6); i++) { output += `  [${i+1}|${deauthCount}] DeAuth → [${targetClient}]  ACK\n`; }
-        output += `\n  [+] Client disconnected!`;
-        if (client) output += `\n  [*] Device: ${client.dev}`;
-        output += `\n  [*] Waiting for reconnect...\n  [+] Client reassociated — WPA 4-way handshake CAPTURED!\n  [+] Handshake saved to: capture-01.cap\n\n[*] Crack: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
-        setWifiState(prev => ({ ...prev, hshake: true }));
-        setIsProcessing(false);
-        playSuccess();
-        setHeat(h => Math.min(h + 5, 100));
-        return output + verifyContract(null, 'deauth');
       },
 
       'aircrack-ng': async () => {
@@ -4182,10 +4068,9 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
         if (!isOpen && !wifiState.cracked) { 
           return `[!] No cracked password available.\n[*] For encrypted networks: Run the full attack chain first.\n[*] For OPEN networks: Select with 'airodump-ng <network_name>' then 'nmcli'`;
         }
-        if (wifiState.connected) { 
-          return `[*] Already connected to ${targetName} (10.0.0.187)\n[*] Gateway: 10.0.0.1\n[*] Internal hosts are accessible via nmap.`; 
-        }
-
+        if (wifiState.connected && wifiState.connected.bssid === targetNet.bssid) {
+        return `[*] Already connected to ${targetNet.essid}...`;
+      }
         const spawnInternalNodes = () => {
           const orgName = currentTarget?.linkedOrg || currentTarget?.essid || 'WiFi-Network';
           const newTargets = [

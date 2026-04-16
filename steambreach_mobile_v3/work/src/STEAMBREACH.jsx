@@ -4029,7 +4029,10 @@ Examples:
 
         // ═══ ARCADE MODE: Just type 'aireplay-ng' to auto-deauth ═══
         if (gameMode === 'arcade') {
-          if (wifiState.hshake) return `[*] Handshake already captured. Run 'aircrack-ng' to crack it.`;
+         if (wifiState.hshake) {
+        const contractMsg = verifyContract(null, 'deauth');
+        return `[*] Handshake already captured. Run 'aircrack-ng' to crack it.${contractMsg}`;
+      }
           setIsProcessing(true);
           const targetClient = WIFI_CLIENTS[0];
           setTerminal(prev => [...prev, { type: 'out', text: `[*] ARCADE MODE — Auto-targeting ${targetClient.dev}\n[*] Sending deauth packets...`, isNew: true }]);
@@ -4052,7 +4055,10 @@ Examples:
 [*] Available clients:
 ${WIFI_CLIENTS.slice(0, 4).map(c => `    ${c.mac}  ${c.dev}`).join('\n')}`;
           }
-          if (wifiState.hshake) return `[*] Handshake already captured. Run 'aircrack-ng crack' to crack.`;
+          if (wifiState.hshake) {
+        const contractMsg = verifyContract(null, 'deauth');
+        return `[*] Handshake already captured. Run 'aircrack-ng crack' to crack.${contractMsg}`;
+      }
           const targetMac = arg2 || 'FF:FF:FF:FF:FF:FF';
           const client = WIFI_CLIENTS.find(c => c.mac === targetMac);
           setIsProcessing(true);
@@ -4088,6 +4094,10 @@ ${WIFI_CLIENTS.slice(0, 4).map(c => `    ${c.mac}  ${c.dev}`).join('\n')}`;
         if (!targetBssid || !hasBssid) return `[!] Missing target BSSID. Use -a <BSSID>`;
         const client = WIFI_CLIENTS.find(c => c.mac === targetClient);
         const deauthCount = parseInt(args[args.indexOf('--deauth') + 1]) || 10;
+        if (wifiState.hshake) {
+          const contractMsg = verifyContract(null, 'deauth');
+          return `[*] Handshake already captured. Run 'aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap' to crack.${contractMsg ? '\n' + contractMsg : ''}`;
+        }
         setIsProcessing(true);
         setTerminal(prev => [...prev, { type: 'out', text: `[*] Sending ${deauthCount} directed DeAuth (code 7). STMAC: [${targetClient}]`, isNew: true }]);
         await new Promise(r => setTimeout(r, 1500));

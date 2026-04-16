@@ -1,710 +1,323 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { COLORS, DEV_COMMANDS } from '../constants/gameConstants';
+import React, { useState, useRef } from 'react';
+import { COLORS } from '../constants/gameConstants';
 
-const SyntaxText = ({ text }) => {
-  if (typeof text !== 'string') return <span>{text}</span>;
-  const parts = text.split(/(\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b|\b[\w-]+\.(?:txt|zip|sql|db|log|yaml|bak|msg|bin|exe|hashes|eml|tmp|cap|csv)\b|\$\d+(?:,\d+)*|\[.*?\])/g);
-  return (
-    <span>
-      {parts.map((part, i) => {
-        if (!part) return null;
-        if (part.match(/\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/)) return <span key={i} style={{ color: COLORS.ip }}>{part}</span>;
-        if (part.match(/\b[\w-]+\.(?:txt|zip|sql|db|log|yaml|bak|msg|bin|exe|hashes|eml|tmp|cap|csv)\b/)) return <span key={i} style={{ color: COLORS.file }}>{part}</span>;
-        if (part.match(/\$\d+(?:,\d+)*/)) return <span key={i} style={{ color: COLORS.warning }}>{part}</span>;
-        if (part.startsWith('[') && part.endsWith(']')) {
-          if (part.includes('ERROR') || part.includes('!!!') || part.includes('-') || part.includes('LOCKED') || part.includes('FATAL') || part.includes('ALERT') || part.includes('BREACH') || part.includes('DETONATION')) return <span key={i} style={{ color: COLORS.danger }}>{part}</span>;
-          if (part.includes('SUCCESS') || part.includes('+') || part.includes('SAFE') || part.includes('COMPLETE') || part.includes('WIN')) return <span key={i} style={{ color: COLORS.secondary }}>{part}</span>;
-          return <span key={i} style={{ color: COLORS.primary }}>{part}</span>;
-        }
-        return <span key={i}>{part}</span>;
-      })}
-    </span>
-  );
-};
-
-const Typewriter = ({ text, scrollRef, onComplete, customColor }) => {
-  const [displayed, setDisplayed] = useState('');
-  useEffect(() => {
-    let i = 0;
-    const timer = setInterval(() => {
-      i += 4;
-      setDisplayed(text.substring(0, i));
-      if (scrollRef.current) scrollRef.current.scrollIntoView({ behavior: 'auto', block: 'end' });
-      if (i >= text.length) { clearInterval(timer); if (onComplete) onComplete(); }
-    }, 8);
-    return () => clearInterval(timer);
-  }, [text]); 
-
-  return <span style={{ color: customColor || COLORS.text }}><SyntaxText text={displayed} /></span>;
-};
-
-// ===================================================================
-// MODE-SPECIFIC COMMAND REGISTRY
-// ===================================================================
-
-const MODE_COMMANDS = {
-  // -----------------------------------------------------------------
-  // WIFI HACKING
-  // -----------------------------------------------------------------
-  'WIFI HACKING': {
-    arcade: [
-      { cmd: 'iwconfig', desc: 'Show wireless interface status' },
-      { cmd: 'airmon-ng', desc: 'Toggle monitor mode on/off' },
-      { cmd: 'airodump-ng', desc: 'Scan networks (then airodump-ng <name> to target)' },
-      { cmd: 'aireplay-ng', desc: 'Auto-deauth and capture handshake' },
-      { cmd: 'aircrack-ng', desc: 'Auto-crack with rockyou.txt' },
-      { cmd: 'wifiphish <email>', desc: 'Social engineer WPA3 password from client' },
-      { cmd: 'nmcli', desc: 'Auto-connect with cracked password' },
-      { cmd: 'wireshark', desc: 'Analyze captured packets' },
-      { cmd: 'wardrive', desc: 'Start/stop mobile WiFi scanning' },
-      { cmd: 'wifistatus', desc: 'Show attack progress + next step' },
-    ],
-    field: [
-      { cmd: 'iwconfig', desc: 'Show wlan0/wlan0mon status' },
-      { cmd: 'airmon-ng start', desc: 'Enable monitor mode' },
-      { cmd: 'airmon-ng stop', desc: 'Disable monitor mode' },
-      { cmd: 'airodump-ng scan', desc: 'Scan all networks in range' },
-      { cmd: 'airodump-ng <name>', desc: 'Target specific network' },
-      { cmd: 'aireplay-ng deauth', desc: 'Deauth all clients on target' },
-      { cmd: 'aireplay-ng deauth <MAC>', desc: 'Deauth specific client' },
-      { cmd: 'aircrack-ng crack', desc: 'Crack with rockyou.txt wordlist' },
-      { cmd: 'wifiphish <email>', desc: 'Phish WPA3 password from client' },
-      { cmd: 'nmcli connect', desc: 'Connect with cracked password' },
-      { cmd: 'wireshark', desc: 'Analyze capture file' },
-      { cmd: 'wardrive', desc: 'Toggle mobile WiFi recon' },
-      { cmd: 'wifistatus', desc: 'Show attack progress + next step' },
-    ],
-    operator: [
-      { cmd: 'iwconfig', desc: 'Display wireless interface configuration' },
-      { cmd: 'airmon-ng start wlan0', desc: 'Enable monitor mode on interface' },
-      { cmd: 'airmon-ng stop wlan0mon', desc: 'Disable monitor mode' },
-      { cmd: 'airodump-ng wlan0mon', desc: 'Passive scan all channels' },
-      { cmd: 'airodump-ng --bssid <MAC> -c <CH> -w capture wlan0mon', desc: 'Focus capture on target' },
-      { cmd: 'aireplay-ng --deauth 10 -a <BSSID> -c <CLIENT> wlan0mon', desc: 'Targeted deauth attack' },
-      { cmd: 'aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap', desc: 'Dictionary attack on handshake' },
-      { cmd: 'wifiphish <email>', desc: 'Social engineer WPA3 credentials' },
-      { cmd: 'nmcli dev wifi connect <SSID> password <PASS>', desc: 'Connect to cracked network' },
-      { cmd: 'wireshark', desc: 'Packet analysis on capture-01.cap' },
-      { cmd: 'wardrive', desc: 'Mobile passive scanning (monitor mode required)' },
-      { cmd: 'wifistatus', desc: 'Show current attack state' },
-    ],
-  },
-
-  // -----------------------------------------------------------------
-  // RECON & ACCESS
-  // -----------------------------------------------------------------
-  'RECON & ACCESS': {
-    arcade: [
-      { cmd: 'nmap', desc: 'Discover targets / open network map' },
-      { cmd: 'nmap <ip>', desc: 'Scan target (auto-flags vulns)' },
-      { cmd: 'hydra <ip>', desc: 'Brute-force SSH (auto-wordlist)' },
-      { cmd: 'sqlmap <ip>', desc: 'SQL injection (auto-flags)' },
-      { cmd: 'msfconsole <ip>', desc: 'Exploit SMB (auto-payload)' },
-      { cmd: 'curl <ip>', desc: 'LFI exploit (auto-path)' },
-      { cmd: 'spearphish <email@ip>', desc: 'Social engineer employee via AI chat' },
-      { cmd: 'ettercap', desc: 'ARP poison + sniff comms' },
-    ],
-    field: [
-      { cmd: 'nmap', desc: 'Discover targets / open network map' },
-      { cmd: 'nmap <ip>', desc: 'Scan target for vulnerabilities' },
-      { cmd: 'hydra <ip> ssh', desc: 'Brute-force SSH service' },
-      { cmd: 'hydra <ip> ftp', desc: 'Brute-force FTP service' },
-      { cmd: 'sqlmap <ip> form', desc: 'SQL injection on login form' },
-      { cmd: 'sqlmap <ip> api', desc: 'SQL injection on API endpoint' },
-      { cmd: 'msfconsole <ip>', desc: 'Exploit unpatched SMB' },
-      { cmd: 'curl <ip>', desc: 'LFI path traversal' },
-      { cmd: 'spearphish <email@ip>', desc: 'Phish employee (AI chat)' },
-      { cmd: 'ettercap', desc: 'ARP poison + sniff comms' },
-    ],
-    operator: [
-      { cmd: 'nmap', desc: 'Open network map / discover targets' },
-      { cmd: 'nmap -sV -sC -O <ip>', desc: 'Full service/version scan' },
-      { cmd: 'hydra -l admin -P /usr/share/wordlists/rockyou.txt <ip> ssh', desc: 'SSH brute-force' },
-      { cmd: 'sqlmap -u "http://<ip>/login" --forms --dump', desc: 'SQL injection + dump' },
-      { cmd: 'msfconsole -x "use exploit/windows/smb/ms17_010; set RHOSTS <ip>; run"', desc: 'EternalBlue exploit' },
-      { cmd: 'curl --path-as-is "http://<ip>/../../etc/passwd"', desc: 'LFI path traversal' },
-      { cmd: 'spearphish <email@ip>', desc: 'Social engineering via live AI chat' },
-      { cmd: 'ettercap -T -M arp:remote /<gateway>// /<target>//', desc: 'MITM ARP poisoning' },
-    ],
-  },
-
-  // -----------------------------------------------------------------
-  // PRIVILEGE ESCALATION
-  // -----------------------------------------------------------------
-  'PRIVILEGE ESCALATION': {
-    arcade: [
-      { cmd: 'pwnkit', desc: 'Auto-escalate to root' },
-      { cmd: 'ssh <user@ip> <pass>', desc: 'Login with stolen creds' },
-      { cmd: 'sendmail -to <email> -attach <file>', desc: 'Phishing email' },
-    ],
-    field: [
-      { cmd: 'pwnkit', desc: 'CVE-2021-4034 privilege escalation' },
-      { cmd: 'ssh <user@ip> <pass>', desc: 'Authenticate with credentials' },
-      { cmd: 'sendmail -to <email> -attach <file>', desc: 'Spoof internal email' },
-    ],
-    operator: [
-      { cmd: 'pwnkit', desc: 'Polkit pkexec local privilege escalation' },
-      { cmd: 'ssh <user>@<ip> -i key.pem', desc: 'SSH with private key' },
-      { cmd: 'sendmail -to <email> -from ceo@corp.local -attach <file>', desc: 'Spoofed phishing email' },
-    ],
-  },
-
-  // -----------------------------------------------------------------
-  // BOTNET & C2
-  // -----------------------------------------------------------------
-  'BOTNET & C2': {
-    arcade: [
-      { cmd: 'sliver', desc: 'Deploy C2 beacon (passive income)' },
-      { cmd: 'chisel', desc: 'Create proxy tunnel (slows trace)' },
-      { cmd: 'disconnect <ip>', desc: 'Remove proxy/botnet node' },
-      { cmd: 'hping3 <ip>', desc: 'DDoS attack from botnet' },
-      { cmd: 'mimikatz <ip>', desc: 'Dump credentials from node' },
-      { cmd: 'stash <file>', desc: 'Exfil through botnet (low heat)' },
-    ],
-    field: [
-      { cmd: 'sliver', desc: 'Deploy C2 beacon for passive income' },
-      { cmd: 'chisel', desc: 'SOCKS5 proxy tunnel' },
-      { cmd: 'disconnect <ip>', desc: 'Remove node from botnet' },
-      { cmd: 'hping3 <ip>', desc: 'SYN flood DDoS attack' },
-      { cmd: 'mimikatz <ip>', desc: 'Dump LSASS credentials' },
-      { cmd: 'stash <file>', desc: 'Route exfil through botnet' },
-    ],
-    operator: [
-      { cmd: 'sliver', desc: 'Deploy Sliver C2 implant (requires root)' },
-      { cmd: 'chisel server -p 8080 --reverse', desc: 'Start SOCKS5 tunnel' },
-      { cmd: 'disconnect <ip>', desc: 'Terminate C2 session' },
-      { cmd: 'hping3 -S --flood -V -p 80 <ip>', desc: 'SYN flood attack' },
-      { cmd: 'mimikatz "sekurlsa::logonpasswords" <ip>', desc: 'Extract cleartext passwords' },
-      { cmd: 'stash <file>', desc: 'Exfil via botnet relay (+3% heat)' },
-    ],
-  },
-
-  // -----------------------------------------------------------------
-  // PAYLOADS & MALWARE
-  // -----------------------------------------------------------------
-  'PAYLOADS & MALWARE': {
-    arcade: [
-      { cmd: 'msfvenom', desc: 'Deploy auto-configured payload' },
-      { cmd: 'eternalblue', desc: 'Mass SMB propagation' },
-      { cmd: 'reptile', desc: 'Install kernel rootkit' },
-      { cmd: 'xmrig', desc: 'Deploy cryptominer' },
-      { cmd: 'shred', desc: 'Destroy file system' },
-      { cmd: 'openssl', desc: 'Deploy ransomware' },
-      { cmd: 'crontab', desc: 'Schedule logic bomb' },
-      { cmd: 'wipe', desc: 'Scrub logs (Heat -15%)' },
-      { cmd: 'findvirus', desc: 'Harvest malware signatures from target' },
-      { cmd: 'craftvirus <type>', desc: 'Build worm/stealer/wiper/ransom payload' },
-      { cmd: 'viruses', desc: 'List crafted payload inventory' },
-      { cmd: 'usevirus <id>', desc: 'Deploy crafted virus on current target' },
-    ],
-    field: [
-      { cmd: 'msfvenom reverse', desc: 'Reverse shell payload' },
-      { cmd: 'msfvenom bind', desc: 'Bind shell payload' },
-      { cmd: 'eternalblue', desc: 'SMBv1 worm propagation' },
-      { cmd: 'reptile', desc: 'Stealth kernel rootkit' },
-      { cmd: 'xmrig', desc: 'Monero cryptominer' },
-      { cmd: 'shred mbr', desc: 'Overwrite boot record' },
-      { cmd: 'shred fs', desc: 'Destroy file system' },
-      { cmd: 'shred full', desc: 'Zero entire disk' },
-      { cmd: 'openssl strong', desc: 'AES-256 ransomware' },
-      { cmd: 'openssl fast', desc: 'AES-128 ransomware' },
-      { cmd: 'crontab', desc: 'Schedule timed payload' },
-      { cmd: 'wipe', desc: 'Scrub system logs' },
-      { cmd: 'findvirus', desc: 'Collect virus intel fragments from host' },
-      { cmd: 'craftvirus <worm|stealer|wiper|ransom>', desc: 'Compile custom malware' },
-      { cmd: 'viruses', desc: 'View virus lab inventory and values' },
-      { cmd: 'usevirus <id>', desc: 'Execute crafted payload on target host' },
-    ],
-    operator: [
-      { cmd: 'msfvenom -p linux/x64/meterpreter/reverse_tcp LHOST=<ip> LPORT=4444 -f elf -o shell.bin', desc: 'Generate reverse shell' },
-      { cmd: 'eternalblue', desc: 'MS17-010 SMBv1 exploit chain' },
-      { cmd: 'reptile', desc: 'LKM rootkit with magic packets' },
-      { cmd: 'xmrig --config config.json --background --threads 4 --max-cpu 75', desc: 'Stealth miner deployment' },
-      { cmd: 'shred -vfz -n 3 /dev/sda', desc: 'Secure disk destruction' },
-      { cmd: 'openssl enc -aes-256-cbc -salt -pbkdf2 -in <file> -out <file>.enc', desc: 'File encryption' },
-      { cmd: 'crontab -e "0 0 * * * /tmp/payload.sh"', desc: 'Scheduled execution' },
-      { cmd: 'wipe', desc: 'Clear /var/log/* and bash_history' },
-      { cmd: 'findvirus', desc: 'Extract signatures/modules from compromised host' },
-      { cmd: 'craftvirus <type>', desc: 'Compile polymorphic malware payload' },
-      { cmd: 'viruses', desc: 'List compiled payloads and trade value' },
-      { cmd: 'usevirus <virus_id>', desc: 'Deploy one crafted virus (consumable)' },
-    ],
-  },
-
-  // -----------------------------------------------------------------
-  // DATA & CRACKING
-  // -----------------------------------------------------------------
-  'DATA & CRACKING': {
-    arcade: [
-      { cmd: 'exfil <file>', desc: 'Extract data (Trace +25%)' },
-      { cmd: 'rclone', desc: 'Mass data exfiltration' },
-      { cmd: 'download <file>', desc: 'Save file locally' },
-      { cmd: 'hashcat <file>', desc: 'Crack password hashes' },
-      { cmd: 'john <file>', desc: 'CPU password cracker' },
-      { cmd: 'fence intel', desc: 'Sell intel on darknet' },
-    ],
-    field: [
-      { cmd: 'exfil <file>', desc: 'Extract financial data' },
-      { cmd: 'rclone', desc: 'Mass corporate exfil (root)' },
-      { cmd: 'download <file>', desc: 'Save to local storage' },
-      { cmd: 'hashcat <file>', desc: 'GPU hash cracking' },
-      { cmd: 'hashcat <file> -d', desc: 'Distributed botnet crack' },
-      { cmd: 'john <file>', desc: 'CPU-based cracking' },
-      { cmd: 'fence intel', desc: 'Sell on darknet market' },
-    ],
-    operator: [
-      { cmd: 'exfil <file>', desc: 'Exfiltrate via encrypted channel' },
-      { cmd: 'rclone sync /data remote:exfil --progress', desc: 'Mass sync to remote' },
-      { cmd: 'download <file>', desc: 'scp to local operator machine' },
-      { cmd: 'hashcat -m 1000 -a 0 <file> rockyou.txt', desc: 'NTLM hash crack' },
-      { cmd: 'john --wordlist=rockyou.txt --format=raw-sha256 <file>', desc: 'SHA256 crack' },
-      { cmd: 'fence intel', desc: 'List stolen data on market' },
-    ],
-  },
-
-  // -----------------------------------------------------------------
-  // ECONOMY & ITEMS
-  // -----------------------------------------------------------------
-  'ECONOMY & ITEMS': {
-    arcade: [
-      { cmd: 'use decoy', desc: 'Trace -30%' },
-      { cmd: 'use burner', desc: 'Heat -25%' },
-      { cmd: 'use 0day', desc: 'Instant root (no logging)' },
-      { cmd: 'contracts', desc: 'View fixer contracts' },
-      { cmd: 'market', desc: 'Open unified market hub' },
-      { cmd: 'buy <item> <qty>', desc: 'Buy commodity' },
-      { cmd: 'sell <item> <qty>', desc: 'Sell commodity' },
-      { cmd: 'shop / hardware / rig', desc: 'Alias → market hub' },
-      { cmd: 'tradevirus <id>', desc: 'Sell crafted virus on darknet exchange' },
-    ],
-    field: [
-      { cmd: 'use decoy', desc: 'Deploy trace decoy (-30%)' },
-      { cmd: 'use burner', desc: 'Burn VPN (-25% heat)' },
-      { cmd: 'use 0day', desc: 'Zero-day instant root' },
-      { cmd: 'contracts', desc: 'AI fixer contract board' },
-      { cmd: 'market', desc: 'Unified market hub' },
-      { cmd: 'buy <item> <qty>', desc: 'Purchase at market price' },
-      { cmd: 'sell <item> <qty>', desc: 'Sell from stash' },
-      { cmd: 'shop / hardware / rig', desc: 'Alias → market hub' },
-      { cmd: 'tradevirus <id>', desc: 'Liquidate crafted virus payload for BTC' },
-    ],
-    operator: [
-      { cmd: 'use decoy', desc: 'Inject false trail (-30% trace)' },
-      { cmd: 'use burner', desc: 'Rotate exit node (-25% heat)' },
-      { cmd: 'use 0day', desc: 'Weaponized zero-day exploit' },
-      { cmd: 'contracts', desc: 'View available contracts' },
-      { cmd: 'market', desc: 'Access unified market hub' },
-      { cmd: 'buy <item> <qty>', desc: 'Purchase commodity' },
-      { cmd: 'sell <item> <qty>', desc: 'Liquidate holdings' },
-      { cmd: 'shop / hardware / rig', desc: 'Alias → market hub' },
-      { cmd: 'tradevirus <id>', desc: 'Trade custom malware on darknet market' },
-    ],
-  },
-
-  // -----------------------------------------------------------------
-  // RIVALS & ZERO-DAYS
-  // -----------------------------------------------------------------
-  'RIVALS & ZERO-DAYS': {
-    arcade: [
-      { cmd: 'rivals', desc: 'List known rivals and threat status' },
-      { cmd: 'dossier', desc: 'Auto-pick rival dossier (hostile first)' },
-      { cmd: 'raid', desc: 'Auto-target highest-value rival (steal BTC/stash/zero-days)' },
-      { cmd: 'taunt', desc: 'Auto-provoke rival (raises retaliation risk)' },
-      { cmd: 'exploits', desc: 'Show zero-day collection and bonuses' },
-    ],
-    field: [
-      { cmd: 'rivals', desc: 'List known rivals and status' },
-      { cmd: 'dossier <handle>', desc: 'View detailed rival profile' },
-      { cmd: 'raid <handle>', desc: 'Attack rival for BTC/stash/REP/zero-days (diminishing returns on repeat raids)' },
-      { cmd: 'taunt <handle>', desc: 'Force hostility and raise retaliation chance' },
-      { cmd: 'exploits', desc: 'List collected zero-days' },
-    ],
-    operator: [
-      { cmd: 'rivals', desc: 'List rival registry with status and node intel' },
-      { cmd: 'dossier --handle <h>', desc: 'Operator-mode dossier lookup' },
-      { cmd: 'raid --target <h>', desc: 'Operator-mode targeted rival attack (can steal stash)' },
-      { cmd: 'taunt --target <h>', desc: 'Operator-mode provocation command' },
-      { cmd: 'exploits', desc: 'Zero-day inventory and category power' },
-    ],
-  },
-
-  // -----------------------------------------------------------------
-  // SYSTEM & NAV
-  // -----------------------------------------------------------------
-  'SYSTEM & NAV': {
-    arcade: [
-      { cmd: 'travel <region>', desc: 'Change region' },
-      { cmd: 'status', desc: 'Show operator status' },
-      { cmd: 'ls / cd / pwd', desc: 'Navigate file system' },
-      { cmd: 'cat <file>', desc: 'Read file contents' },
-      { cmd: 'exit', desc: 'Disconnect from node' },
-      { cmd: 'clear', desc: 'Clear terminal' },
-      { cmd: 'save', desc: 'Save progress' },
-      { cmd: 'menu', desc: 'Return to main menu' },
-    ],
-    field: [
-      { cmd: 'travel <region>', desc: 'Reroute to region' },
-      { cmd: 'status', desc: 'Full operator report' },
-      { cmd: 'ls', desc: 'List directory' },
-      { cmd: 'cd <dir>', desc: 'Change directory' },
-      { cmd: 'pwd', desc: 'Print working directory' },
-      { cmd: 'cat <file>', desc: 'Display file contents' },
-      { cmd: 'exit', desc: 'Disconnect safely' },
-      { cmd: 'clear', desc: 'Clear output buffer' },
-      { cmd: 'save', desc: 'Checkpoint progress' },
-      { cmd: 'menu', desc: 'Auto-save and exit' },
-    ],
-    operator: [
-      { cmd: 'travel us-gov|ru-darknet|cn-financial|eu-central', desc: 'Change operational region' },
-      { cmd: 'status', desc: 'Display full SITREP' },
-      { cmd: 'ls -la', desc: 'List with permissions' },
-      { cmd: 'cd <path>', desc: 'Navigate directories' },
-      { cmd: 'pwd', desc: 'Show current path' },
-      { cmd: 'cat <file>', desc: 'Read file (AI-generated)' },
-      { cmd: 'exit', desc: 'Clean disconnect' },
-      { cmd: 'clear', desc: 'Flush terminal buffer' },
-      { cmd: 'save', desc: 'Serialize game state' },
-      { cmd: 'menu', desc: 'Save and return to menu' },
-    ],
-  },
-
-  // -----------------------------------------------------------------
-  // MORALITY
-  // -----------------------------------------------------------------
-  'MORALITY': {
-    arcade: [
-      { cmd: 'assist', desc: 'Help civilian (+SIGNAL)' },
-      { cmd: 'crashpc', desc: 'Brick civilian PC (+CHAOS)' },
-      { cmd: 'salvage', desc: 'Recover hidden power-up' },
-    ],
-    field: [
-      { cmd: 'assist', desc: 'Quietly help civilian (+SIGNAL)' },
-      { cmd: 'crashpc', desc: 'Destroy civilian machine (+CHAOS)' },
-      { cmd: 'salvage', desc: 'Extract hidden item' },
-    ],
-    operator: [
-      { cmd: 'assist', desc: 'Covert civilian assistance' },
-      { cmd: 'crashpc', desc: 'Destructive civilian interference' },
-      { cmd: 'salvage', desc: 'Recover concealed asset' },
-    ],
-  },
-
-  // -----------------------------------------------------------------
-  // STORY EVENTS
-  // -----------------------------------------------------------------
-  'STORY EVENTS': {
-    arcade: [
-      { cmd: 'cat intercept.log', desc: 'Trigger moral dilemma' },
-      { cmd: 'resolve 1', desc: 'Heroic path (+SIGNAL)' },
-      { cmd: 'resolve 2', desc: 'Ruthless path (+CHAOS)' },
-      { cmd: 'wifi_choice signal', desc: 'WiFi: ethical choice' },
-      { cmd: 'wifi_choice chaos', desc: 'WiFi: exploit data' },
-    ],
-    field: [
-      { cmd: 'cat intercept.log', desc: 'View intercepted data' },
-      { cmd: 'resolve 1', desc: 'Choose heroic path' },
-      { cmd: 'resolve 2', desc: 'Choose ruthless path' },
-      { cmd: 'wifi_choice signal', desc: 'Report/help (+SIGNAL)' },
-      { cmd: 'wifi_choice chaos', desc: 'Exploit/sell (+CHAOS)' },
-      { cmd: 'wifi_choice neutral', desc: 'Walk away' },
-    ],
-    operator: [
-      { cmd: 'cat intercept.log', desc: 'Analyze intercepted communications' },
-      { cmd: 'resolve 1', desc: 'Execute SIGNAL protocol' },
-      { cmd: 'resolve 2', desc: 'Execute CHAOS protocol' },
-      { cmd: 'wifi_choice signal', desc: 'Ethical disclosure' },
-      { cmd: 'wifi_choice chaos', desc: 'Weaponize intelligence' },
-      { cmd: 'wifi_choice neutral', desc: 'Maintain cover' },
-    ],
-  },
-};
-
-// Mode display info
-const MODE_INFO = {
-  arcade: { label: 'ARCADE MODE', reward: '1x', desc: 'Auto-flags - Just type command name' },
-  field: { label: 'FIELD MODE', reward: '2x', desc: 'Key flags required - cmd flag' },
-  operator: { label: 'OPERATOR MODE', reward: '4x', desc: 'Full syntax - Real-world commands' },
-};
-
-// Category order for display
-const CATEGORY_ORDER = [
-  'WIFI HACKING',
-  'RECON & ACCESS',
-  'PRIVILEGE ESCALATION',
-  'BOTNET & C2',
-  'PAYLOADS & MALWARE',
-  'DATA & CRACKING',
-  'ECONOMY & ITEMS',
-  'RIVALS & ZERO-DAYS',
-  'SYSTEM & NAV',
-  'MORALITY',
-  'STORY EVENTS',
-];
-
-// --- SESSION MEMORY CACHE ---
-let cachedHelpPos = null;
-let cachedHelpSize = null;
-
-const HelpPanel = ({ onClose, devMode, gameMode = 'arcade' }) => {
-  const panelRef = useRef(null);
-  const mode = gameMode || 'arcade';
-  const modeInfo = MODE_INFO[mode];
-
-  // Load from cache, or use defaults
-  const [pos, setPos] = useState(cachedHelpPos || {
-    x: window.innerWidth > 800 ? window.innerWidth - 580 : 10,
-    y: window.innerHeight > 600 ? 50 : 20
-  });
-  
+const RadialMenu = ({
+  onCommand,
+  onFillInput,
+  onToggleMap,
+  discoveredNodes = [],
+  botnet = [],
+  consumables = {},
+  mapExpanded,
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [subMenu, setSubMenu] = useState(null);
+  const [position, setPosition] = useState({ x: window.innerWidth / 2, y: window.innerHeight - 150 });
   const [isDragging, setIsDragging] = useState(false);
-  const [expandedCategories, setExpandedCategories] = useState(
-    CATEGORY_ORDER.reduce((acc, cat) => ({ ...acc, [cat]: false }), {})
-  );
-  const dragOffset = useRef({ x: 0, y: 0 });
+  const dragStart = useRef({ x: 0, y: 0 });
+  const dragMoved = useRef(false);
+  const holdTimer = useRef(null);
 
-  const toggleCategory = (cat) => {
-    setExpandedCategories(prev => ({ ...prev, [cat]: !prev[cat] }));
+  const buzz = (ms = 25) => {
+    try { navigator.vibrate?.(ms); } catch {}
   };
 
-  const handleMouseDown = (e) => {
+  const tap = (cmd) => {
+    buzz(30);
+    onCommand(cmd);
+    setIsOpen(false);
+    setSubMenu(null);
+  };
+
+  const openSub = (menu) => {
+    buzz(20);
+    setSubMenu(subMenu === menu ? null : menu);
+  };
+
+  const handleDragStart = (e) => {
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    dragStart.current = { x: clientX - position.x, y: clientY - position.y };
+    dragMoved.current = false;
     setIsDragging(true);
-    dragOffset.current = {
-      x: e.clientX - pos.x,
-      y: e.clientY - pos.y
+    
+    // Start hold timer — if held 500ms without moving, close menu
+    holdTimer.current = setTimeout(() => {
+      if (!dragMoved.current && isOpen) {
+        buzz(40);
+        setIsOpen(false);
+        setSubMenu(null);
+      }
+    }, 500);
+  };
+
+  const handleDragMove = (e) => {
+    if (!isDragging) return;
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    const newX = clientX - dragStart.current.x;
+    const newY = clientY - dragStart.current.y;
+    
+    if (Math.abs(newX - position.x) > 10 || Math.abs(newY - position.y) > 10) {
+      dragMoved.current = true;
+      clearTimeout(holdTimer.current);
+    }
+    
+    const boundedX = Math.max(60, Math.min(window.innerWidth - 60, newX));
+    const boundedY = Math.max(100, Math.min(window.innerHeight - 60, newY));
+    setPosition({ x: boundedX, y: boundedY });
+  };
+
+  const handleDragEnd = () => {
+    setIsDragging(false);
+    clearTimeout(holdTimer.current);
+    
+    // Only open if we didn't drag and menu is closed
+    if (!dragMoved.current && !isOpen) {
+      buzz(40);
+      setIsOpen(true);
+    }
+  };
+
+  const mainItems = [
+    { id: 'nmap', icon: '📡', label: 'NMAP', color: COLORS.primary, action: () => tap('nmap') },
+    { id: 'map', icon: '🗺', label: 'MAP', color: COLORS.secondary, action: () => { buzz(25); onToggleMap(); setIsOpen(false); } },
+    { id: 'exploit', icon: '⚡', label: 'EXPLOIT', color: COLORS.danger, action: () => openSub('exploit'), hasSub: true },
+    { id: 'market', icon: '🏪', label: 'MARKET', color: COLORS.warning, action: () => tap('market') },
+    { id: 'contracts', icon: '📋', label: 'JOBS', color: COLORS.chat, action: () => tap('contracts') },
+    { id: 'botnet', icon: '🤖', label: 'BOTNET', color: COLORS.secondary, action: () => openSub('botnet'), hasSub: true, show: botnet.length > 0 },
+    { id: 'travel', icon: '✈️', label: 'TRAVEL', color: COLORS.ip, action: () => tap('travel') },
+    { id: 'save', icon: '💾', label: 'SAVE', color: COLORS.textDim, action: () => tap('save') },
+  ].filter(item => item.show !== false);
+
+  const unhackedTargets = discoveredNodes.filter(n => !n.hacked);
+  const botnetNodes = discoveredNodes.filter(n => n.hasSliver);
+
+  const getPosition = (index, total, radius = 110) => {
+    const angle = (index / total) * 2 * Math.PI - Math.PI / 2;
+    return {
+      x: Math.cos(angle) * radius,
+      y: Math.sin(angle) * radius,
     };
   };
 
-  useEffect(() => {
-    const handleMouseMove = (e) => {
-      if (!isDragging) return;
-      setPos({
-        x: e.clientX - dragOffset.current.x,
-        y: e.clientY - dragOffset.current.y
-      });
-    };
-
-    const handleMouseUp = () => setIsDragging(false);
-
-    if (isDragging) {
-      window.addEventListener('mousemove', handleMouseMove);
-      window.addEventListener('mouseup', handleMouseUp);
-    }
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [isDragging]);
-
-  // Save Position to memory whenever it changes
-  useEffect(() => {
-    cachedHelpPos = pos;
-  }, [pos]);
-
-  // Custom Close function to capture custom sizing before it disappears
-  const handleCloseClick = () => {
-    if (panelRef.current) {
-      cachedHelpSize = {
-        width: panelRef.current.style.width,
-        height: panelRef.current.style.height
-      };
-    }
-    onClose();
+  const styles = {
+    trigger: {
+      position: 'fixed',
+      left: `${position.x}px`,
+      top: `${position.y}px`,
+      transform: `translate(-50%, -50%) ${isOpen ? 'rotate(45deg) scale(1.1)' : 'rotate(0deg)'}`,
+      width: '56px',
+      height: '56px',
+      borderRadius: '50%',
+      background: isOpen ? COLORS.danger : `linear-gradient(135deg, ${COLORS.primary}, ${COLORS.secondary})`,
+      border: `2px solid ${isOpen ? COLORS.danger : COLORS.primary}`,
+      boxShadow: `0 0 20px ${isOpen ? COLORS.danger : COLORS.primary}50, inset 0 0 15px rgba(0,0,0,0.3)`,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontSize: '24px',
+      cursor: isDragging ? 'grabbing' : 'grab',
+      zIndex: 1000,
+      transition: isDragging ? 'none' : 'all 0.3s ease',
+      touchAction: 'none',
+    },
+    overlay: {
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      background: 'rgba(0,0,0,0.7)',
+      backdropFilter: 'blur(4px)',
+      zIndex: 998,
+      opacity: isOpen ? 1 : 0,
+      pointerEvents: isOpen ? 'auto' : 'none',
+      transition: 'opacity 0.3s ease',
+    },
+    wheelCenter: {
+      position: 'fixed',
+      left: `${position.x}px`,
+      top: `${position.y}px`,
+      transform: 'translate(-50%, -50%)',
+      width: '0',
+      height: '0',
+      zIndex: 999,
+    },
+    menuItem: (pos, color, delay) => ({
+      position: 'absolute',
+      left: `${pos.x}px`,
+      top: `${pos.y}px`,
+      transform: `translate(-50%, -50%) scale(${isOpen && !subMenu ? 1 : 0})`,
+      width: '52px',
+      height: '52px',
+      borderRadius: '50%',
+      background: `${color}20`,
+      border: `2px solid ${color}`,
+      boxShadow: `0 0 15px ${color}40`,
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      cursor: 'pointer',
+      transition: `all 0.3s ease ${delay}ms`,
+      opacity: isOpen && !subMenu ? 1 : 0,
+    }),
+    menuIcon: { fontSize: '20px', lineHeight: 1 },
+    menuLabel: { fontSize: '8px', fontWeight: 'bold', color: COLORS.text, marginTop: '2px', letterSpacing: '0.5px' },
+    subItem: (pos, color, delay) => ({
+      position: 'absolute',
+      left: `${pos.x}px`,
+      top: `${pos.y}px`,
+      transform: `translate(-50%, -50%) scale(${subMenu ? 1 : 0})`,
+      minWidth: '70px',
+      padding: '8px 10px',
+      borderRadius: '8px',
+      background: `${color}25`,
+      border: `1px solid ${color}`,
+      boxShadow: `0 0 10px ${color}30`,
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      cursor: 'pointer',
+      transition: `all 0.25s ease ${delay}ms`,
+      opacity: subMenu ? 1 : 0,
+    }),
+    subLabel: { fontSize: '9px', fontWeight: 'bold', color: COLORS.text, textAlign: 'center', whiteSpace: 'nowrap' },
+    subDetail: { fontSize: '8px', color: COLORS.textDim, marginTop: '2px' },
+    backBtn: {
+      position: 'absolute',
+      left: '0px',
+      top: '0px',
+      transform: 'translate(-50%, -50%)',
+      width: '40px',
+      height: '40px',
+      borderRadius: '50%',
+      background: `${COLORS.textDim}20`,
+      border: `1px solid ${COLORS.textDim}`,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontSize: '16px',
+      cursor: 'pointer',
+      opacity: subMenu ? 1 : 0,
+      transition: 'all 0.2s ease',
+    },
+    centerLabel: {
+      position: 'absolute',
+      left: '50%',
+      top: '-140px',
+      transform: 'translateX(-50%)',
+      fontSize: '11px',
+      fontWeight: 'bold',
+      color: COLORS.primary,
+      letterSpacing: '2px',
+      textShadow: `0 0 10px ${COLORS.primary}`,
+      opacity: subMenu ? 1 : 0,
+      transition: 'opacity 0.2s ease',
+      whiteSpace: 'nowrap',
+    },
   };
 
-  // Get mode-specific color
-  const modeColor = mode === 'arcade' ? COLORS.secondary : 
-                    mode === 'field' ? COLORS.warning : 
-                    COLORS.danger;
+  const expColor = (exp) => ({
+    hydra: COLORS.danger,
+    sqlmap: COLORS.warning,
+    msfconsole: '#ff6633',
+    curl: COLORS.file
+  }[exp] || COLORS.primary);
 
   return (
-    <div 
-      ref={panelRef}
-      style={{
-        position: 'absolute', 
-        left: `${pos.x}px`,     
-        top: `${pos.y}px`,      
-        width: cachedHelpSize?.width || '550px',
-        height: cachedHelpSize?.height || 'auto',
-        minWidth: '400px',      
-        maxHeight: '85vh',
-        background: 'rgba(8,12,18,0.98)', 
-        border: `1px solid ${modeColor}80`,
-        fontSize: '11px',
-        color: COLORS.text,
-        zIndex: 9999, 
-        backdropFilter: 'blur(15px)',
-        boxShadow: `0 0 50px rgba(0,0,0,0.9), 0 0 20px ${modeColor}30`,
-        borderRadius: '4px',
-        display: 'flex',
-        flexDirection: 'column',
-        resize: 'both',         
-        overflow: 'hidden'      
-      }}>
+    <>
+      <div style={styles.overlay} onClick={() => { setIsOpen(false); setSubMenu(null); }} />
       
-      {/* HEADER / DRAG HANDLE */}
-      <div 
-        onMouseDown={handleMouseDown}
-        style={{ 
-          display: 'flex', 
-          flexDirection: 'column',
-          borderBottom: `1px solid ${COLORS.borderActive}`, 
-          padding: '12px 20px', 
-          background: `${modeColor}15`,
-          cursor: isDragging ? 'grabbing' : 'grab', 
-          userSelect: 'none'
-        }}
-      >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-          <span style={{ color: COLORS.primary, fontWeight: 'bold', letterSpacing: '2px', fontSize: '13px' }}>
-            STEAMBREACH COMMAND REFERENCE
-          </span>
-          <span 
-            onClick={handleCloseClick} 
-            style={{ 
-              color: COLORS.textDim, 
-              cursor: 'pointer', 
-              border: `1px solid ${COLORS.textDim}40`, 
-              padding: '2px 10px', 
-              borderRadius: '3px',
-              fontSize: '10px'
-            }}
-          >
-            [TAB] CLOSE
-          </span>
-        </div>
-        
-        {/* Mode indicator */}
-        <div style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          gap: '12px',
-          padding: '8px 12px',
-          background: `${modeColor}20`,
-          borderRadius: '3px',
-          border: `1px solid ${modeColor}40`
-        }}>
-          <span style={{ color: modeColor, fontWeight: 'bold', fontSize: '12px', letterSpacing: '1px' }}>
-            {modeInfo.label}
-          </span>
-          <span style={{ color: COLORS.warning, fontSize: '11px' }}>
-            {modeInfo.reward} REWARDS
-          </span>
-          <span style={{ color: COLORS.textDim, fontSize: '10px', marginLeft: 'auto' }}>
-            {modeInfo.desc}
-          </span>
-        </div>
-        <div style={{ color: COLORS.textDim, fontSize: '10px', marginTop: '6px' }}>
-          Sections start collapsed. Click <span style={{ color: COLORS.primary }}>[ + ]</span> to expand.
-        </div>
-      </div>
-      
-      {/* SCROLLABLE CONTENT */}
-      <div style={{ 
-        flexGrow: 1, 
-        overflowY: 'auto', 
-        display: 'flex', 
-        flexDirection: 'column', 
-        gap: '2px', 
-        padding: '12px 16px',
-        scrollbarWidth: 'thin', 
-        scrollbarColor: `${COLORS.primaryDim} transparent`
-      }}>
-        
-        {CATEGORY_ORDER.map((categoryName) => {
-          const commands = MODE_COMMANDS[categoryName]?.[mode] || [];
-          if (commands.length === 0) return null;
-          
-          const isExpanded = expandedCategories[categoryName];
-          
-          return (
-            <div key={categoryName} style={{ marginBottom: '4px' }}>
-              {/* Category Header - Clickable */}
-              <div 
-                onClick={() => toggleCategory(categoryName)}
-                style={{ 
-                  color: COLORS.secondary, 
-                  marginTop: '2px', 
-                  marginBottom: '6px', 
-                  fontWeight: 'bold', 
-                  borderBottom: `1px dashed ${COLORS.borderActive}`, 
-                  paddingBottom: '4px',
-                  letterSpacing: '1px',
-                  fontSize: '11px',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center'
-                }}
-              >
-                <span>[{categoryName}]</span>
-                <span style={{ color: COLORS.textDim, fontSize: '9px' }}>
-                  {isExpanded ? '[ - ]' : '[ + ]'} {commands.length}
-                </span>
-              </div>
-              
-              {/* Commands */}
-              {isExpanded && commands.map((c, i) => (
-                <div key={i} style={{ display: 'flex', marginBottom: '5px', lineHeight: '1.4', paddingLeft: '8px' }}>
-                  <span style={{ 
-                    color: modeColor, 
-                    minWidth: mode === 'operator' ? '320px' : '180px',
-                    maxWidth: mode === 'operator' ? '320px' : '180px',
-                    flexShrink: 0, 
-                    fontFamily: 'monospace', 
-                    fontWeight: 'bold',
-                    fontSize: '10px',
-                    wordBreak: 'break-all'
-                  }}>
-                    {c.cmd}
-                  </span>
-                  <span style={{ color: COLORS.textDim, fontSize: '10px', paddingLeft: '8px' }}>
-                    {c.desc}
-                  </span>
-                </div>
-              ))}
-            </div>
-          );
-        })}
-        
-        {/* DEV COMMANDS */}
-        {devMode && (
-          <div style={{ marginBottom: '8px' }}>
-            <div style={{ 
-              color: COLORS.danger, 
-              marginTop: '8px', 
-              borderBottom: `1px dashed ${COLORS.danger}60`, 
-              paddingBottom: '4px', 
-              marginBottom: '8px', 
-              fontWeight: 'bold', 
-              letterSpacing: '1px', 
-              fontSize: '11px' 
-            }}>
-              [DEVELOPER PROTOCOLS]
-            </div>
-            {DEV_COMMANDS.map((c, i) => (
-              <div key={`dev-${i}`} style={{ display: 'flex', marginBottom: '4px', paddingLeft: '8px' }}>
-                <span style={{ color: COLORS.danger, minWidth: '180px', flexShrink: 0, fontSize: '10px' }}>{c.cmd}</span>
-                <span style={{ color: COLORS.textDim, fontSize: '10px' }}>{c.desc}</span>
-              </div>
-            ))}
+      {isOpen && (
+        <div style={styles.wheelCenter}>
+          <div style={styles.centerLabel}>
+            {subMenu === 'exploit' && '⚡ SELECT TARGET'}
+            {subMenu === 'botnet' && '🤖 BOTNET NODES'}
           </div>
-        )}
-        
-        {/* FOOTER */}
-        <div style={{ 
-          marginTop: '12px', 
-          paddingTop: '10px', 
-          borderTop: `1px solid ${COLORS.borderActive}`, 
-          color: COLORS.textDim, 
-          textAlign: 'center', 
-          fontSize: '9px', 
-          letterSpacing: '1px' 
-        }}>
-          STEAMBREACH v3.1 // {modeInfo.label} ACTIVE // SYNTAX REFERENCE LOADED
+          
+          {subMenu && (
+            <div style={styles.backBtn} onClick={() => setSubMenu(null)}>←</div>
+          )}
+          
+          {!subMenu && mainItems.map((item, i) => {
+            const pos = getPosition(i, mainItems.length, 110);
+            return (
+              <div key={item.id} style={styles.menuItem(pos, item.color, i * 30)} onClick={item.action}>
+                <span style={styles.menuIcon}>{item.icon}</span>
+                <span style={styles.menuLabel}>{item.label}</span>
+              </div>
+            );
+          })}
+          
+          {subMenu === 'exploit' && (
+            <>
+              {unhackedTargets.length === 0 ? (
+                <div style={{ ...styles.subItem({ x: 0, y: -60 }, COLORS.textDim, 0), opacity: 1, transform: 'translate(-50%, -50%) scale(1)' }}>
+                  <span style={styles.subLabel}>NO TARGETS</span>
+                  <span style={styles.subDetail}>Run NMAP first</span>
+                </div>
+              ) : (
+                unhackedTargets.slice(0, 6).map((node, i) => {
+                  const pos = getPosition(i, Math.min(unhackedTargets.length, 6), 105);
+                  return (
+                    <div key={node.ip} style={styles.subItem(pos, expColor(node.exp), i * 40)} onClick={() => tap(`${node.exp} ${node.ip}`)}>
+                      <span style={{ ...styles.subLabel, color: expColor(node.exp) }}>⚡ {node.exp.toUpperCase()}</span>
+                      <span style={styles.subDetail}>{node.name.slice(0, 12)}</span>
+                    </div>
+                  );
+                })
+              )}
+            </>
+          )}
+          
+          {subMenu === 'botnet' && (
+            <>
+              {botnetNodes.length === 0 ? (
+                <div style={{ ...styles.subItem({ x: 0, y: -60 }, COLORS.textDim, 0), opacity: 1, transform: 'translate(-50%, -50%) scale(1)' }}>
+                  <span style={styles.subLabel}>NO BOTS</span>
+                  <span style={styles.subDetail}>Deploy SLIVER first</span>
+                </div>
+              ) : (
+                <>
+                  <div style={styles.subItem({ x: -80, y: -120 }, COLORS.danger, 0)} onClick={() => { onFillInput('hping3 '); setIsOpen(false); setSubMenu(null); }}>
+                    <span style={styles.subLabel}>⚡ HPING3</span>
+                  </div>
+                  <div style={styles.subItem({ x: 80, y: -120 }, COLORS.warning, 50)} onClick={() => { onFillInput('mimikatz '); setIsOpen(false); setSubMenu(null); }}>
+                    <span style={styles.subLabel}>🔑 MIMIKATZ</span>
+                  </div>
+                  {botnetNodes.slice(0, 6).map((node, i) => {
+                    const pos = getPosition(i, Math.min(botnetNodes.length, 6), 100);
+                    return (
+                      <div key={node.ip} style={styles.subItem(pos, COLORS.secondary, i * 40 + 100)} onClick={() => tap(`nmap ${node.ip}`)}>
+                        <span style={styles.subLabel}>🤖 {node.name.slice(0, 8)}</span>
+                        <span style={styles.subDetail}>{node.ip.slice(-8)}</span>
+                      </div>
+                    );
+                  })}
+                </>
+              )}
+            </>
+          )}
         </div>
+      )}
+      
+      <div
+        style={styles.trigger}
+        onMouseDown={handleDragStart}
+        onMouseMove={handleDragMove}
+        onMouseUp={handleDragEnd}
+        onMouseLeave={() => isDragging && handleDragEnd()}
+        onTouchStart={handleDragStart}
+        onTouchMove={handleDragMove}
+        onTouchEnd={handleDragEnd}
+      >
+        {isOpen ? '✕' : '⚡'}
       </div>
-    </div>
+    </>
   );
 };
 
-export { SyntaxText, Typewriter, HelpPanel };
+export default RadialMenu;

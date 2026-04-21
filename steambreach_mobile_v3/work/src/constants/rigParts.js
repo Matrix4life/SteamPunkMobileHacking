@@ -202,6 +202,8 @@ export const SOFTWARE_DB = [
 // COMMODITIES
 // ═══════════════════════════════════════════════════════════════
 export const COMMODITIES = {
+  ssn_fullz: {
+  name: 'SSN Fullz',desc: 'Full identity packages',base: 60,vol: 40},
   cc_dumps:  {name:'CC Dumps',         base:100,   vol:50,  desc:'Stolen credit card data'},
   botnets:   {name:'Botnet Access',    base:300,  vol:200, desc:'Zombie net rentals'},
   exploits:  {name:'Exploit Kits',     base:1500, vol:800, desc:'Pre-packaged vuln tools'},

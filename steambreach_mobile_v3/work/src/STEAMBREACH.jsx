@@ -2001,6 +2001,22 @@ const verifyContract = (ip, objectiveType) => {
           const infected = candidates.slice(0, spread);
           if (infected.length > 0) {
             setBotnet(prev => [...new Set([...prev, ...infected])]);
+            setWorld(prev => {
+  const next = { ...prev };
+  infected.forEach((ip) => {
+    if (!next[ip]) return;
+    next[ip] = {
+      ...next[ip],
+      infection: {
+        ...(next[ip].infection || {}),
+        state: 'infected',
+        lastTick: Date.now(),
+        storedYield: next[ip]?.infection?.storedYield || 0,
+      }
+    };
+  });
+  return next;
+});
             out += `[+] Worm propagation successful. +${infected.length} node(s) added to botnet.\n`;
           } else {
             out += `[*] No reachable new hosts for lateral movement.\n`;
@@ -2148,6 +2164,18 @@ const verifyContract = (ip, objectiveType) => {
         if (privilege !== 'root') return "[-] Root required for C2 payload.";
         if (botnet.includes(targetIP)) return "[-] Beacon already active.";
         setBotnet(prev => [...prev, targetIP]);
+        setWorld(prev => ({
+  ...prev,
+  [targetIP]: {
+    ...prev[targetIP],
+    infection: {
+      ...(prev[targetIP]?.infection || {}),
+      state: 'infected',
+      lastTick: Date.now(),
+      storedYield: prev[targetIP]?.infection?.storedYield || 0,
+    }
+  }
+}));
         playBeacon();
         escalateBlueTeam(targetIP, 20);
         return `[*] Deploying sliver-agent.bin...\n[+] C2 beacon established. Node added to botnet.\n[*] BOTNET UTILITIES NOW AVAILABLE:\n    hping3 <ip>     - SYN flood to disrupt target defenses\n    mimikatz <ip>   - Dump LSASS credentials from C2 node\n    stash <file>    - Stage exfil data through botnet node\n    hashcat -d      - Distribute cracking across botnet`;
@@ -2954,6 +2982,11 @@ return `[+] ${actionResult}\n[+] CHAOS +10`;
           let newNodes = [];
           for (let i = 0; i < infectCount; i++) {
             const newNode = generateNewTarget(null, targetIP, directorRef.current?.modifiers, world[targetIP]);
+            newNode.data.infection = {
+  state: 'idle',
+  lastTick: Date.now(),
+  storedYield: 0,
+};
             newNode.data.region = currentRegion;
             newNodes.push(newNode);
             setWorld(prev => ({ ...prev, [newNode.ip]: newNode.data }));
@@ -2981,8 +3014,18 @@ return `[+] ${actionResult}\n[+] CHAOS +10`;
           let newNodes = [];
           for (let i = 0; i < infectCount; i++) {
             const newNode = generateNewTarget(null, targetIP, directorRef.current?.modifiers, world[targetIP]);
+            newNode.data.infection = {
+  state: 'idle',
+  lastTick: Date.now(),
+  storedYield: 0,
+};
             newNode.data.region = currentRegion;
             newNodes.push(newNode);
+            newNode.data.infection = {
+  state: 'idle',
+  lastTick: Date.now(),
+  storedYield: 0,
+};
             setWorld(prev => ({ ...prev, [newNode.ip]: newNode.data }));
             if (payloadType !== 'wiper') setBotnet(prev => [...prev, newNode.ip]);
           }
@@ -3010,6 +3053,11 @@ return `[+] ${actionResult}\n[+] CHAOS +10`;
           const newNode = generateNewTarget(null, targetIP, directorRef.current?.modifiers, world[targetIP]);
           newNode.data.region = currentRegion;
           newNodes.push(newNode);
+          newNode.data.infection = {
+  state: 'idle',
+  lastTick: Date.now(),
+  storedYield: 0,
+};
           setWorld(prev => ({ ...prev, [newNode.ip]: newNode.data }));
           setBotnet(prev => [...prev, newNode.ip]);
         }

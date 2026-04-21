@@ -3,6 +3,7 @@ import { COLORS, COMMODITIES } from '../constants/gameConstants';
 
 const BASE_DEMAND = {
   cc_dumps: 0.78,
+  ssn_fullz: 0.12,
   botnets:  0.52,
   exploits: 0.34,
   zerodays: 0.14,

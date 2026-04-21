@@ -240,6 +240,39 @@ const STEAMBREACH = () => {
     const heatPenalty = clamp(1 - (heat / 180), 0.45, 1);
     return Math.max(250, Math.floor(base * marketMult * heatPenalty));
   };
+
+  const processInfectionTick = (worldState) => {
+  const now = Date.now();
+  let totalYield = 0;
+
+  const updatedWorld = { ...worldState };
+
+  Object.keys(updatedWorld).forEach((ip) => {
+    const node = updatedWorld[ip];
+    if (!node || !node.infection) return;
+    if (node.infection.state !== 'infected') return;
+
+    const last = node.infection.lastTick || now;
+    const elapsed = (now - last) / 1000;
+
+    if (elapsed < 5) return; // pay out every 5 seconds
+
+    const gain = 1; // phase 1 simple yield
+
+    updatedWorld[ip] = {
+      ...node,
+      infection: {
+        ...node.infection,
+        lastTick: now,
+        storedYield: (node.infection.storedYield || 0) + gain,
+      }
+    };
+
+    totalYield += gain;
+  });
+
+  return { updatedWorld, totalYield };
+};
 const generateStory = async (ip, orgData) => {
   const orgName = orgData?.org?.orgName || 'Unknown Corp';
   const orgType = orgData?.org?.type || 'corporation';
@@ -363,7 +396,26 @@ const [soundMap, setSoundMapState] = useState({});
 
 // Pass to soundEngine whenever it changes:
 useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
+useEffect(() => {
+  if (screen !== 'game') return;
 
+  const interval = setInterval(() => {
+    setWorld((prevWorld) => {
+      const { updatedWorld, totalYield } = processInfectionTick(prevWorld);
+
+      if (totalYield > 0) {
+        setStash((prev) => ({
+          ...prev,
+          botnets: (prev.botnets || 0) + totalYield,
+        }));
+      }
+
+      return updatedWorld;
+    });
+  }, 2000);
+
+  return () => clearInterval(interval);
+}, [screen]);
   // --- AUTO-SCROLL AND FOCUS KEEPER ---
   useEffect(() => {
     if (terminalEndRef.current) {

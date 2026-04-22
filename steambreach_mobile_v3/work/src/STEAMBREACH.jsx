@@ -2253,6 +2253,18 @@ const verifyContract = (ip, objectiveType) => {
     '',
     `ARCHIVE: ${virusArchive.length}/${NAMED_VIRUSES.length} discovered`,
   ];
+const hasEntry = (virusFragments.entry || []).length > 0;
+const hasHit = (virusFragments.hit || []).length > 0;
+
+lines.push('');
+lines.push('REQUIREMENTS:');
+lines.push(`  entry: ${hasEntry ? '✔' : '✖'}`);
+lines.push(`  hit  : ${hasHit ? '✔' : '✖'}`);
+
+if (!hasEntry || !hasHit) {
+  lines.push('');
+  lines.push('[!] Minimum required to craft: entry + hit');
+}
 
   if (virusArchive.length > 0) {
     lines.push(...virusArchive.map(v => `  ✓ ${v.code} "${v.name}"`));

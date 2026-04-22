@@ -834,7 +834,12 @@ useEffect(() => {
   trigger: [],
   stay: [],
 });
-setVirusInventory(data.virusInventory || []);
+setVirusInventory(
+  (data.virusInventory || []).filter(v =>
+    typeof v.power === 'number' &&
+    typeof v.successChance === 'number'
+  )
+);
 setVirusArchive(data.virusArchive || []);
 setVirusScans(data.virusScans || {});
   };

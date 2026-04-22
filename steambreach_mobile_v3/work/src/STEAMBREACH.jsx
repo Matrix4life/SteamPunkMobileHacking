@@ -2132,12 +2132,14 @@ const verifyContract = (ip, objectiveType) => {
   }
 
   const pullFragment = (role, key) => {
-    if (!key) return null;
-    const list = virusFragments[role] || [];
-    const idx = list.findIndex(f => f.key.toLowerCase() === key.toLowerCase());
-    if (idx === -1) return null;
-    return { frag: list[idx], idx };
-  };
+  if (!key || key.toLowerCase() === 'none') return null;
+
+  const list = virusFragments[role] || [];
+  const idx = list.findIndex(f => f.key.toLowerCase() === key.toLowerCase());
+  if (idx === -1) return null;
+
+  return { frag: list[idx], idx };
+};
 
   const picks = {
     entry: pullFragment('entry', entryName),

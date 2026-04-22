@@ -74,9 +74,10 @@ const COMMAND_REGISTRY = [
   { cmd: 'openssl <arg>', desc: 'Deploy ransomware payload (root)', category: 'PAYLOADS & MALWARE' },
   { cmd: 'crontab <arg>', desc: 'Schedule logic bombs (root)', category: 'PAYLOADS & MALWARE' },
   { cmd: 'wipe', desc: 'Scrub system logs (root) — Heat -15%, Blue Team alert -30. One use per node.', category: 'PAYLOADS & MALWARE' },
-  { cmd: 'findvirus', desc: 'Harvest malware signatures/modules from compromised host', category: 'PAYLOADS & MALWARE' },
-  { cmd: 'craftvirus <type>', desc: 'Compile custom malware (worm/stealer/wiper/ransom)', category: 'PAYLOADS & MALWARE' },
-  { cmd: 'viruses', desc: 'List crafted malware payloads and trade value', category: 'PAYLOADS & MALWARE' },
+  { cmd: 'findvirus', desc: 'Reveal 1–3 malware fragments on the current node', category: 'PAYLOADS & MALWARE' },
+  { cmd: 'extract <name>', desc: 'Extract a revealed malware fragment from the current node', category: 'PAYLOADS & MALWARE' },
+  { cmd: 'craftvirus <entry> <hit> [spread] [hide] [trigger] [stay]', desc: 'Assemble a custom virus from stored fragments', category: 'PAYLOADS & MALWARE' },
+  { cmd: 'viruses', desc: 'Open the Virus Lab archive, fragments, and crafted builds', category: 'PAYLOADS & MALWARE' },
   { cmd: 'usevirus <id>', desc: 'Deploy crafted virus on active target node', category: 'PAYLOADS & MALWARE' },
 
   // --- DATA & CRACKING ---

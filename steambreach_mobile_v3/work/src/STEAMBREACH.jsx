@@ -180,8 +180,18 @@ const STEAMBREACH = () => {
   const [rivals, setRivals] = useState([]);
   const [zeroDays, setZeroDays] = useState([]);
   const [rivalRaidCooldowns, setRivalRaidCooldowns] = useState({});
-  const [virusIntel, setVirusIntel] = useState({ signatures: 0, polymers: 0, keys: 0 });
-  const [virusInventory, setVirusInventory] = useState([]);
+  const [virusFragments, setVirusFragments] = useState({
+  entry: [],
+  hit: [],
+  spread: [],
+  hide: [],
+  trigger: [],
+  stay: [],
+});
+
+const [virusInventory, setVirusInventory] = useState([]);
+const [virusArchive, setVirusArchive] = useState([]);
+const [virusScans, setVirusScans] = useState({});
 
   const rigFx = getRigEffects(rig);
   const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
@@ -231,16 +241,139 @@ const STEAMBREACH = () => {
   const getExfilRigMult = () => clamp(0.9 + (rigFx.exfilMultiplier / 10), 0.9, 1.7);
   const getMineRigMult = () => clamp(0.75 + (rigFx.mineMultiplier / 3000), 0.75, 2.5);
   const getHeatRiskMult = (baseHeat = heat) => clamp(1 + ((100 - baseHeat) / 200), 1, 1.5);
-  const getVirusTradeValue = (virus) => {
-    if (!virus) return 0;
-    const potency = Math.max(1, virus.potency || 1);
-    const stealth = Math.max(0, virus.stealth || 0);
-    const base = 1200 + (potency * 850) + (stealth * 35);
-    const marketMult = clamp(0.8 + (btcIndex * 0.5), 0.85, 1.8);
-    const heatPenalty = clamp(1 - (heat / 180), 0.45, 1);
-    return Math.max(250, Math.floor(base * marketMult * heatPenalty));
-  };
+  const VIRUS_FRAGMENT_POOL = {
+  low: [
+    { key: 'hook', role: 'entry', tier: 'common', power: 2, noise: 1 },
+    { key: 'scrape', role: 'hit', tier: 'common', power: 2, noise: 1 },
+    { key: 'veil', role: 'hide', tier: 'common', power: 2, noise: 1 },
+    { key: 'now', role: 'trigger', tier: 'common', power: 1, noise: 2 },
+    { key: 'temp', role: 'stay', tier: 'common', power: 1, noise: 1 },
+    { key: 'drift', role: 'spread', tier: 'common', power: 2, noise: 1 },
+  ],
+  mid: [
+    { key: 'inject', role: 'entry', tier: 'uncommon', power: 4, noise: 3 },
+    { key: 'drain', role: 'hit', tier: 'uncommon', power: 3, noise: 2 },
+    { key: 'jump', role: 'spread', tier: 'uncommon', power: 3, noise: 2 },
+    { key: 'delay', role: 'trigger', tier: 'uncommon', power: 2, noise: 1 },
+    { key: 'boot', role: 'stay', tier: 'uncommon', power: 3, noise: 2 },
+    { key: 'shade', role: 'hide', tier: 'uncommon', power: 3, noise: 1 },
+    { key: 'tap', role: 'hit', tier: 'uncommon', power: 2, noise: 1 },
+  ],
+  high: [
+    { key: 'lock', role: 'hit', tier: 'rare', power: 5, noise: 3 },
+    { key: 'burn', role: 'hit', tier: 'rare', power: 5, noise: 4 },
+    { key: 'chain', role: 'spread', tier: 'rare', power: 4, noise: 3 },
+    { key: 'root', role: 'stay', tier: 'rare', power: 4, noise: 2 },
+    { key: 'mirror', role: 'hide', tier: 'rare', power: 4, noise: 2 },
+    { key: 'echo', role: 'trigger', tier: 'rare', power: 3, noise: 1 },
+  ],
+  elite: [
+    { key: 'ghost', role: 'hide', tier: 'ghost', power: 6, noise: 1 },
+    { key: 'blast', role: 'spread', tier: 'ghost', power: 6, noise: 4 },
+    { key: 'anchor', role: 'stay', tier: 'ghost', power: 5, noise: 2 },
+    { key: 'spoof', role: 'entry', tier: 'ghost', power: 5, noise: 1 },
+    { key: 'loop', role: 'trigger', tier: 'ghost', power: 4, noise: 1 },
+  ]
+};
 
+const NAMED_VIRUSES = [
+  { id: 'vx_01', code: 'VX-01', name: 'Quick Hook', conditions: { entry: 'hook', hit: 'scrape' } },
+  { id: 'vx_10', code: 'VX-10', name: 'Chain Leech', conditions: { entry: 'inject', hit: 'drain', spread: 'chain' } },
+  { id: 'vx_20', code: 'VX-20', name: 'Black Veil', conditions: { entry: 'inject', hide: 'veil', trigger: 'delay', minPower: 10 } },
+  { id: 'vx_21', code: 'VX-21', name: 'Ghost Thread', conditions: { entry: 'hook', hide: 'ghost', spread: 'chain' } },
+  { id: 'vx_90', code: 'VX-90', name: 'Zero Whisper', conditions: { entry: 'hook', hide: 'ghost', trigger: 'delay', extra: ['veil'], minPower: 14 } },
+  { id: 'vx_91', code: 'VX-91', name: 'Dead Network', conditions: { entry: 'inject', hit: 'burn', spread: 'blast', trigger: 'now' } },
+];
+
+const pickRandom = (arr, count) => {
+  const copy = [...arr];
+  const out = [];
+  while (copy.length && out.length < count) {
+    const idx = Math.floor(Math.random() * copy.length);
+    out.push(copy.splice(idx, 1)[0]);
+  }
+  return out;
+};
+
+const getVirusTierBand = (sec = 'mid') => {
+  if (sec === 'elite') return ['mid', 'high', 'elite'];
+  if (sec === 'high') return ['mid', 'high'];
+  if (sec === 'low') return ['low', 'mid'];
+  return ['low', 'mid', 'high'];
+};
+
+const rollVirusFinds = (node, privilege) => {
+  const sec = node?.sec || 'mid';
+  const bands = getVirusTierBand(sec);
+
+  let count = 1 + Math.floor(Math.random() * 3);
+  if (sec === 'high' || sec === 'elite') count = 1 + Math.floor(Math.random() * 2);
+
+  const pool = bands.flatMap(b => VIRUS_FRAGMENT_POOL[b]);
+  let picks = count === 1 ? 1 : count === 2 ? 1 : 2;
+
+  if (privilege === 'root' && count === 3) picks = 2;
+
+  return {
+    revealed: pickRandom(pool, count),
+    picksLeft: picks,
+    exhausted: false,
+  };
+};
+
+const formatTier = (tier) => tier.toUpperCase();
+
+const addFragmentToInventory = (frag, setVirusFragments) => {
+  setVirusFragments(prev => ({
+    ...prev,
+    [frag.role]: [...(prev[frag.role] || []), frag]
+  }));
+};
+
+const getVirusType = (build) => {
+  const { hit, spread } = build;
+  if (hit === 'lock') return spread && spread !== 'none' ? 'ransom worm' : 'ransom';
+  if (hit === 'burn') return spread && spread !== 'none' ? 'wiper worm' : 'wiper';
+  if (hit === 'drain' || hit === 'scrape' || hit === 'tap') return spread && spread !== 'none' ? 'stealer worm' : 'stealer';
+  if (spread && spread !== 'none') return 'worm';
+  return 'virus';
+};
+
+const calcVirusStats = (build) => {
+  const parts = Object.values(build).filter(Boolean);
+  const power = parts.reduce((sum, p) => sum + (p.power || 0), 0);
+  const noise = parts.reduce((sum, p) => sum + (p.noise || 0), 0);
+  const stability = power - noise;
+  const successChance = Math.max(20, Math.min(95, 50 + (stability * 5)));
+  return { power, noise, stability, successChance };
+};
+
+const matchNamedVirus = (build, stats) => {
+  const values = Object.values(build).map(v => v?.key).filter(Boolean);
+
+  for (const virus of NAMED_VIRUSES) {
+    const c = virus.conditions;
+    if (c.entry && build.entry?.key !== c.entry) continue;
+    if (c.hit && build.hit?.key !== c.hit) continue;
+    if (c.spread && build.spread?.key !== c.spread) continue;
+    if (c.hide && build.hide?.key !== c.hide) continue;
+    if (c.trigger && build.trigger?.key !== c.trigger) continue;
+    if (c.stay && build.stay?.key !== c.stay) continue;
+    if (c.minPower && stats.power < c.minPower) continue;
+    if (c.extra && !c.extra.every(x => values.includes(x))) continue;
+    return virus;
+  }
+
+  return null;
+};
+  const getVirusTradeValue = (virus) => {
+  if (!virus) return 0;
+  const base = 1200 + (virus.power * 700) + (virus.successChance * 25);
+  const namedBonus = virus.discoveredNamed ? 2500 : 0;
+  const marketMult = clamp(0.8 + (btcIndex * 0.5), 0.85, 1.8);
+  const heatPenalty = clamp(1 - (heat / 180), 0.45, 1);
+  return Math.max(350, Math.floor((base + namedBonus) * marketMult * heatPenalty));
+};
   const processInfectionTick = (worldState) => {
   const now = Date.now();
   let totalYield = 0;
@@ -660,7 +793,7 @@ useEffect(() => {
   const collectCurrentState = () => ({
     operator, gameMode, money, reputation, heat, botnet, proxies, looted, wipedNodes,
     inventory, rig, partsBag, softwareOwned, btcIndex, consumables, stash, currentRegion, marketPrices, world, unlockedFiles, contracts, director, morality, pendingInteraction, wifiState,
-    rivals, zeroDays, rivalRaidCooldowns, virusIntel, virusInventory,
+    rivals, zeroDays, rivalRaidCooldowns, virusFragments, virusInventory, virusArchive, virusScans,
     timestamp: Date.now(),
   });
 
@@ -693,8 +826,17 @@ useEffect(() => {
     setRivals((data.rivals || []).map(ensureRivalStash));
     setZeroDays(data.zeroDays || []);
     setRivalRaidCooldowns(data.rivalRaidCooldowns || {});
-    setVirusIntel(data.virusIntel || { signatures: 0, polymers: 0, keys: 0 });
-    setVirusInventory(data.virusInventory || []);
+   setVirusFragments(data.virusFragments || {
+  entry: [],
+  hit: [],
+  spread: [],
+  hide: [],
+  trigger: [],
+  stay: [],
+});
+setVirusInventory(data.virusInventory || []);
+setVirusArchive(data.virusArchive || []);
+setVirusScans(data.virusScans || {});
   };
 
   const saveGame = (slotName) => {
@@ -760,8 +902,17 @@ useEffect(() => {
     setWifiState({ mon: false, scanned: false, focused: false, capFile: false, hshake: false, cracked: false, pwd: null, connected: false, targetBssid: null });
     setRivals([]); setZeroDays([]);
     setRivalRaidCooldowns({});
-    setVirusIntel({ signatures: 0, polymers: 0, keys: 0 });
-    setVirusInventory([]);
+    setVirusFragments({
+  entry: [],
+  hit: [],
+  spread: [],
+  hide: [],
+  trigger: [],
+  stay: [],
+});
+setVirusInventory([]);
+setVirusArchive([]);
+setVirusScans({});
     setScreen('game');
   };
 
@@ -1896,74 +2047,215 @@ const verifyContract = (ip, objectiveType) => {
       },
 
       findvirus: async () => {
-        if (!isInside) return "[-] findvirus: Must be run on a remote host.";
-        const node = world[targetIP];
-        const sec = node?.sec || 'mid';
-        const secMult = { low: 1, mid: 1.35, high: 1.75, elite: 2.2 }[sec] || 1.2;
-        const rootBonus = privilege === 'root' ? 1.4 : 1;
-        const sig = Math.max(1, Math.floor((Math.random() * 3 + 1) * secMult));
-        const polymers = Math.floor((Math.random() * 2 + (rootBonus > 1 ? 1 : 0)) * secMult);
-        const keys = Math.random() < (0.18 * rootBonus) ? 1 : 0;
-        setVirusIntel(prev => ({
-          signatures: prev.signatures + sig,
-          polymers: prev.polymers + polymers,
-          keys: prev.keys + keys
-        }));
-        const secLabel = (sec || 'mid').toUpperCase();
-        return `[+] Malware research cache recovered from ${targetIP} (${secLabel}).\n[+] +${sig} signatures, +${polymers} polymorphic modules${keys ? `, +${keys} encryption key` : ''}.\n[*] Use 'craftvirus <worm|stealer|wiper|ransom>' to build payloads.`;
-      },
+  if (!isInside) return "[-] findvirus: Must be run on a remote host.";
 
+  const node = world[targetIP];
+  const existing = virusScans[targetIP];
+
+  if (existing?.exhausted) {
+    return "[-] Malware cache exhausted on this node.";
+  }
+
+  if (existing?.revealed?.length) {
+    return [
+      `[+] Malware fragments already mapped on ${targetIP}:`,
+      ...existing.revealed.map((f, i) => `  [${i + 1}] ${f.key}  <${f.role}>  [${formatTier(f.tier)}] p${f.power}/n${f.noise}`),
+      `[*] Picks remaining: ${existing.picksLeft}`,
+      `[*] Use: extract <name>`
+    ].join('\n');
+  }
+
+  const scan = rollVirusFinds(node, privilege);
+  setVirusScans(prev => ({ ...prev, [targetIP]: scan }));
+
+  return [
+    `[+] Malware fragments detected on ${targetIP}:`,
+    ...scan.revealed.map((f, i) => `  [${i + 1}] ${f.key}  <${f.role}>  [${formatTier(f.tier)}] p${f.power}/n${f.noise}`),
+    `[*] You may extract ${scan.picksLeft} fragment${scan.picksLeft > 1 ? 's' : ''} from this node.`,
+    `[*] Use: extract <name>`
+  ].join('\n');
+},
+
+    extract: async () => {
+  if (!isInside) return "[-] extract: Must be run on a remote host.";
+  if (!arg1) return "[-] Usage: extract <fragment_name>";
+
+  const current = virusScans[targetIP];
+  if (!current?.revealed?.length) return "[-] No mapped fragments. Run 'findvirus' first.";
+  if (current.exhausted || current.picksLeft <= 0) return "[-] This node has no extractable fragments left.";
+
+  const idx = current.revealed.findIndex(f => f.key.toLowerCase() === arg1.toLowerCase());
+  if (idx === -1) {
+    return `[-] Unknown fragment '${arg1}'.`;
+  }
+
+  const frag = current.revealed[idx];
+
+  addFragmentToInventory(frag, setVirusFragments);
+
+  const nextRevealed = current.revealed.filter((_, i) => i !== idx);
+  const nextPicks = current.picksLeft - 1;
+  const exhausted = nextPicks <= 0 || nextRevealed.length <= 0;
+
+  setVirusScans(prev => ({
+    ...prev,
+    [targetIP]: {
+      ...current,
+      revealed: nextRevealed,
+      picksLeft: nextPicks,
+      exhausted
+    }
+  }));
+
+  playSuccess();
+
+  return [
+    `[+] Extracted fragment: ${frag.key}`,
+    `[*] Role: ${frag.role} | Tier: ${formatTier(frag.tier)} | p${frag.power}/n${frag.noise}`,
+    exhausted ? `[-] Malware cache exhausted on this node.` : `[*] Picks remaining on node: ${nextPicks}`
+  ].join('\n');
+},
       craftvirus: async () => {
-        const archetype = (arg1 || '').toLowerCase();
-        const blueprints = {
-          worm: { signatures: 5, polymers: 2, keys: 0, potency: 5, stealth: 35, label: 'Lateral Worm' },
-          stealer: { signatures: 6, polymers: 2, keys: 1, potency: 6, stealth: 45, label: 'Credential Stealer' },
-          wiper: { signatures: 7, polymers: 3, keys: 1, potency: 8, stealth: 20, label: 'Data Wiper' },
-          ransom: { signatures: 8, polymers: 4, keys: 2, potency: 10, stealth: 30, label: 'Ransom Locker' },
-        };
-        if (!blueprints[archetype]) return "[-] Usage: craftvirus <worm|stealer|wiper|ransom>";
-        const req = blueprints[archetype];
-        if (virusIntel.signatures < req.signatures || virusIntel.polymers < req.polymers || virusIntel.keys < req.keys) {
-          return `[-] Insufficient malware intel.\n[*] Need: sig ${req.signatures}, poly ${req.polymers}, keys ${req.keys}\n[*] Have: sig ${virusIntel.signatures}, poly ${virusIntel.polymers}, keys ${virusIntel.keys}\n[*] Run 'findvirus' on compromised hosts.`;
-        }
-        setVirusIntel(prev => ({
-          signatures: prev.signatures - req.signatures,
-          polymers: prev.polymers - req.polymers,
-          keys: prev.keys - req.keys,
-        }));
-        const payload = {
-          id: `vx_${Date.now()}_${Math.floor(Math.random() * 9999)}`,
-          type: archetype,
-          name: `${req.label} v${1 + Math.floor(Math.random() * 9)}.${Math.floor(Math.random() * 10)}`,
-          potency: req.potency + Math.floor(Math.random() * 3),
-          stealth: req.stealth + Math.floor(Math.random() * 12),
-          createdAt: Date.now(),
-        };
-        setVirusInventory(prev => [...prev, payload]);
-        return `[+] Virus compiled: ${payload.name}\n[*] Type: ${archetype.toUpperCase()} | Potency ${payload.potency} | Stealth ${payload.stealth}\n[*] Use with 'usevirus ${payload.id}' or trade with 'tradevirus ${payload.id}'.`;
-      },
+  const entryName = args[1];
+  const hitName = args[2];
+  const spreadName = args[3] || null;
+  const hideName = args[4] || null;
+  const triggerName = args[5] || null;
+  const stayName = args[6] || null;
+
+  if (!entryName || !hitName) {
+    return [
+      "[-] Usage: craftvirus <entry> <hit> [spread] [hide] [trigger] [stay]",
+      "[*] Example: craftvirus hook scrape",
+      "[*] Example: craftvirus inject lock chain ghost delay root"
+    ].join('\n');
+  }
+
+  const pullFragment = (role, key) => {
+    if (!key) return null;
+    const list = virusFragments[role] || [];
+    const idx = list.findIndex(f => f.key.toLowerCase() === key.toLowerCase());
+    if (idx === -1) return null;
+    return { frag: list[idx], idx };
+  };
+
+  const picks = {
+    entry: pullFragment('entry', entryName),
+    hit: pullFragment('hit', hitName),
+    spread: pullFragment('spread', spreadName),
+    hide: pullFragment('hide', hideName),
+    trigger: pullFragment('trigger', triggerName),
+    stay: pullFragment('stay', stayName),
+  };
+
+  if (!picks.entry) return `[-] Missing entry fragment '${entryName}'.`;
+  if (!picks.hit) return `[-] Missing hit fragment '${hitName}'.`;
+  if (spreadName && !picks.spread) return `[-] Missing spread fragment '${spreadName}'.`;
+  if (hideName && !picks.hide) return `[-] Missing hide fragment '${hideName}'.`;
+  if (triggerName && !picks.trigger) return `[-] Missing trigger fragment '${triggerName}'.`;
+  if (stayName && !picks.stay) return `[-] Missing stay fragment '${stayName}'.`;
+
+  const build = {
+    entry: picks.entry?.frag || null,
+    hit: picks.hit?.frag || null,
+    spread: picks.spread?.frag || null,
+    hide: picks.hide?.frag || null,
+    trigger: picks.trigger?.frag || null,
+    stay: picks.stay?.frag || null,
+  };
+
+  const stats = calcVirusStats(build);
+  const type = getVirusType({
+    entry: build.entry?.key || null,
+    hit: build.hit?.key || null,
+    spread: build.spread?.key || null,
+  });
+  const named = matchNamedVirus(build, stats);
+  const successLabel =
+    stats.successChance >= 90 ? 'EXTREME' :
+    stats.successChance >= 75 ? 'HIGH' :
+    stats.successChance >= 60 ? 'MEDIUM' : 'LOW';
+
+  const virusId = `vx_${Date.now()}_${Math.floor(Math.random() * 9999)}`;
+  const virus = {
+    id: virusId,
+    code: named?.code || `VX-${String(Math.floor(Math.random() * 89) + 10).padStart(2, '0')}`,
+    name: named?.name || `${type.toUpperCase()} BUILD`,
+    type,
+    parts: Object.fromEntries(Object.entries(build).map(([k, v]) => [k, v?.key || null])),
+    power: stats.power,
+    noise: stats.noise,
+    stability: stats.stability,
+    successChance: stats.successChance,
+    discoveredNamed: !!named,
+    createdAt: Date.now(),
+  };
+
+  setVirusFragments(prev => {
+    const next = { ...prev };
+    for (const [role, picked] of Object.entries(picks)) {
+      if (!picked) continue;
+      next[role] = next[role].filter((_, i) => i !== picked.idx);
+    }
+    return next;
+  });
+
+  setVirusInventory(prev => [...prev, virus]);
+
+  let archiveMsg = '';
+  if (named && !virusArchive.some(v => v.id === named.id)) {
+    setVirusArchive(prev => [...prev, { id: named.id, code: named.code, name: named.name, unlockedAt: Date.now() }]);
+    archiveMsg = `\n\n[!!!] NEW VIRUS DISCOVERED\n${named.code} "${named.name}"`;
+  }
+
+  return [
+    `[+] Virus compiled: ${virus.code} "${virus.name}"`,
+    `[*] Type: ${virus.type.toUpperCase()}`,
+    `[*] Power: ${virus.power} | Noise: ${virus.noise} | Stability: ${virus.stability}`,
+    `[*] Success: ${virus.successChance}% (${successLabel})`,
+    `[*] Use with 'usevirus ${virus.id}' or trade with 'tradevirus ${virus.id}'`,
+    archiveMsg
+  ].join('\n');
+},
 
       viruses: async () => {
-        const lines = [
-          '╔══════════════════════════════════════════════════════════╗',
-          '║                    VIRUS LAB                              ║',
-          '╚══════════════════════════════════════════════════════════╝',
-          '',
-          `  Intel: signatures=${virusIntel.signatures} | polymers=${virusIntel.polymers} | keys=${virusIntel.keys}`,
-          '',
-        ];
-        if (virusInventory.length === 0) {
-          lines.push('  No crafted viruses available.', '', '  Build flow:', '  1) findvirus', '  2) craftvirus <type>', '  3) usevirus <id> or tradevirus <id>');
-          return lines.join('\n');
-        }
-        lines.push('  ID                          TYPE      POT  STL   EST TRADE');
-        lines.push('  -----------------------------------------------------------------');
-        virusInventory.forEach(v => {
-          lines.push(`  ${v.id.padEnd(27)} ${v.type.toUpperCase().padEnd(9)} ${String(v.potency).padStart(3)}  ${String(v.stealth).padStart(3)}   ₿${getVirusTradeValue(v).toLocaleString()}`);
-        });
-        lines.push('', '  TIP: usevirus accepts full ID, ID prefix, or virus type if unique.');
-        return lines.join('\n');
-      },
+  const lines = [
+    '╔══════════════════════════════════════════════════════════╗',
+    '║                     VIRUS LAB                           ║',
+    '╚══════════════════════════════════════════════════════════╝',
+    '',
+    'FRAGMENTS:',
+    `  entry   : ${(virusFragments.entry || []).map(f => f.key).join(', ') || '—'}`,
+    `  hit     : ${(virusFragments.hit || []).map(f => f.key).join(', ') || '—'}`,
+    `  spread  : ${(virusFragments.spread || []).map(f => f.key).join(', ') || '—'}`,
+    `  hide    : ${(virusFragments.hide || []).map(f => f.key).join(', ') || '—'}`,
+    `  trigger : ${(virusFragments.trigger || []).map(f => f.key).join(', ') || '—'}`,
+    `  stay    : ${(virusFragments.stay || []).map(f => f.key).join(', ') || '—'}`,
+    '',
+    `ARCHIVE: ${virusArchive.length}/${NAMED_VIRUSES.length} discovered`,
+  ];
+
+  if (virusArchive.length > 0) {
+    lines.push(...virusArchive.map(v => `  ✓ ${v.code} "${v.name}"`));
+  } else {
+    lines.push('  No named viruses unlocked yet.');
+  }
+
+  lines.push('', 'BUILDS:');
+
+  if (virusInventory.length === 0) {
+    lines.push('  No crafted viruses available.', '', 'FLOW:', '  1) findvirus', '  2) extract <name>', '  3) craftvirus <entry> <hit> [spread] [hide] [trigger] [stay]');
+    return lines.join('\n');
+  }
+
+  lines.push('  ID                          TYPE          SUCCESS   POWER   TRADE');
+  lines.push('  -----------------------------------------------------------------');
+  virusInventory.forEach(v => {
+    lines.push(`  ${v.id.padEnd(27)} ${v.type.toUpperCase().padEnd(12)} ${String(v.successChance).padStart(3)}%     ${String(v.power).padStart(3)}    ₿${getVirusTradeValue(v).toLocaleString()}`);
+  });
+
+  return lines.join('\n');
+},
 
       tradevirus: async () => {
         if (isInside) return "[-] tradevirus: Disconnect first. Trade only from gateway.";
@@ -1995,7 +2287,7 @@ const verifyContract = (ip, objectiveType) => {
         const virus = virusInventory[idx];
         const node = world[targetIP];
         let out = `[+] Deploying ${virus.name} to ${targetIP}...\n`;
-        if (virus.type === 'worm') {
+        if (virus.type.includes('worm') && !virus.type.includes('stealer') && !virus.type.includes('wiper') && !virus.type.includes('ransom')) {
           const candidates = Object.keys(world).filter(ip => ip !== targetIP && !botnet.includes(ip));
           const spread = Math.min(candidates.length, Math.max(1, Math.floor(virus.potency / 4)));
           const infected = candidates.slice(0, spread);
@@ -2022,7 +2314,7 @@ const verifyContract = (ip, objectiveType) => {
             out += `[*] No reachable new hosts for lateral movement.\n`;
           }
           setHeat(h => Math.min(100, h + 6));
-        } else if (virus.type === 'stealer') {
+        } else if (virus.type.includes('stealer')) {
           const dumps = Math.max(1, Math.floor(virus.potency / 3));
           const fullz = Math.max(1, Math.floor(virus.potency / 4));
           setStash(prev => ({
@@ -2032,10 +2324,10 @@ const verifyContract = (ip, objectiveType) => {
           }));
           setHeat(h => Math.min(100, h + 4));
           out += `[+] Credential vault exfiltrated: +${dumps} CC dumps and +${fullz} SSN fullz.\n[*] Sell via market to monetize.\n`;
-        } else if (virus.type === 'wiper') {
+       } else if (virus.type.includes('wiper')) {
           setHeat(h => Math.min(100, h + 12));
           out += `[+] Wiper triggered. Target infrastructure bricked.\n[!] No direct payout. Destruction raises pressure and heat.\n[!] Heat +12%.\n`;
-        } else if (virus.type === 'ransom') {
+        } else if (virus.type.includes('ransom')) {
           const payout = Math.floor((virus.potency * 1500) * getEconomyMarketMult());
           setMoney(m => m + payout);
           setHeat(h => Math.min(100, h + 10));

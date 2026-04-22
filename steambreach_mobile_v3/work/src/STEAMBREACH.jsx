@@ -920,7 +920,7 @@ setVirusScans({});
     if (screen !== 'game' || !operator) return;
     const autoSaveTimer = setInterval(() => saveGame(`auto_${operator}`), 60000);
     return () => clearInterval(autoSaveTimer);
-  }, [screen, operator, money, botnet, proxies, looted, wipedNodes, inventory, consumables, stash, currentRegion, world, contracts, director, heat, reputation, morality, pendingInteraction, rivals, zeroDays, rivalRaidCooldowns, virusIntel, virusInventory]);
+  }, [screen, operator, money, botnet, proxies, looted, wipedNodes, inventory, consumables, stash, currentRegion, world, contracts, director, heat, reputation, morality, pendingInteraction, rivals, zeroDays, rivalRaidCooldowns, virusFragments, virusInventory, virusArchive, virusScans]);
 
   // ── DARKNET AUTO-SELL TICK (tycoon layer) ────────────
   useEffect(() => {

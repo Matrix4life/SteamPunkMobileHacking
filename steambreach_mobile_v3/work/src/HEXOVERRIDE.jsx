@@ -3856,9 +3856,14 @@ if (typeof rawData === 'string' && rawData.includes('[STORY_TRIGGER]')) {
 },
 
       exit: async () => {
-        setIsInside(false); setTargetIP(null); setCurrentDir('~'); setPrivilege('local');
-        return '[*] Session closed.';
-      },
+  setIsInside(false); setTargetIP(null); setCurrentDir('~'); setPrivilege('local');
+  if (wardriveIntervalRef.current) {
+    clearInterval(wardriveIntervalRef.current);
+    wardriveIntervalRef.current = null;
+    setIsWardriving(false);
+  }
+  return '[*] Session closed.';
+},
       pwd: async () => currentDir,
       clear: async () => { setTerminal([]); return ''; },
       save: async () => { saveGame(operator); return `[+] Game saved: "${operator}"`; },
@@ -3969,10 +3974,15 @@ ${wantedTier === 'MANHUNT' ? '[!!!] REDUCE HEAT IMMEDIATELY. Your entire network
             return `[+] Monitor mode enabled on wlan0mon
 [*] Run 'airodump-ng scan' to scan for networks.`;
           } else {
-            if (!wifiState.mon) return `[!] Not in monitor mode.`;
-            setWifiState({ mon: false, scanned: false, focused: false, capFile: false, hshake: false, cracked: false, pwd: null, connected: false, targetBssid: null });
-            return `[+] Monitor mode disabled.`;
-          }
+  if (!wifiState.mon) return `[!] Not in monitor mode.`;
+  setWifiState({ mon: false, scanned: false, focused: false, capFile: false, hshake: false, cracked: false, pwd: null, connected: false, targetBssid: null });
+  if (wardriveIntervalRef.current) {
+    clearInterval(wardriveIntervalRef.current);
+    wardriveIntervalRef.current = null;
+    setIsWardriving(false);
+  }
+  return `[+] Monitor mode disabled.`;
+}
         }
 
         // ═══ OPERATOR MODE: Full syntax required ═══
@@ -4004,10 +4014,15 @@ phy0    wlan0           ath9k_htc       Qualcomm Atheros AR9271
         }
         
         if (arg1 === 'stop' && (arg2 === 'wlan0mon' || arg2 === 'wlan0')) {
-          if (!wifiState.mon) return `[!] Not in monitor mode.`;
-          setWifiState({ mon: false, scanned: false, focused: false, capFile: false, hshake: false, cracked: false, pwd: null, connected: false, targetBssid: null });
-          return `[+] Monitor mode disabled. Interface returned to managed mode.`;
-        }
+  if (!wifiState.mon) return `[!] Not in monitor mode.`;
+  setWifiState({ mon: false, scanned: false, focused: false, capFile: false, hshake: false, cracked: false, pwd: null, connected: false, targetBssid: null });
+  if (wardriveIntervalRef.current) {
+    clearInterval(wardriveIntervalRef.current);
+    wardriveIntervalRef.current = null;
+    setIsWardriving(false);
+  }
+  return `[+] Monitor mode disabled. Interface returned to managed mode.`;
+}
         
         return `[-] Invalid syntax. Usage: airmon-ng <start|stop> <interface>
 [*] Example: airmon-ng start wlan0`;

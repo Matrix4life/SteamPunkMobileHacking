@@ -4,7 +4,7 @@ import { generateDirectorText } from './aiAdapter';
 // 3. AI AGENTS (FIXER, EMPLOYEES, BLUE TEAM)
 // ==========================================
 
-export const invokeBlueTeamAI = async (apiKey, playerCommand, nodeName, currentTrace, currentHeat) => {
+export const invokeBlueTeamAI = async (playerCommand, nodeName, currentTrace, currentHeat) => {
   const prompt = `You are an elite, highly aggressive Cybersecurity SOC Analyst defending the network "${nodeName}". 
   An attacker (the player) has infiltrated your network. Their current Heat is ${currentHeat}% and you have traced them to ${currentTrace}%.
   They just attempted to run this command on your network: "${playerCommand}"
@@ -376,7 +376,7 @@ export const generateOrgFileSystem = (org, tier, layout) => {
   return { files: filesObj, contents };
 };
 
-export const generateInterceptedComms = async (targetIP, nodeData, apiKey) => {
+export const generateInterceptedComms = async (targetIP, nodeData) => {
   const orgName = nodeData?.org?.orgName || "Unknown Node";
   const employees = nodeData?.org?.employees || [];
   
@@ -422,9 +422,7 @@ export const generateInterceptedComms = async (targetIP, nodeData, apiKey) => {
   }
 };
 
-export const generateAIContract = async (targetIP, nodeData, currentRep, arg4, arg5) => {
-  const world = typeof arg4 === 'object' && arg4 !== null ? arg4 : {};
-  const apiKey = typeof arg4 === 'string' ? arg4 : arg5;
+export const generateAIContract = async (targetIP, nodeData, currentRep, world = {}) => {
 
   let minProb = 1;
   if (currentRep < 25) minProb = 75;

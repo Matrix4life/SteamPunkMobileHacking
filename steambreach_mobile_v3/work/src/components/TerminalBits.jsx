@@ -556,7 +556,7 @@ const HelpPanel = ({ onClose, devMode, gameMode = 'arcade' }) => {
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
           <span style={{ color: COLORS.primary, fontWeight: 'bold', letterSpacing: '2px', fontSize: '13px' }}>
-            STEAMBREACH COMMAND REFERENCE
+            HEXOVERRIDE COMMAND REFERENCE
           </span>
           <span 
             onClick={handleCloseClick} 
@@ -700,7 +700,7 @@ const HelpPanel = ({ onClose, devMode, gameMode = 'arcade' }) => {
           fontSize: '9px', 
           letterSpacing: '1px' 
         }}>
-          STEAMBREACH v3.1 // {modeInfo.label} ACTIVE // SYNTAX REFERENCE LOADED
+          HEXOVERRIDE v3.1 // {modeInfo.label} ACTIVE // SYNTAX REFERENCE LOADED
         </div>
       </div>
     </div>

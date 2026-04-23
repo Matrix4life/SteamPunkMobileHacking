@@ -9,7 +9,7 @@ export const DEFAULT_AI_CONFIG = {
 
 export const loadAiConfig = () => {
   try {
-    return JSON.parse(localStorage.getItem('steambreach_ai_config')) || DEFAULT_AI_CONFIG;
+    return JSON.parse(localStorage.getItem('hexoverride_ai_config')) || DEFAULT_AI_CONFIG;
   } catch { return DEFAULT_AI_CONFIG; }
 };
 

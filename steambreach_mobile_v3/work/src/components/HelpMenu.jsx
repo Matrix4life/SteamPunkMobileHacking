@@ -59,7 +59,7 @@ export default function HelpMenu({ onClose, COLORS }) {
     <div style={{ position: 'absolute', inset: 0, zIndex: 60, display: 'flex', justifyContent:'flex-end', alignItems: 'center', background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(4px)', padding: '20px 5% 20px 20px'}}>
       <div style={{ width: '100%', maxWidth: '800px', maxHeight: '90vh', background: COLORS.bg, border: `1px solid ${COLORS.primary}`, display: 'flex', flexDirection: 'column', boxShadow: `0 0 30px ${COLORS.primary}40` }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', padding: '15px', borderBottom: `1px solid ${COLORS.primary}80`, background: `${COLORS.primary}15` }}>
-          <span style={{ color: COLORS.primary, fontWeight: 'bold', letterSpacing: '2px' }}>[ STEAMBREACH OPERATOR MANUAL ]</span>
+          <span style={{ color: COLORS.primary, fontWeight: 'bold', letterSpacing: '2px' }}>[ HEXOVERRIDE OPERATOR MANUAL ]</span>
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: COLORS.danger, cursor: 'pointer', fontWeight: 'bold' }}>[ X ] CLOSE</button>
         </div>
 

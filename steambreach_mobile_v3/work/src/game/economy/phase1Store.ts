@@ -8,7 +8,7 @@ import {
   sellRawData,
 } from "./phase1Logic";
 
-const STORAGE_KEY = "steambreach-phase1";
+const STORAGE_KEY = "hexoverride-phase1";
 
 function createStarterNodes(): NetworkNode[] {
   const now = Date.now();

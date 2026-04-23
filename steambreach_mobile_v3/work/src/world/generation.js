@@ -85,7 +85,7 @@ const generateNewTarget = (forcedTier = null, parentIP = null, directorMods = nu
 const DEFAULT_WORLD = {
   local: {
     files: { '/': ['home/'], '/home': ['operator/'], '/home/operator': ['readme.txt', 'contracts/'], '/home/operator/contracts': [] },
-    contents: { '/home/operator/readme.txt': `STEAMBREACH OPERATOR TERMINAL v3.0\n────────────────────────────────────\nSTART: Run 'nmap' to discover your first target.\nUse [TAB] to open the Command Reference Manual at any time.` }
+    contents: { '/home/operator/readme.txt': `HEXOVERRIDE OPERATOR TERMINAL v3.0\n────────────────────────────────────\nSTART: Run 'nmap' to discover your first target.\nUse [TAB] to open the Command Reference Manual at any time.` }
   }
 };
 

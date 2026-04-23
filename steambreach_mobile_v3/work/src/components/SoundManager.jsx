@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 
 // ─────────────────────────────────────────────────────────────────
-// STEAMBREACH SOUND MANAGER
+// HEXOVERRIDE SOUND MANAGER
 // Drop into src/components/SoundManager.jsx
-// Import and render inside STEAMBREACH.jsx when screen === 'soundmanager'
+// Import and render inside HEXOVERRIDE.jsx when screen === 'soundmanager'
 // ─────────────────────────────────────────────────────────────────
 
 const SOUND_SLOTS = [
@@ -189,7 +189,7 @@ const SoundManager = ({ returnToGame, onSoundMapChange }) => {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', borderBottom: `1px solid ${C.border}`, background: C.panel, flexShrink: 0, zIndex: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           <div>
-            <div style={{ color: C.primary, fontSize: '11px', letterSpacing: '4px', fontWeight: 'bold' }}>STEAMBREACH</div>
+            <div style={{ color: C.primary, fontSize: '11px', letterSpacing: '4px', fontWeight: 'bold' }}>HEXOVERRIDE</div>
             <div style={{ color: C.textDim, fontSize: '10px', letterSpacing: '2px' }}>AUDIO MANAGER v1.0</div>
           </div>
         </div>

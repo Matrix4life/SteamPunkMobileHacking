@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// STEAMBREACH — RIG PARTS, SOFTWARE, COMMODITIES & BTC MARKET
+// HEXOVERRIDE — RIG PARTS, SOFTWARE, COMMODITIES & BTC MARKET
 // Unified economy: everything priced in satoshis (sats)
 // 100,000,000 sats = 1 BTC
 // ═══════════════════════════════════════════════════════════════

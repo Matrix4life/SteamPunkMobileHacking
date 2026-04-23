@@ -1,5 +1,5 @@
 /**
- * STEAMBREACH Native Bridge
+ * HEXOVERRIDE Native Bridge
  * All functions are no-ops on web. Capacitor plugins only load
  * when running inside a native shell (iOS/Android).
  * 

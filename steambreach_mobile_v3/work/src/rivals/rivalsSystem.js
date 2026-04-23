@@ -1,5 +1,5 @@
 // ============================================================================
-// STEAMBREACH: RIVALS & ZERO-DAY COLLECTIBLES SYSTEM
+// HEXOVERRIDE: RIVALS & ZERO-DAY COLLECTIBLES SYSTEM
 // ============================================================================
 
 export const RARITY_TIERS = {

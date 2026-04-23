@@ -147,7 +147,7 @@ const generateDirectorNarrative = async (direction, skillScore) => {
 // 6. DYNAMIC STORY ENGINE
 
 export const generateStoryEvent = async (currentAlignment) => {
-  const system = `You are the Story Director for STEAMBREACH, a gritty, M-rated cyberpunk hacking simulator.
+  const system = `You are the Story Director for HEXOVERRIDE, a gritty, M-rated cyberpunk hacking simulator.
 The player just intercepted a highly sensitive communication on a random server.
 Generate a short, dark, high-stakes scenario (e.g., cartel hit list, corporate assassination order, illegal organ harvesting ring, whistleblower needing protection, human trafficking intel, arms deal coordinates).
 The scenario MUST have two clear paths: one heroic, one ruthless.

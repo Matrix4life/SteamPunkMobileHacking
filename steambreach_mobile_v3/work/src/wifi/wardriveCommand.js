@@ -1,9 +1,9 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // WARDRIVE COMMAND IMPLEMENTATION
-// Add this to the commands object in STEAMBREACH.jsx
+// Add this to the commands object in HEXOVERRIDE.jsx
 // ═══════════════════════════════════════════════════════════════════════════
 
-// Import at top of STEAMBREACH.jsx:
+// Import at top of HEXOVERRIDE.jsx:
 // import { 
 //   syncWifiWithWorld, 
 //   generateWardriveDiscovery, 

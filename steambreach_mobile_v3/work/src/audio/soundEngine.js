@@ -1,4 +1,4 @@
-// soundEngine.js — STEAMBREACH Audio Engine
+// soundEngine.js — HEXOVERRIDE Audio Engine
 // Checks SoundManager for uploaded audio first, falls back to Web Audio synth.
 
 let ctx = null;

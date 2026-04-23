@@ -12,13 +12,13 @@ export default function AiSettings({ returnToGame }) {
 
   useEffect(() => {
     try {
-      const stored = JSON.parse(localStorage.getItem('steambreach_ai_config'));
+      const stored = JSON.parse(localStorage.getItem('hexoverride_ai_config'));
       if (stored) setConfig(stored);
     } catch (e) {}
   }, []);
 
   const handleSave = () => {
-    localStorage.setItem('steambreach_ai_config', JSON.stringify(config));
+    localStorage.setItem('hexoverride_ai_config', JSON.stringify(config));
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };

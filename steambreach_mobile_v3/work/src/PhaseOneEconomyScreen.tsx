@@ -14,7 +14,7 @@ export default function PhaseOneEconomyScreen() {
     <div className="min-h-screen bg-zinc-950 p-6 text-white">
       <div className="mx-auto max-w-7xl">
         <h1 className="mb-6 text-2xl font-bold tracking-[0.12em] text-cyan-300">
-          STEAMBREACH // PHASE 1 ECON LOOP
+          HEXOVERRIDE // PHASE 1 ECON LOOP
         </h1>
 
         <div className="grid gap-4 lg:grid-cols-3">

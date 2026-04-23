@@ -1,5 +1,5 @@
-// STEAMBREACH Service Worker — enables PWA install + offline shell
-const CACHE = 'steambreach-v1';
+// HEXOVERRIDE Service Worker — enables PWA install + offline shell
+const CACHE = 'hexoverride-v1';
 
 self.addEventListener('install', (e) => {
   self.skipWaiting();

@@ -260,6 +260,10 @@ export default function NetworkMap({
       <style>{`
         @keyframes stream { to { stroke-dashoffset: -40; } }
         @keyframes streamFast { to { stroke-dashoffset: -40; } }
+        @keyframes scanlines {
+  0% { background-position: 0 0; }
+  100% { background-position: 0 100px; }
+}
         
         @keyframes nodeIdlePulse {
           0%, 100% { opacity: 0.8; }
@@ -326,13 +330,13 @@ export default function NetworkMap({
 
      <div style={{
   position: 'absolute', inset: 0, zIndex: 1,
-  backgroundImage: "url('/giphy.gif')",
-  backgroundSize: 'cover',
-  backgroundPosition: 'center',
-  opacity: isHacking ? 0.35 : 0, 
-  mixBlendMode: 'screen',
+  background: isHacking
+    ? 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,255,136,0.03) 2px, rgba(0,255,136,0.03) 4px)'
+    : 'none',
+  opacity: isHacking ? 1 : 0,
   transition: 'opacity 0.5s ease',
-  pointerEvents: 'none'
+  pointerEvents: 'none',
+  animation: isHacking ? 'scanlines 8s linear infinite' : 'none',
 }} />
 
       <div className={`map-vignette ${isHacking ? 'is-hacking' : ''}`} />

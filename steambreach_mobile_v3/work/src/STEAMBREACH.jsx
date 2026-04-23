@@ -329,18 +329,7 @@ const addFragmentToInventory = (frag, setVirusFragments) => {
   }));
 };
 
-  const hasEntry = (virusFragments.entry || []).length > 0;
-const hasHit = (virusFragments.hit || []).length > 0;
 
-lines.push('');
-lines.push('REQUIREMENTS:');
-lines.push(`  entry: ${hasEntry ? '✔' : '✖'}`);
-lines.push(`  hit  : ${hasHit ? '✔' : '✖'}`);
-
-if (!hasEntry || !hasHit) {
-  lines.push('');
-  lines.push('[!] Minimum required to craft: entry + hit');
-}
 const getVirusType = (build) => {
   const { hit, spread } = build;
   if (hit === 'lock') return spread && spread !== 'none' ? 'ransom worm' : 'ransom';

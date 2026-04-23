@@ -1675,16 +1675,23 @@ const verifyContract = (ip, objectiveType) => {
   };
 
   const maybeCreateWiFiContract = (network) => {
-    if (!network || !network.bssid) return;
-    if (contracts.length >= 8) return;
+  if (!network || !network.bssid) return;
+  if (contracts.length >= 8) return;
 
-    const exists = contracts.some(c =>
-      c &&
-      c.isWifiContract &&
-      c.targetBssid === network.bssid &&
-      !c.completed
-    );
-    if (exists) return;
+  // Only post a contract on ~25% of discovered targets — fixers don't monitor everything
+  if (Math.random() > 0.25) return;
+
+  // Cap active wifi contracts at 3 so the board doesn't flood
+  const activeWifiContracts = contracts.filter(c => c.isWifiContract && !c.completed).length;
+  if (activeWifiContracts >= 3) return;
+
+  const exists = contracts.some(c =>
+    c &&
+    c.isWifiContract &&
+    c.targetBssid === network.bssid &&
+    !c.completed
+  );
+  if (exists) return;
 
     const newContract = generateWiFiContract(network, reputation, directorRef.current?.modifiers);
     setContracts(prev => [...prev, newContract]);

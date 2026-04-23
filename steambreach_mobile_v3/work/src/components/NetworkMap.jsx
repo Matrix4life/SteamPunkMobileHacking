@@ -324,16 +324,16 @@ export default function NetworkMap({
         ))}
       </div>
 
-      <div style={{
-        position: 'absolute', inset: 0, zIndex: 1,
-        backgroundImage: "url('/giphy.gif')",
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        opacity: isHacking ? 0.35 : 0, 
-        mixBlendMode: 'screen',
-        transition: 'opacity 0.5s ease',
-        pointerEvents: 'none'
-      }} />
+     <div style={{
+  position: 'absolute', inset: 0, zIndex: 1,
+  backgroundImage: "url('/giphy.gif')",
+  backgroundSize: 'cover',
+  backgroundPosition: 'center',
+  opacity: isHacking ? 0.35 : 0, 
+  mixBlendMode: 'screen',
+  transition: 'opacity 0.5s ease',
+  pointerEvents: 'none'
+}} />
 
       <div className={`map-vignette ${isHacking ? 'is-hacking' : ''}`} />
 

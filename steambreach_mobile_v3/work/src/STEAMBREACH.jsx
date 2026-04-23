@@ -93,7 +93,6 @@ const WIFI_CLIENTS = [
 const STEAMBREACH = () => {
  const [operator, setOperator] = useState('');
   const [screen, setScreen] = useState('intro');
-  const apiKey = null;
   const [gameMode, setGameMode] = useState('arcade');
   const [terminal, setTerminal] = useState([]);
   const [input, setInput] = useState('');
@@ -1565,7 +1564,7 @@ const completeContractAndRemove = (id) => {
     if (isInside && trace > 70 && Math.random() < 0.4) {
       setIsProcessing(true);
       const nodeName = world[targetIP]?.org?.orgName || targetIP;
-      const blueTeamMsg = await invokeBlueTeamAI(apiKey, trimmed, nodeName, trace, heat);
+      const blueTeamMsg = await invokeBlueTeamAI(trimmed, nodeName, trace, heat);
       setTrace(t => Math.min(t + 20, 100));
       setTerminal(prev => [...prev, { type: 'out', text: `\n[!!!] ACTIVE THREAT RESPONSE INITIATED [!!!]\n${blueTeamMsg}\n[!] Trace +20%. Connection unstable.\n`, isNew: true }]);
       setIsProcessing(false);
@@ -2423,7 +2422,7 @@ if (!hasEntry || !hasHit) {
           if ((isFirstScan || Math.random() < 0.3) && contracts.length < 8) {
             out += `\n[FIXER] Signal intercepted. Negotiating custom darknet contract...`;
             
-            generateAIContract(newNode.ip, newNode.data, reputation, apiKey).then(aiContract => {
+            generateAIContract(newNode.ip, newNode.data, reputation, world).then(aiContract => {
               if (aiContract) {
                 let adjustedRep = aiContract.repReward;
                 let adjustedMoney = aiContract.reward;
@@ -2468,7 +2467,7 @@ if (!hasEntry || !hasHit) {
         setIsProcessing(true);
         setTerminal(prev => [...prev, { type: 'out', text: `ettercap 0.8.3.1 (etter.conf)\n\nListening on ${targetIP}/eth0...\n\n  ${node.org.employees?.length || 3} hosts added to TARGET1\n  Gateway added to TARGET2\n\nARP poisoning victims:\n GROUP 1 : ANY (all the hosts in the list)\n GROUP 2 : ANY (all the hosts in the list)\n\nStarting Unified sniffing...\n[*] ARP cache poisoning in progress...\n[*] Capturing packets...`, isNew: false }]);
 
-        const comms = await generateInterceptedComms(targetIP, node, apiKey);
+        const comms = await generateInterceptedComms(targetIP, node);
         escalateBlueTeam(targetIP, 15);
         setTrace(t => Math.min(t + 10, 100));
 
@@ -2584,17 +2583,11 @@ if (!hasEntry || !hasHit) {
 
         const org = node.org;
         let mzData = '';
-        try {
-          const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              systemInstruction: { parts: [{ text: `You generate mimikatz sekurlsa::logonpasswords output for a hacking game. The org is "${org?.orgName || 'Unknown'}". Employees: ${org?.employees?.map(e => e.name + ' (' + e.role + ', pwd: ' + e.password + ')').join('; ') || 'unknown'}. Generate mimikatz-style output showing 2-3 credential entries. Each entry must use this EXACT format:\nAuthentication Id : 0 ; XXXXX (00000000:0000XXXX)\nSession           : Interactive from 1\nUser Name         : firstname.lastname\nDomain            : ${(org?.orgName || 'CORP').split(' ')[0].toUpperCase()}\nLogon Server      : DC01\nSID               : S-1-5-21-XXXXXXXXXX\n  * Username : firstname.lastname\n  * Domain   : ${(org?.orgName || 'CORP').split(' ')[0].toUpperCase()}\n  * NTLM     : [random 32 char hex]\n  * Password : [use the actual password from the employee list]\nUse REAL employee names and passwords from the list. No markdown. No explanation.` }] },
-              contents: [{ role: 'user', parts: [{ text: `Generate mimikatz output for ${org?.orgName || arg1}` }] }]
-            })
-          });
-          const data = await response.json();
-          mzData = data.candidates[0].content.parts[0].text;
-        } catch (e) {
+        const mzSystem = `You generate mimikatz sekurlsa::logonpasswords output for a hacking game. The org is "${org?.orgName || 'Unknown'}". Employees: ${org?.employees?.map(e => e.name + ' (' + e.role + ', pwd: ' + e.password + ')').join('; ') || 'unknown'}. Generate mimikatz-style output showing 2-3 credential entries. Each entry must use this EXACT format:\nAuthentication Id : 0 ; XXXXX (00000000:0000XXXX)\nSession           : Interactive from 1\nUser Name         : firstname.lastname\nDomain            : ${(org?.orgName || 'CORP').split(' ')[0].toUpperCase()}\nLogon Server      : DC01\nSID               : S-1-5-21-XXXXXXXXXX\n  * Username : firstname.lastname\n  * Domain   : ${(org?.orgName || 'CORP').split(' ')[0].toUpperCase()}\n  * NTLM     : [random 32 char hex]\n  * Password : [use the actual password from the employee list]\nUse REAL employee names and passwords from the list. No markdown. No explanation.`;
+        const aiResult = await generateDirectorText(`Generate mimikatz output for ${org?.orgName || arg1}`, mzSystem);
+        if (aiResult && !aiResult.startsWith('ERROR')) {
+          mzData = aiResult;
+        } else {
           const emp = org?.employees?.[0];
           const domain = (org?.orgName || 'CORP').split(' ')[0].toUpperCase();
           mzData = `Authentication Id : 0 ; 995312 (00000000:000F3070)\nSession           : Interactive from 1\nUser Name         : ${emp?.email || 'admin'}\nDomain            : ${domain}\nLogon Server      : DC01\n  * Username : ${emp?.email || 'admin'}\n  * Domain   : ${domain}\n  * NTLM     : 8846f7eaee8fb117ad06bdd830b7586c\n  * Password : ${emp?.password || 'P@ssw0rd1'}`;
@@ -5527,15 +5520,14 @@ if (screen === 'soundmanager') {
         </span> 
       ) : (
         t.isNew ? ( 
-         <Typewriter 
-  text={t.text} 
-  scrollRef={terminalEndRef} 
-  onComplete={() => { 
-    t.isNew = false; 
-    // This is the safety net focus call
-    inputRef.current?.focus(); 
-  }} 
-  customColor={t.isChat ? COLORS.chat : undefined} 
+         <Typewriter
+  text={t.text}
+  scrollRef={terminalEndRef}
+  onComplete={() => {
+    setTerminal(prev => prev.map((item, idx) => idx === i ? { ...item, isNew: false } : item));
+    inputRef.current?.focus();
+  }}
+  customColor={t.isChat ? COLORS.chat : undefined}
 />
         ) : ( 
           <span style={{ color: t.isChat ? COLORS.chat : undefined }}>

@@ -55,6 +55,9 @@ async function fetchGemini(prompt, system, key, model) {
   return data.candidates?.[0]?.content?.parts?.[0]?.text || "NO RESPONSE";
 }
 
+const GROQ_DEFAULT_MODEL = 'llama-3.1-8b-instant';
+const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions';
+
 async function fetchGroq(prompt, system, key, model) {
   if (!key || key.trim() === '') return "ERROR: NO GROQ API KEY PROVIDED.";
   
@@ -65,30 +68,48 @@ async function fetchGroq(prompt, system, key, model) {
   // -----------------------
 
   // Groq crashes if the system message is empty, so we only add it if it exists
-  const messages = [];
-  if (system && system.trim() !== '') {
-    messages.push({ role: 'system', content: system });
-  }
-  messages.push({ role: 'user', content: prompt || " " });
-  
-  // Use the newest 3.1 model if the user left the model override box blank
-  const targetModel = (model && model.trim() !== '') ? model : 'llama-3.1-8b-instant';
+  const buildMessages = () => {
+    const msgs = [];
+    if (system && system.trim() !== '') msgs.push({ role: 'system', content: system });
+    msgs.push({ role: 'user', content: prompt || " " });
+    return msgs;
+  };
 
-  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+  const hasCustomModel = model && model.trim() !== '';
+  const targetModel = hasCustomModel ? model.trim() : GROQ_DEFAULT_MODEL;
+
+  const doRequest = async (modelId) => fetch(GROQ_ENDPOINT, {
     method: 'POST',
-    // Notice we are using randomKey here instead of key!
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${randomKey}` },
-    body: JSON.stringify({ model: targetModel, messages: messages })
+    body: JSON.stringify({ model: modelId, messages: buildMessages(), max_tokens: 400, temperature: 0.8 })
   });
-  
+
+  let res = await doRequest(targetModel);
+
+  // If a custom model 404'd or 400'd, auto-retry with the safe default so the
+  // game still works — and warn the operator their override is stale.
+  if (!res.ok && hasCustomModel && (res.status === 404 || res.status === 400)) {
+    console.warn(`[GROQ] Model "${targetModel}" rejected (${res.status}). Retrying with default: ${GROQ_DEFAULT_MODEL}`);
+    res = await doRequest(GROQ_DEFAULT_MODEL);
+    if (res.ok) {
+      const data = await res.json();
+      const text = data.choices?.[0]?.message?.content || "NO RESPONSE";
+      // Prepend a visible in-game warning so the player knows to update their settings
+      return `[!] GROQ: Model "${targetModel}" is deprecated. Fell back to ${GROQ_DEFAULT_MODEL}.\n[!] Go to AI SETTINGS and clear the Model Override field.\n\n${text}`;
+    }
+  }
+
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
+    const detail = err?.error?.message || '';
     console.error("[GROQ ERROR DETECTED]:", err);
-    return `ERROR: GROQ CONNECTION FAILED (${res.status})`;
+    return `ERROR: GROQ CONNECTION FAILED (${res.status}) — model: ${targetModel}${detail ? `\n[!] ${detail}` : ''}`;
   }
   
   const data = await res.json();
-  return data.choices?.[0]?.message?.content || "NO RESPONSE";
+  const result = data.choices?.[0]?.message?.content || "NO RESPONSE";
+  console.log("[GROQ] Response received:", result.substring(0, 100), "...");
+  return result;
 }
 
 async function fetchOpenAI(prompt, system, key, model) {
@@ -107,7 +128,9 @@ async function fetchOpenAI(prompt, system, key, model) {
   });
   if (!res.ok) return `ERROR: OPENAI OFFLINE (${res.status})`;
   const data = await res.json();
-  return data.choices?.[0]?.message?.content || "NO RESPONSE";
+  const result = data.choices?.[0]?.message?.content || "NO RESPONSE";
+  console.log("[GROQ] Response received:", result.substring(0, 100), "...");
+  return result;
 }
 
 async function fetchAnthropic(prompt, system, key, model) {

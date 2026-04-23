@@ -352,7 +352,7 @@ export default function NetworkMap({
           {gridLines}
         </g>
 
-        <g style={{ transform: `translate(${cam.x}px, ${cam.y}px) scale(${cam.z})`, transformOrigin: '0 0', transition: isDragging ? 'none' : 'transform 0.05s linear' }}>
+        <g style={{ transform: `translate(${cam.x}px, ${cam.y}px) scale(${cam.z})`, transformOrigin: '0 0', transition: isDragging ? 'none' : 'transform 0.05s linear', opacity: showWifiLayer ? 0.08 : 1, filter: showWifiLayer ? 'none' : undefined }}>
           {expanded && Array.from({ length: 4 }).map((_, i) => (
             <line key={`base-${i}`} x1="50%" y1={expanded ? "90%" : "85%"} x2={`${20 + i*20}%`} y2="200%" stroke={COLORS.primary} strokeWidth="1" opacity={isHacking ? 0.05 : 0.1} strokeDasharray="10 10" />
           ))}
@@ -533,7 +533,7 @@ export default function NetworkMap({
           padding: isMobile ? '10px 16px' : '4px 8px', borderRadius: '3px', fontWeight: 'bold', letterSpacing: '1px',
           WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation',
         }}>
-          📶 {showWifiLayer ? 'NODES' : 'WIFI'}
+          {showWifiLayer ? '⬡ NODE MAP' : '📶 WIFI SCAN'}
         </button>
       )}
 

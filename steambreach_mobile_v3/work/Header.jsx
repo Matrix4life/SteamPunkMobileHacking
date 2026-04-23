@@ -18,7 +18,7 @@ const Header = ({ operator, privilege, money, heat, reputation, isInside, target
   // API status light
   let aiConnected = false;
   try {
-    const cfg = JSON.parse(localStorage.getItem('steambreach_ai_config') || '{}');
+    const cfg = JSON.parse(localStorage.getItem('hexoverride_ai_config') || '{}');
     aiConnected = !!(cfg.apiKey && cfg.apiKey.length > 5);
   } catch {}
   const aiDot = { width: 8, height: 8, borderRadius: '50%', display: 'inline-block', background: aiConnected ? '#00ff88' : '#ff3366', boxShadow: aiConnected ? '0 0 6px #00ff8880' : '0 0 6px #ff336680', marginRight: '4px', flexShrink: 0 };

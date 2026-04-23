@@ -1,13 +1,13 @@
 #!/bin/bash
 # ═══════════════════════════════════════════════════════════════
-# STEAMBREACH → Capacitor Mobile Setup
-# Run from: steambreach_split/
+# HEXOVERRIDE → Capacitor Mobile Setup
+# Run from: hexoverride_split/
 # ═══════════════════════════════════════════════════════════════
 
 set -e
 
 echo "═══════════════════════════════════════════════"
-echo " STEAMBREACH MOBILE — Capacitor Setup"
+echo " HEXOVERRIDE MOBILE — Capacitor Setup"
 echo "═══════════════════════════════════════════════"
 echo ""
 
@@ -17,7 +17,7 @@ npm install @capacitor/core @capacitor/cli
 
 # 2. Initialize Capacitor (creates capacitor.config.ts)
 echo "[2/5] Initializing Capacitor project..."
-npx cap init "STEAMBREACH" "com.steambreach.game" --web-dir dist
+npx cap init "HEXOVERRIDE" "com.hexoverride.game" --web-dir dist
 
 # 3. Add platforms
 echo "[3/5] Adding iOS and Android platforms..."

@@ -1,9 +1,9 @@
-# STEAMBREACH split refactor
+# HEXOVERRIDE split refactor
 
 This is a structural split of the original `UpdatedPeople.jsx` into modules.
 
 ## Files
-- `src/STEAMBREACH.jsx` – main game component
+- `src/HEXOVERRIDE.jsx` – main game component
 - `src/constants/gameConstants.js` – constants, colors, registries, market pricing
 - `src/ai/agents.js` – AI/Gemini helpers and org generation
 - `src/ai/director.js` – adaptive difficulty logic

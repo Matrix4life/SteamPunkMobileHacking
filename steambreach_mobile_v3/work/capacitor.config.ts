@@ -1,8 +1,8 @@
 import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.steambreach.game',
-  appName: 'STEAMBREACH',
+  appId: 'com.hexoverride.game',
+  appName: 'HEXOVERRIDE',
   webDir: 'dist',
   
   // Dark status bar to match game theme
@@ -10,7 +10,7 @@ const config: CapacitorConfig = {
     backgroundColor: '#0a0a0a',
     contentInset: 'automatic',
     preferredContentMode: 'mobile',
-    scheme: 'STEAMBREACH',
+    scheme: 'HEXOVERRIDE',
   },
   
   android: {

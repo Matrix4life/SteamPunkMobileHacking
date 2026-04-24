@@ -1,4 +1,3 @@
-import IntroScreen from './components/IntroScreen';
 import HelpMenu from './components/HelpMenu';
 import RadialMenu from './components/RadialMenu';
 import AiSettings from './components/AiSettings';
@@ -5144,20 +5143,262 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
   }
 
   if (screen === 'intro') {
-    return (
-      <IntroScreen
-        menuMode={menuMode}         setMenuMode={setMenuMode}
-        menuIndex={menuIndex}       setMenuIndex={setMenuIndex}
-        operator={operator}         setOperator={setOperator}
-        gameMode={gameMode}         setGameMode={setGameMode}
-        deleteTarget={deleteTarget} setDeleteTarget={setDeleteTarget}
-        getAllSaveSlots={getAllSaveSlots}
-        loadGame={loadGame}
-        startNewGame={startNewGame}
-        deleteSave={deleteSave}
-        setScreen={setScreen}
-      />
-    );
+    // ── IntroScreen inline (VariationA aesthetic) ─────────────
+    const C_I = {
+      bg:'#05070a', bgPanel:'#0a0d12', border:'#1b2430', text:'#d4d8dc',
+      dim:'#5a6572', dimmer:'#2f3843',
+      pri:COLORS.primary, sec:COLORS.secondary, warn:COLORS.warning, dan:COLORS.danger,
+    };
+    const BOOT_LINES_I = [
+      { t:'[BOOT] hexoverride-os v3.1.4-operator', c:C_I.dim },
+      { t:'[ OK ] initialising tor circuits......... 7 hops', c:C_I.sec },
+      { t:'[ OK ] mounting /dev/ghost................ ok', c:C_I.sec },
+      { t:'[ OK ] loading ~/ops/contracts............ active', c:C_I.sec },
+      { t:'[WARN] last session: high-heat detected', c:C_I.warn },
+      { t:'[ OK ] spoofing MAC: 5e:de:ad:be:ef:42.... ok', c:C_I.sec },
+      { t:'[ OK ] handshake complete. welcome back, operator.', c:C_I.pri },
+    ];
+    const ASCII_LOGO_I = [
+      ' ██╗  ██╗███████╗██╗  ██╗',
+      ' ██║  ██║██╔════╝╚██╗██╔╝',
+      ' ███████║█████╗   ╚███╔╝ ',
+      ' ██╔══██║██╔══╝   ██╔██╗ ',
+      ' ██║  ██║███████╗██╔╝ ██╗',
+      ' ╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝',
+    ];
+    const saves = getAllSaveSlots();
+    const getSaveInfo = (name) => {
+      try {
+        const data = JSON.parse(localStorage.getItem(`breach_slot_${name}`));
+        if (!data) return null;
+        return { operator:data.operator||'Unknown', gameMode:data.gameMode||'arcade', money:data.money||0, reputation:data.reputation||0, botnet:data.botnet?.length||0, nodesLooted:data.looted?.length||0, timestamp:data.timestamp };
+      } catch { return null; }
+    };
+    const formatTime = (ts) => {
+      if (!ts) return 'Unknown';
+      const d = new Date(ts), now = new Date(), diff = now - d;
+      if (diff < 60000) return 'Just now';
+      if (diff < 3600000) return `${Math.floor(diff/60000)}m ago`;
+      if (diff < 86400000) return `${Math.floor(diff/3600000)}h ago`;
+      return d.toLocaleDateString()+' '+d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+    };
+    const introModes = [
+      { id:'arcade',   name:'ARCADE',   mult:'×1', color:C_I.sec,  desc:'Learn the tools. Type the name, get the result.', flavor:'Learn the vibes.' },
+      { id:'field',    name:'FIELD',    mult:'×2', color:C_I.warn, desc:'Key flags required. Balanced reward.',             flavor:'Recommended.' },
+      { id:'operator', name:'OPERATOR', mult:'×4', color:C_I.dan,  desc:'Full CLI syntax. No hand-holding.',               flavor:'For the ones who flex.' },
+    ];
+
+    function IntroNetGraph({ width, height }) {
+      const seed = (n) => { let x = Math.sin(n)*10000; return x-Math.floor(x); };
+      const nodes = React.useMemo(() => {
+        const arr = [];
+        for (let i=0;i<28;i++) arr.push({ x:20+seed(i*7.3)*(width-40), y:30+seed(i*13.7+0.1)*(height-60), r:2+seed(i*19.1)*2.5, tier:seed(i*29.7)>0.8?2:seed(i*29.7)>0.55?1:0, key:i });
+        return arr;
+      }, [width, height]);
+      const edges = React.useMemo(() => {
+        const e=[];
+        for(let i=0;i<nodes.length;i++){
+          const nearest=nodes.map((_,j)=>({j,d:j===i?Infinity:Math.hypot(nodes[i].x-nodes[j].x,nodes[i].y-nodes[j].y)})).sort((a,b)=>a.d-b.d).slice(0,2);
+          nearest.forEach(({j})=>{ if(i<j) e.push([i,j]); });
+        }
+        return e;
+      }, [nodes]);
+      const [t, setT] = useState(0);
+      useEffect(() => { let r; const tick=(ts)=>{setT(ts/1000);r=requestAnimationFrame(tick);}; r=requestAnimationFrame(tick); return()=>cancelAnimationFrame(r); },[]);
+      return (
+        <svg width={width} height={height} style={{display:'block'}}>
+          <defs><radialGradient id="ngGlowI"><stop offset="0%" stopColor={C_I.pri} stopOpacity="0.8"/><stop offset="100%" stopColor={C_I.pri} stopOpacity="0"/></radialGradient></defs>
+          {edges.map(([a,b],i)=>{ const na=nodes[a],nb=nodes[b],phase=(t*0.4+i*0.13)%1; return (<g key={i}><line x1={na.x} y1={na.y} x2={nb.x} y2={nb.y} stroke={C_I.dimmer} strokeWidth="0.5"/>{i%3===0&&<circle cx={na.x+(nb.x-na.x)*phase} cy={na.y+(nb.y-na.y)*phase} r="1.2" fill={C_I.pri} opacity="0.8"/>}</g>); })}
+          {nodes.map(n=>{ const col=n.tier===2?C_I.warn:n.tier===1?C_I.sec:C_I.pri,tw=0.5+0.5*Math.sin(t*2+n.key); return(<g key={n.key}>{n.tier>0&&<circle cx={n.x} cy={n.y} r={n.r*3} fill="url(#ngGlowI)" opacity={0.3*tw}/>}<circle cx={n.x} cy={n.y} r={n.r} fill="none" stroke={col} strokeWidth="1" opacity="0.8"/><circle cx={n.x} cy={n.y} r={n.r*0.4} fill={col} opacity={0.6+0.4*tw}/></g>); })}
+        </svg>
+      );
+    }
+
+    function IntroScreenInner() {
+      const [bootLine, setBootLine] = useState(0);
+      const [bootChar, setBootChar] = useState(0);
+      const [menuReady, setMenuReady] = useState(false);
+      const [blink, setBlink] = useState(true);
+      const [introHovered, setIntroHovered] = useState(null);
+      const [dims, setDims] = useState({w:window.innerWidth,h:window.innerHeight});
+      const compact = dims.w < 640;
+
+      useEffect(() => { const ro=new ResizeObserver(es=>{const r=es[0].contentRect;setDims({w:r.width,h:r.height});}); ro.observe(document.documentElement); return()=>ro.disconnect(); },[]);
+      useEffect(() => { const id=setInterval(()=>setBlink(b=>!b),500); return()=>clearInterval(id); },[]);
+      useEffect(() => {
+        if(bootLine>=BOOT_LINES_I.length){setMenuReady(true);return;}
+        const line=BOOT_LINES_I[bootLine].t;
+        if(bootChar<line.length){const id=setTimeout(()=>setBootChar(c=>c+4),10);return()=>clearTimeout(id);}
+        const id=setTimeout(()=>{setBootLine(l=>l+1);setBootChar(0);},160);
+        return()=>clearTimeout(id);
+      },[bootLine,bootChar]);
+
+      const menuItems = [
+        { id:'soundmanager', label:'AUDIO MANAGER',    sub:'Sounds, music, uploads',    color:C_I.pri, icon:'♪', onClick:()=>setScreen('soundmanager') },
+        { id:'aisettings',   label:'AI DIRECTOR',       sub:'Tune game AI & difficulty',  color:C_I.pri, icon:'◈', onClick:()=>setScreen('aisettings') },
+        { id:'newgame',      label:'NEW OPERATION',     sub:'Start clean. Fresh handle.', color:C_I.sec, icon:'▸', onClick:()=>{setMenuMode('newgame');setMenuIndex(0);setOperator('');} },
+        { id:'load',         label:'CONTINUE',          sub:`${saves.length} saved session${saves.length!==1?'s':''}`, color:C_I.pri, icon:'◉', disabled:saves.length===0, onClick:()=>{setMenuMode('load');setMenuIndex(0);} },
+        { id:'delete',       label:'DELETE SAVE',       sub:'Purge a session file',       color:C_I.dan, icon:'✕', disabled:saves.length===0, onClick:()=>{setMenuMode('delete');setMenuIndex(0);} },
+      ];
+
+      return (
+        <div style={{position:'absolute',inset:0,background:C_I.bg,color:C_I.text,fontFamily:"'JetBrains Mono','Fira Code','Consolas',monospace",overflow:'hidden'}}>
+          <div style={{position:'absolute',inset:0,opacity:0.3}}><IntroNetGraph width={dims.w} height={dims.h}/></div>
+          <div style={{position:'absolute',inset:0,pointerEvents:'none',background:`radial-gradient(ellipse at 50% 55%,rgba(120,220,232,0.05) 0%,transparent 55%),radial-gradient(ellipse at 50% 50%,transparent 55%,rgba(0,0,0,0.75) 100%)`,zIndex:1}}/>
+          <div style={{position:'absolute',inset:0,pointerEvents:'none',backgroundImage:'repeating-linear-gradient(0deg,rgba(120,220,232,0.025) 0px,rgba(120,220,232,0.025) 1px,transparent 1px,transparent 3px)',mixBlendMode:'overlay',zIndex:2}}/>
+          {/* Top bar */}
+          <div style={{position:'absolute',top:0,left:0,right:0,height:28,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 14px',fontSize:10,letterSpacing:1.5,color:C_I.dim,borderBottom:`1px solid ${C_I.border}`,background:'rgba(5,7,10,0.9)',zIndex:5}}>
+            <span>tty0 · operator@hexoverride · {new Date().toISOString().slice(0,10)}</span>
+            <span style={{display:'flex',gap:12}}><span style={{color:C_I.sec}}>● TOR 7/7</span><span style={{color:C_I.warn}}>⚠ TRACE 0%</span>{!compact&&<span>IP 185.220.101.42</span>}</span>
+          </div>
+          {/* Corner brackets */}
+          {[{top:36,left:10,borderWidth:'1px 0 0 1px'},{top:36,right:10,borderWidth:'1px 1px 0 0'},{bottom:10,left:10,borderWidth:'0 0 1px 1px'},{bottom:10,right:10,borderWidth:'0 1px 1px 0'}].map((s,i)=>(
+            <div key={i} style={{position:'absolute',...s,width:14,height:14,borderColor:C_I.pri,borderStyle:'solid',opacity:0.5,zIndex:4}}/>
+          ))}
+          {/* Main grid */}
+          <div style={{position:'absolute',top:40,left:20,right:20,bottom:16,display:'grid',gridTemplateColumns:compact?'1fr':'1.15fr 1fr',gridTemplateRows:compact?'auto auto 1fr auto':'auto 1fr auto',gap:14,zIndex:4}}>
+            {/* Wordmark */}
+            <div style={{gridColumn:compact?'1':'1 / span 2'}}>
+              <div style={{color:C_I.pri,textShadow:`0 0 10px ${C_I.pri}55`,fontSize:compact?7:11,lineHeight:1.06,letterSpacing:0,whiteSpace:'pre',fontWeight:700,userSelect:'none'}}>{ASCII_LOGO_I.join('\n')}</div>
+              <div style={{display:'flex',alignItems:'center',gap:8,marginTop:compact?6:8,paddingLeft:2,color:C_I.sec,fontSize:compact?13:20,fontWeight:700,letterSpacing:compact?6:10,textShadow:`0 0 10px ${C_I.sec}55`}}>
+                <span style={{color:C_I.dim,letterSpacing:0,fontSize:14}}>┌─</span>
+                <span>OVERRIDE</span>
+                <span style={{flex:1,height:1,background:`linear-gradient(90deg,${C_I.sec}88,transparent)`,letterSpacing:0}}/>
+                <span style={{color:C_I.dim,fontSize:compact?9:11,letterSpacing:2}}>v3.1.4</span>
+                <span style={{color:C_I.dim,letterSpacing:0,fontSize:14}}>─┐</span>
+              </div>
+            </div>
+            {/* Left column */}
+            <div style={{display:'flex',flexDirection:'column',gap:12,minWidth:0,overflow:'hidden'}}>
+              {/* Boot log */}
+              <div style={{border:`1px solid ${C_I.border}`,padding:'10px 12px',background:'rgba(10,13,18,0.75)',fontSize:compact?9:10,lineHeight:1.75,minHeight:compact?100:130}}>
+                <div style={{color:C_I.dim,fontSize:9,letterSpacing:1.5,marginBottom:6}}>┌─ /var/log/boot.log ─────────────</div>
+                {BOOT_LINES_I.slice(0,bootLine).map((l,i)=><div key={i} style={{color:l.c}}>{l.t}</div>)}
+                {bootLine<BOOT_LINES_I.length&&<div style={{color:BOOT_LINES_I[bootLine].c}}>{BOOT_LINES_I[bootLine].t.slice(0,bootChar)}<span style={{color:C_I.pri,opacity:blink?1:0.15}}>▌</span></div>}
+                {menuReady&&<div style={{color:C_I.dim,fontSize:9,letterSpacing:1.5,marginTop:6}}>└─────────────────────────────────</div>}
+              </div>
+              {/* Main menu */}
+              {menuMode==='main'&&(
+                <div style={{border:`1px solid ${menuReady?C_I.pri+'55':C_I.border}`,background:'rgba(10,13,18,0.82)',padding:'10px 0',opacity:menuReady?1:0.15,transition:'all 0.4s ease',flex:1}}>
+                  <div style={{padding:'0 14px 8px',color:C_I.dim,fontSize:9,letterSpacing:2,borderBottom:`1px dashed ${C_I.border}`,marginBottom:6}}>┌─ SESSION ──── select to continue ─</div>
+                  {menuItems.map(item=>{
+                    const active=introHovered===item.id;
+                    return(<div key={item.id} onMouseEnter={()=>!item.disabled&&setIntroHovered(item.id)} onMouseLeave={()=>setIntroHovered(null)} onClick={()=>!item.disabled&&item.onClick()} style={{display:'flex',alignItems:'center',gap:10,padding:compact?'9px 14px':'7px 14px',background:active?`linear-gradient(90deg,${item.color}18,transparent 70%)`:'transparent',borderLeft:`2px solid ${active?item.color:'transparent'}`,cursor:item.disabled?'default':'pointer',opacity:item.disabled?0.3:1,transition:'all 0.1s'}}>
+                      <span style={{color:active?item.color:C_I.dim,fontSize:11,width:14}}>{active?item.icon:' '}</span>
+                      <span style={{color:active?C_I.text:C_I.dim,fontSize:11,letterSpacing:1.8,fontWeight:700,flex:1}}>{item.label}</span>
+                      <span style={{color:active?item.color+'cc':C_I.dimmer,fontSize:9.5,textAlign:'right'}}>{item.sub}</span>
+                    </div>);
+                  })}
+                  <div style={{padding:'8px 14px 0',color:C_I.dimmer,fontSize:9,letterSpacing:1}}>[UP/DOWN] NAVIGATE · [ENTER] SELECT</div>
+                </div>
+              )}
+              {/* New game */}
+              {menuMode==='newgame'&&(
+                <div style={{border:`1px solid ${C_I.pri}55`,padding:'16px 18px',background:'rgba(10,13,18,0.9)',flex:1,display:'flex',flexDirection:'column',gap:12}}>
+                  <div style={{color:C_I.dim,fontSize:9,letterSpacing:2}}>IDENTIFY OPERATOR</div>
+                  <input autoFocus style={{background:'transparent',border:'none',borderBottom:`1px solid ${C_I.pri}`,color:C_I.pri,outline:'none',fontFamily:'inherit',fontSize:14,padding:'4px 2px',width:'100%'}} placeholder="handle_" value={operator} onChange={e=>setOperator(e.target.value)} onKeyDown={e=>e.key==='Enter'&&operator.length>0&&startNewGame(operator,gameMode)}/>
+                  <div style={{color:C_I.dim,fontSize:9,letterSpacing:2,marginTop:4}}>SELECT MODE</div>
+                  <div style={{display:'flex',flexDirection:'column',gap:6}}>
+                    {introModes.map(m=>{const sel=gameMode===m.id;return(<div key={m.id} onClick={()=>setGameMode(m.id)} style={{border:`1px solid ${sel?m.color:C_I.border}`,background:sel?`${m.color}12`:'transparent',padding:'8px 12px',cursor:'pointer',transition:'all 0.12s',display:'flex',alignItems:'baseline',gap:8}}>
+                      <span style={{color:sel?C_I.text:C_I.dim,fontSize:10,width:14}}>{sel?'▸':' '}</span>
+                      <span style={{color:sel?C_I.text:C_I.dim,fontSize:11,letterSpacing:1.8,fontWeight:700,minWidth:80}}>{m.name}</span>
+                      <span style={{color:m.color,fontSize:11,fontWeight:700}}>{m.mult}</span>
+                      <span style={{color:C_I.dim,fontSize:9,flex:1}}>{m.desc}</span>
+                    </div>);})}
+                  </div>
+                  <div style={{display:'flex',gap:8,marginTop:'auto'}}>
+                    <button onClick={()=>{setMenuMode('main');setMenuIndex(0);}} style={{flex:1,padding:'10px',background:'transparent',border:`1px solid ${C_I.border}`,color:C_I.dim,fontFamily:'inherit',fontSize:11,cursor:'pointer',letterSpacing:1}}>← BACK</button>
+                    <button onClick={()=>operator.length>0&&startNewGame(operator,gameMode)} disabled={operator.length===0} style={{flex:2,padding:'10px',fontFamily:'inherit',fontSize:12,letterSpacing:2,fontWeight:700,cursor:operator.length>0?'pointer':'default',background:operator.length>0?C_I.pri:C_I.bgPanel,color:operator.length>0?C_I.bg:C_I.dim,border:`1px solid ${operator.length>0?C_I.pri:C_I.border}`,opacity:operator.length>0?1:0.4,transition:'all 0.15s'}}>BREACH IN →</button>
+                  </div>
+                  <div style={{color:C_I.dimmer,fontSize:9,textAlign:'center'}}>[ENTER] START · [ESC] CANCEL</div>
+                </div>
+              )}
+              {/* Load game */}
+              {menuMode==='load'&&(
+                <div style={{border:`1px solid ${C_I.pri}55`,padding:'14px 16px',background:'rgba(10,13,18,0.9)',flex:1,display:'flex',flexDirection:'column',gap:8,overflow:'hidden'}}>
+                  <div style={{color:C_I.dim,fontSize:9,letterSpacing:2,borderBottom:`1px dashed ${C_I.border}`,paddingBottom:8}}>SELECT SAVE FILE</div>
+                  <div style={{flex:1,overflowY:'auto'}}>
+                    {saves.slice().reverse().map((name,idx)=>{
+                      const info=getSaveInfo(name),isAuto=name.startsWith('auto_'),mColor=info?.gameMode==='operator'?C_I.dan:info?.gameMode==='field'?C_I.warn:C_I.sec,isSel=menuIndex===idx;
+                      return(<div key={name} onMouseEnter={()=>setMenuIndex(idx)} onClick={()=>{loadGame(name);setScreen('game');}} style={{border:`1px solid ${isSel?C_I.pri:C_I.border}`,padding:'10px 12px',marginBottom:6,background:isSel?`${C_I.pri}18`:'transparent',cursor:'pointer',transition:'all 0.1s'}}>
+                        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:3}}>
+                          <span style={{color:isAuto?C_I.dim:C_I.pri,fontSize:11,fontWeight:700}}>{isSel?'▸ ':''}{isAuto?'◦ AUTO':'◉'} {info?.operator||name}</span>
+                          <span style={{display:'flex',gap:6,alignItems:'center'}}><span style={{color:mColor,fontSize:9,border:`1px solid ${mColor}40`,padding:'1px 5px'}}>{(info?.gameMode||'arcade').toUpperCase()}</span><span style={{color:C_I.dim,fontSize:9}}>{formatTime(info?.timestamp)}</span></span>
+                        </div>
+                        {info&&<div style={{fontSize:9.5,color:C_I.dim}}>₿<span style={{color:C_I.warn}}>{info.money.toLocaleString()}</span> · REP {info.reputation} · C2 <span style={{color:COLORS.infected||C_I.sec}}>{info.botnet}</span> · LOOTED {info.nodesLooted}</div>}
+                      </div>);
+                    })}
+                  </div>
+                  <button onClick={()=>{setMenuMode('main');setMenuIndex(0);}} style={{padding:'9px',background:'transparent',border:`1px solid ${C_I.border}`,color:C_I.dim,fontFamily:'inherit',fontSize:11,cursor:'pointer'}}>← BACK</button>
+                  <div style={{color:C_I.dimmer,fontSize:9}}>[UP/DOWN] NAVIGATE · [ENTER] LOAD</div>
+                </div>
+              )}
+              {/* Delete select */}
+              {menuMode==='delete'&&!deleteTarget&&(
+                <div style={{border:`1px solid ${C_I.dan}44`,padding:'14px 16px',background:'rgba(10,13,18,0.9)',flex:1,display:'flex',flexDirection:'column',gap:8,overflow:'hidden'}}>
+                  <div style={{color:C_I.dan,fontSize:9,letterSpacing:2,borderBottom:`1px dashed ${C_I.border}`,paddingBottom:8}}>SELECT SAVE TO PURGE</div>
+                  <div style={{flex:1,overflowY:'auto'}}>
+                    {saves.slice().reverse().map((name,idx)=>{
+                      const info=getSaveInfo(name),isAuto=name.startsWith('auto_'),isSel=menuIndex===idx;
+                      return(<div key={name} onMouseEnter={()=>setMenuIndex(idx)} onClick={()=>setDeleteTarget(name)} style={{border:`1px solid ${isSel?C_I.dan:C_I.dan+'30'}`,padding:'10px 12px',marginBottom:6,background:isSel?`${C_I.dan}18`:'transparent',cursor:'pointer'}}>
+                        <div style={{display:'flex',justifyContent:'space-between'}}><span style={{color:C_I.text,fontSize:11}}>{isSel?'▸ ':''}{isAuto?'◦ AUTO':'◉'} {info?.operator||name}</span><span style={{color:C_I.dan,fontSize:9}}>DELETE</span></div>
+                        {info&&<div style={{fontSize:9.5,color:C_I.dim,marginTop:3}}>₿{info.money.toLocaleString()} · REP {info.reputation} · {formatTime(info?.timestamp)}</div>}
+                      </div>);
+                    })}
+                  </div>
+                  <button onClick={()=>{setMenuMode('main');setMenuIndex(0);}} style={{padding:'9px',background:'transparent',border:`1px solid ${C_I.border}`,color:C_I.dim,fontFamily:'inherit',fontSize:11,cursor:'pointer'}}>← BACK</button>
+                </div>
+              )}
+              {/* Delete confirm */}
+              {menuMode==='delete'&&deleteTarget&&(
+                <div style={{border:`1px solid ${C_I.dan}`,padding:'20px 18px',background:'rgba(10,13,18,0.92)',flex:1,display:'flex',flexDirection:'column',gap:14}}>
+                  <div style={{color:C_I.dan,fontSize:11,letterSpacing:2}}>PERMANENTLY PURGE SAVE?</div>
+                  <div style={{color:C_I.text,fontSize:13,border:`1px solid ${C_I.border}`,padding:'8px 12px'}}>"{deleteTarget}"</div>
+                  <div style={{display:'flex',gap:8}}>
+                    <button onMouseEnter={()=>setMenuIndex(0)} onClick={()=>setDeleteTarget(null)} style={{flex:1,padding:'10px',background:menuIndex===0?`${C_I.pri}20`:'transparent',border:`1px solid ${menuIndex===0?C_I.pri:C_I.border}`,color:menuIndex===0?'#fff':C_I.dim,fontFamily:'inherit',fontSize:11,cursor:'pointer'}}>{menuIndex===0?'▸ ':''}CANCEL</button>
+                    <button onMouseEnter={()=>setMenuIndex(1)} onClick={()=>{deleteSave(deleteTarget);setDeleteTarget(null);setMenuIndex(0);}} style={{flex:1,padding:'10px',background:menuIndex===1?C_I.dan:`${C_I.dan}30`,color:'#fff',border:'none',fontFamily:'inherit',fontSize:11,fontWeight:700,cursor:'pointer'}}>{menuIndex===1?'▸ ':''}CONFIRM</button>
+                  </div>
+                  <div style={{color:C_I.dimmer,fontSize:9}}>[LEFT/RIGHT] TOGGLE · [ENTER] SELECT</div>
+                </div>
+              )}
+            </div>
+            {/* Right column — desktop only */}
+            {!compact&&(
+              <div style={{display:'flex',flexDirection:'column',gap:12,minWidth:0}}>
+                <div style={{border:`1px solid ${C_I.border}`,background:'rgba(10,13,18,0.55)',position:'relative',flex:1,overflow:'hidden'}}>
+                  <div style={{position:'absolute',top:8,left:10,fontSize:9,letterSpacing:2,color:C_I.dim,zIndex:2}}>GLOBAL.NET // {new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})} UTC</div>
+                  <div style={{position:'absolute',top:8,right:10,fontSize:9,letterSpacing:2,color:C_I.sec,zIndex:2}}>● LIVE</div>
+                  <div style={{position:'absolute',inset:'28px 8px 28px'}}><IntroNetGraph width={Math.round(dims.w*0.43)} height={Math.round(dims.h-280)}/></div>
+                  <div style={{position:'absolute',bottom:8,left:10,right:10,display:'flex',justifyContent:'space-between',fontSize:9,letterSpacing:1.5,color:C_I.dim}}>
+                    <span>NODES <span style={{color:C_I.text}}>—</span></span><span>ELITE <span style={{color:C_I.warn}}>—</span></span><span>REGIONS <span style={{color:C_I.text}}>—</span></span>
+                  </div>
+                </div>
+                <div style={{border:`1px solid ${C_I.border}`,padding:'12px 14px',background:'rgba(10,13,18,0.6)'}}>
+                  <div style={{fontSize:9.5,color:C_I.dim,lineHeight:1.6}}><span style={{color:'#fc9867'}}>MOTD:</span> &quot;The network is not a place. It&apos;s a relationship between you and the people trying to find you.&quot;</div>
+                  <div style={{color:C_I.dimmer,fontSize:8.5,marginTop:4}}>— fsociety.dat, line 47</div>
+                </div>
+              </div>
+            )}
+            {/* Mode cards */}
+            <div style={{gridColumn:compact?'1':'1 / span 2',display:'grid',gridTemplateColumns:compact?'1fr':'repeat(3,1fr)',gap:8}}>
+              {introModes.map(m=>{const active=introHovered===m.id+'_card';return(
+                <div key={m.id+'_card'} onMouseEnter={()=>setIntroHovered(m.id+'_card')} onMouseLeave={()=>setIntroHovered(null)} style={{border:`1px solid ${active?m.color:C_I.border}`,background:active?`${m.color}12`:'rgba(10,13,18,0.65)',padding:'8px 12px',cursor:'default',transition:'all 0.15s'}}>
+                  <div style={{display:'flex',alignItems:'baseline',gap:8,marginBottom:3}}><span style={{color:active?m.color:C_I.text,fontSize:11,letterSpacing:2,fontWeight:700}}>{m.name}</span><span style={{color:m.color,fontSize:11,fontWeight:700}}>{m.mult}</span></div>
+                  <div style={{color:C_I.dim,fontSize:9,lineHeight:1.4,marginBottom:2}}>{m.desc}</div>
+                  <div style={{color:m.color,fontSize:8.5,opacity:0.7}}>// {m.flavor}</div>
+                </div>
+              );})}
+            </div>
+          </div>
+          {/* Bottom strip */}
+          <div style={{position:'absolute',bottom:0,left:0,right:0,height:14,display:'flex',justifyContent:'space-between',padding:'0 14px',fontSize:8.5,letterSpacing:2,color:C_I.dimmer,zIndex:5,borderTop:`1px solid ${C_I.border}`,background:'rgba(5,7,10,0.95)',alignItems:'center'}}>
+            <span>v3.1.4 · build 7e4a9c</span><span>[F1] HELP · [ESC] QUIT</span>
+          </div>
+        </div>
+      );
+    }
+
+    return <IntroScreenInner />;
   }
 
   if (screen === 'hardware') return (

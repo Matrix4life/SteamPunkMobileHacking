@@ -5215,23 +5215,13 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
     }
 
     function IntroScreenInner() {
-      const [bootLine, setBootLine] = useState(0);
-      const [bootChar, setBootChar] = useState(0);
-      const [menuReady, setMenuReady] = useState(false);
-      const [blink, setBlink] = useState(true);
+      
       const [introHovered, setIntroHovered] = useState(null);
       const [dims, setDims] = useState({w:window.innerWidth,h:window.innerHeight});
       const compact = dims.w < 640;
 
       useEffect(() => { const ro=new ResizeObserver(es=>{const r=es[0].contentRect;setDims({w:r.width,h:r.height});}); ro.observe(document.documentElement); return()=>ro.disconnect(); },[]);
-      useEffect(() => { const id=setInterval(()=>setBlink(b=>!b),500); return()=>clearInterval(id); },[]);
-      useEffect(() => {
-        if(bootLine>=BOOT_LINES_I.length){setMenuReady(true);return;}
-        const line=BOOT_LINES_I[bootLine].t;
-        if(bootChar<line.length){const id=setTimeout(()=>setBootChar(c=>c+4),10);return()=>clearTimeout(id);}
-        const id=setTimeout(()=>{setBootLine(l=>l+1);setBootChar(0);},160);
-        return()=>clearTimeout(id);
-      },[bootLine,bootChar]);
+      
 
       const menuItems = [
         { id:'soundmanager', label:'AUDIO MANAGER',    sub:'Sounds, music, uploads',    color:C_I.pri, icon:'♪', onClick:()=>setScreen('soundmanager') },
@@ -5270,16 +5260,32 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
             </div>
             {/* Left column */}
             <div style={{display:'flex',flexDirection:'column',gap:12,minWidth:0,overflow:'hidden'}}>
-              {/* Boot log */}
-              <div style={{border:`1px solid ${C_I.border}`,padding:'10px 12px',background:'rgba(10,13,18,0.75)',fontSize:compact?9:10,lineHeight:1.75,minHeight:compact?100:130}}>
-                <div style={{color:C_I.dim,fontSize:9,letterSpacing:1.5,marginBottom:6}}>┌─ /var/log/boot.log ─────────────</div>
-                {BOOT_LINES_I.slice(0,bootLine).map((l,i)=><div key={i} style={{color:l.c}}>{l.t}</div>)}
-                {bootLine<BOOT_LINES_I.length&&<div style={{color:BOOT_LINES_I[bootLine].c}}>{BOOT_LINES_I[bootLine].t.slice(0,bootChar)}<span style={{color:C_I.pri,opacity:blink?1:0.15}}>▌</span></div>}
-                {menuReady&&<div style={{color:C_I.dim,fontSize:9,letterSpacing:1.5,marginTop:6}}>└─────────────────────────────────</div>}
-              </div>
+            {/* Last session intel panel */}
+              {(()=>{
+                const last = saves.length > 0 ? getSaveInfo(saves[saves.length - 1]) : null;
+                const mColor = last?.gameMode==='operator' ? C_I.dan : last?.gameMode==='field' ? C_I.warn : C_I.sec;
+                return (
+                  <div style={{border:`1px solid ${C_I.border}`,padding:'12px 14px',background:'rgba(10,13,18,0.75)',fontSize:10,lineHeight:1.9}}>
+                    <div style={{color:C_I.dim,fontSize:9,letterSpacing:1.5,marginBottom:8}}>┌─ /var/log/last-session ─────────</div>
+                    {last ? (<>
+                      <div><span style={{color:C_I.dim,minWidth:90,display:'inline-block'}}>OPERATOR</span><span style={{color:C_I.pri,fontWeight:700}}>{last.operator}</span></div>
+                      <div><span style={{color:C_I.dim,minWidth:90,display:'inline-block'}}>MODE</span><span style={{color:mColor,fontWeight:700}}>{last.gameMode.toUpperCase()}</span></div>
+                      <div><span style={{color:C_I.dim,minWidth:90,display:'inline-block'}}>BALANCE</span><span style={{color:C_I.warn}}>₿{last.money.toLocaleString()}</span></div>
+                      <div><span style={{color:C_I.dim,minWidth:90,display:'inline-block'}}>BOTNET</span><span style={{color:C_I.sec}}>{last.botnet} node{last.botnet!==1?'s':''} active</span></div>
+                      <div><span style={{color:C_I.dim,minWidth:90,display:'inline-block'}}>LOOTED</span><span style={{color:C_I.text}}>{last.nodesLooted} targets</span></div>
+                      <div><span style={{color:C_I.dim,minWidth:90,display:'inline-block'}}>LAST SEEN</span><span style={{color:C_I.dim}}>{formatTime(last.timestamp)}</span></div>
+                    </>) : (<>
+                      <div style={{color:C_I.sec}}>[ OK ] first boot detected</div>
+                      <div style={{color:C_I.dim}}>[ -- ] no prior session found</div>
+                      <div style={{color:C_I.pri,marginTop:4}}>[ OK ] ready for new operation</div>
+                    </>)}
+                    <div style={{color:C_I.dim,fontSize:9,letterSpacing:1.5,marginTop:8}}>└─────────────────────────────────</div>
+                  </div>
+                );
+              })()}
               {/* Main menu */}
               {menuMode==='main'&&(
-                <div style={{border:`1px solid ${menuReady?C_I.pri+'55':C_I.border}`,background:'rgba(10,13,18,0.82)',padding:'10px 0',opacity:menuReady?1:0.15,transition:'all 0.4s ease',flex:1}}>
+                <div style={{border:`1px solid ${menuReady?C_I.pri+'55':C_I.border}`,background:'rgba(10,13,18,0.82)',padding:'10px 0',opacity:1,flex:1}}>
                   <div style={{padding:'0 14px 8px',color:C_I.dim,fontSize:9,letterSpacing:2,borderBottom:`1px dashed ${C_I.border}`,marginBottom:6}}>┌─ SESSION ──── select to continue ─</div>
                   {menuItems.map(item=>{
                     const active=introHovered===item.id;

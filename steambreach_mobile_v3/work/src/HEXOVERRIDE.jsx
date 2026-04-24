@@ -4060,14 +4060,17 @@ phy0    wlan0           ath9k_htc       Qualcomm Atheros AR9271
         // ═══ ARCADE MODE: Auto-scan or manual target selection ═══
         if (gameMode === 'arcade') {
           // Check if user specified a target network by name
-          if (arg1) {
-            const selectedNet = nets.find(n => 
-              n.essid.toLowerCase() === arg1.toLowerCase() || 
-              n.essid.toLowerCase().includes(arg1.toLowerCase())
-            );
+         if (arg1) {
+            const isMac = /^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$/.test(arg1);
+            const selectedNet = isMac
+              ? nets.find(n => n.bssid.toLowerCase() === arg1.toLowerCase())
+              : nets.find(n =>
+                  n.essid.toLowerCase() === arg1.toLowerCase() ||
+                  n.essid.toLowerCase().includes(arg1.toLowerCase())
+                );
             if (!selectedNet) {
-              const available = nets.filter(n => n.discovered).map(n => n.essid).join(', ');
-              return `[-] Network "${arg1}" not found.\n[*] Available: ${available}`;
+              const available = nets.filter(n => n.discovered).map(n => `${n.bssid} (${n.essid})`).join('\n[*]   ');
+              return `[-] Network "${arg1}" not found.\n[*] Available:\n[*]   ${available}`;
             }
             
             const clients = selectedNet.clients || getClients(selectedNet.bssid);

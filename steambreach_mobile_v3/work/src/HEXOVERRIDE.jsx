@@ -5382,7 +5382,7 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
             {/* Mode cards */}
             <div style={{gridColumn:compact?'1':'1 / span 2',display:'grid',gridTemplateColumns:compact?'1fr':'repeat(3,1fr)',gap:8}}>
               {introModes.map(m=>{const active=introHovered===m.id+'_card';return(
-                <div key={m.id+'_card'} onMouseEnter={()=>setIntroHovered(m.id+'_card')} onMouseLeave={()=>setIntroHovered(null)} style={{border:`1px solid ${active?m.color:C_I.border}`,background:active?`${m.color}12`:'rgba(10,13,18,0.65)',padding:'8px 12px',cursor:'default',transition:'all 0.15s'}}>
+              <div key={m.id+'_card'} onMouseEnter={()=>setIntroHovered(m.id+'_card')} onMouseLeave={()=>setIntroHovered(null)} onClick={()=>{setGameMode(m.id);setMenuMode('newgame');setMenuIndex(0);setOperator('');}} style={{border:`1px solid ${active?m.color:C_I.border}`,background:active?`${m.color}12`:'rgba(10,13,18,0.65)',padding:'8px 12px',cursor:'pointer',transition:'all 0.15s'}}>
                   <div style={{display:'flex',alignItems:'baseline',gap:8,marginBottom:3}}><span style={{color:active?m.color:C_I.text,fontSize:11,letterSpacing:2,fontWeight:700}}>{m.name}</span><span style={{color:m.color,fontSize:11,fontWeight:700}}>{m.mult}</span></div>
                   <div style={{color:C_I.dim,fontSize:9,lineHeight:1.4,marginBottom:2}}>{m.desc}</div>
                   <div style={{color:m.color,fontSize:8.5,opacity:0.7}}>// {m.flavor}</div>

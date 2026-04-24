@@ -5285,7 +5285,7 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
               })()}
               {/* Main menu */}
               {menuMode==='main'&&(
-                <div style={{border:`1px solid ${menuReady?C_I.pri+'55':C_I.border}`,background:'rgba(10,13,18,0.82)',padding:'10px 0',opacity:1,flex:1}}>
+                <div style={{border:`1px solid ${C_I.pri}55`,background:'rgba(10,13,18,0.82)',padding:'10px 0',opacity:1,flex:1}}>
                   <div style={{padding:'0 14px 8px',color:C_I.dim,fontSize:9,letterSpacing:2,borderBottom:`1px dashed ${C_I.border}`,marginBottom:6}}>┌─ SESSION ──── select to continue ─</div>
                   {menuItems.map(item=>{
                     const active=introHovered===item.id;

@@ -234,7 +234,7 @@ const [virusScans, setVirusScans] = useState({});
     const secBase = { low: 2500, mid: 9000, high: 30000, elite: 90000 };
     return secBase[node.sec] || 2500;
   };
-  const getEconomyModeMult = () => 0.8 + (getRewardMult(gameMode) * 0.2);
+  const getEconomyModeMult = () => getRewardMult(gameMode);
   const getEconomyMarketMult = () => clamp(0.75 + (btcIndex * 0.35), 0.9, 1.5);
   const getHashRigMult = () => clamp(0.9 + (rigFx.hashSpeed / 12), 0.9, 1.8);
   const getExfilRigMult = () => clamp(0.9 + (rigFx.exfilMultiplier / 10), 0.9, 1.7);
@@ -894,7 +894,7 @@ setVirusScans(data.virusScans || {});
     setPartsBag([]); setHwMarketData(null);
     setSoftwareOwned([]); setBtcIndex(1.0);
     setStash({ cc_dumps: 0, ssn_fullz: 0, botnets: 0, exploits: 0, zerodays: 0 });
-    setCurrentRegion('us-gov'); setMarketPrices(generateMarketPrices(currentRegion));
+    setCurrentRegion('us-gov'); setMarketPrices(generateMarketPrices('us-gov'));
     setUnlockedFiles([]); setContracts([]);
     setWorld(DEFAULT_WORLD);
     setDirector(DEFAULT_DIRECTOR); directorRef.current = DEFAULT_DIRECTOR;
@@ -2008,7 +2008,7 @@ const verifyContract = (ip, objectiveType) => {
         // 1. We stop calling setWorld(DEFAULT_WORLD) here so the nodes stay in state.
         // 2. We just change the active region view.
         setCurrentRegion(targetRegion);
-        setMarketPrices(generateMarketPrices(currentRegion));
+        setMarketPrices(generateMarketPrices(targetRegion));
         
         // Reset WiFi state for new region (different networks)
         setWifiNetworks([]);
@@ -3062,7 +3062,7 @@ return `[+] ${actionResult}\n[+] CHAOS +10`;
             setTerminal(prev => [...prev, { type: 'out', text: `shred: /dev/sda: pass ${passes + 1}/${passes + 1} (000000)...`, isNew: false }]);
             await new Promise(r => setTimeout(r, 1000));
             
-            const bounty = 0;
+           const bounty = getEconomyPayout({ action: 'shred' });
             setMoney(m => m + bounty);
             setHeat(h => Math.min(h + 25, 100));
             setBotnet(prev => prev.filter(ip => ip !== targetIP));
@@ -3089,7 +3089,7 @@ return `[+] ${actionResult}\n[+] CHAOS +10`;
             setTerminal(prev => [...prev, { type: 'out', text: `shred: /dev/sda — ${arg1.toUpperCase()} destruction in progress...`, isNew: false }]);
             await new Promise(r => setTimeout(r, depth.time));
             
-            const bounty = 0;
+            const bounty = getEconomyPayout({ action: 'shred' });
             setMoney(m => m + bounty);
             setHeat(h => Math.min(h + depth.heatAdd, 100));
             setBotnet(prev => prev.filter(ip => ip !== targetIP));
@@ -3111,7 +3111,7 @@ return `[+] ${actionResult}\n[+] CHAOS +10`;
           setTerminal(prev => [...prev, { type: 'out', text: `shred: /dev/sda — overwriting disk with 3-pass random data...`, isNew: false }]);
           await new Promise(r => setTimeout(r, 2000));
           
-          const bounty = 0;
+          const bounty = getEconomyPayout({ action: 'shred' });
           setHeat(h => Math.min(h + 20, 100));
           setBotnet(prev => prev.filter(ip => ip !== targetIP));
           setProxies(prev => prev.filter(ip => ip !== targetIP));

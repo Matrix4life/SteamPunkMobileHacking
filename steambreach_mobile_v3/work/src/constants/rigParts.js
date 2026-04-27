@@ -202,14 +202,17 @@ export const SOFTWARE_DB = [
 // COMMODITIES
 // ═══════════════════════════════════════════════════════════════
 export const COMMODITIES = {
-  ssn_fullz: {
-  name: 'SSN Fullz',desc: 'Full identity packages',base: 60,vol: 40},
-  cc_dumps:  {name:'CC Dumps',         base:100,   vol:50,  desc:'Stolen credit card data'},
-  botnets:   {name:'Botnet Access',    base:300,  vol:200, desc:'Zombie net rentals'},
-  exploits:  {name:'Exploit Kits',     base:1500, vol:800, desc:'Pre-packaged vuln tools'},
-  zerodays:  {name:'Weaponized 0-Days',base:25000,vol:15000,desc:'Unpatched vuln exploits'},
-  ransomkeys:{name:'Ransom Decryptors',base:5000, vol:4000,desc:'Keys from paid ransoms'},
-  identities:{name:'Synthetic IDs',    base:750,  vol:500, desc:'Deepfake identity packages'},
+  cc_dumps:       { name:'CC Dumps',          desc:'Stolen credit card data',      base:20,    vol:15    },
+  personal_pii:   { name:'Personal PII',       desc:'Names, addresses, DOBs',       base:45,    vol:25    },
+  ssn_fullz:      { name:'SSN Fullz',          desc:'Full identity packages',       base:60,    vol:40    },
+  medical_records:{ name:'Medical Records',    desc:'Patient data and histories',   base:150,   vol:80    },
+  bank_records:   { name:'Bank Records',       desc:'Account and routing data',     base:400,   vol:200   },
+  corp_intel:     { name:'Corp Intel',         desc:'Internal corporate documents', base:800,   vol:400   },
+  botnets:        { name:'Botnet Access',      desc:'Zombie net rentals',           base:300,   vol:200   },
+  trade_secrets:  { name:'Trade Secrets',      desc:'Proprietary IP and R&D',       base:2000,  vol:1000  },
+  exploits:       { name:'Exploit Kits',       desc:'Pre-packaged vuln tools',      base:1500,  vol:800   },
+  classified_docs:{ name:'Classified Docs',    desc:'Government/military intel',    base:5000,  vol:2500  },
+  zerodays:       { name:'Weaponized 0-Days',  desc:'Unpatched vuln exploits',      base:25000, vol:15000 },
 };
 
 // ═══════════════════════════════════════════════════════════════

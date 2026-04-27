@@ -927,6 +927,31 @@ setVirusScans({});
     return () => clearInterval(autoSaveTimer);
   }, [screen, operator, money, botnet, proxies, looted, wipedNodes, inventory, consumables, stash, currentRegion, world, contracts, director, heat, reputation, morality, pendingInteraction, rivals, zeroDays, rivalRaidCooldowns, virusFragments, virusInventory, virusArchive, virusScans]);
 
+  // Real-time passive income from xmrig miner nodes — ticks every 3 minutes
+  useEffect(() => {
+    if (!operator) return;
+    const minerCount = getMinerNodes();
+    if (minerCount === 0) return;
+
+    const TICK_MS = 3 * 60 * 1000; // 3 minutes = 20 ticks/hr
+    const tickPay = Math.floor(getPassiveIncomeRate() / 20);
+    if (tickPay <= 0) return;
+
+    const id = setInterval(() => {
+      const current = getMinerNodes();
+      if (current === 0) return;
+      const pay = Math.floor(getPassiveIncomeRate() / 20);
+      if (pay <= 0) return;
+      setMoney(m => m + pay);
+      setTerminal(prev => [...prev, {
+        type: 'out',
+        text: `[XMRIG] Mining tick: +₿${pay.toLocaleString()} from ${current} node${current > 1 ? 's' : ''} — next tick in 3 min`,
+        isNew: true
+      }]);
+    }, TICK_MS);
+
+    return () => clearInterval(id);
+  }, [operator, looted, btcIndex, inventory]);
   // ── DARKNET AUTO-SELL TICK (tycoon layer) ────────────
   useEffect(() => {
     if (!operator) return;

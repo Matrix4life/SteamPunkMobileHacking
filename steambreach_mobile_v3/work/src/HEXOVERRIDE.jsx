@@ -1752,7 +1752,7 @@ const verifyContract = (ip, objectiveType) => {
   return { primary: { key: primary.key, qty }, bonus: bonusDrop };
 };
 
-const commands = {   // ← your existing command object starts here
+const COMMANDS = {// ← your existing command object starts here
 
   
       rclone: async () => {
@@ -2721,7 +2721,6 @@ if (!hasEntry || !hasHit) {
           if (!rawData) return `[-] exfil: ${arg1}: File not found`;
           const orgType = world[targetIP]?.org?.type || 'smallbiz';
           const sec = world[targetIP]?.data?.sec || 'low';
-          if (!val || val <= 0) return "[-] No extractable assets.";
           const fileKey = `${targetIP}:${targetFile}`;
           if (looted.includes(fileKey)) return "[-] Already exfiltrated.";
           
@@ -3041,7 +3040,7 @@ return `[+] ${actionResult}\n[+] CHAOS +10`;
         }
 
         setIsProcessing(false);
-        return `[+] STASH EXFIL COMPLETE via ${stagingName}.\n[+] ₿${val.toLocaleString()} secured.\n[+] Trace +8%, Heat +3% (staged routing vs +25/+10 direct).`;
+        return `[+] STASH EXFIL COMPLETE via ${stagingName}.\n[+] +${drop.primary.qty}x ${primaryItem?.name || drop.primary.key} staged through botnet.\n[*] Sell via 'sell ${drop.primary.key} ${drop.primary.qty}' to cash out. Trace +8%, Heat +3%.`;
       },
 
       wipe: async () => {

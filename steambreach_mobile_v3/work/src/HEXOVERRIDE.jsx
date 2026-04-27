@@ -1754,7 +1754,6 @@ const verifyContract = (ip, objectiveType) => {
 
 const commands = {   // ← your existing command object starts here
 
-  const COMMANDS = { // <--- Your existing commands object starts here
   
       rclone: async () => {
         if (!isInside) return "[-] rclone: Must be executed on a remote host.";

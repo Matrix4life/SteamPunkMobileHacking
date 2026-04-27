@@ -61,6 +61,8 @@ const COMMAND_REGISTRY = [
   { cmd: 'sliver', desc: 'Deploy C2 botnet beacon (root) — ₿500/hr passive income per node', category: 'BOTNET & C2' },
   { cmd: 'chisel', desc: 'Create SOCKS5 proxy tunnel — slows trace (root)', category: 'BOTNET & C2' },
   { cmd: 'disconnect <ip>', desc: 'Remove proxy or botnet node, free proxy slot', category: 'BOTNET & C2' },
+  { cmd: 'sessions', desc: 'List all active Sliver C2 sessions — ID, IP, org, flags (PROXY/MINER/ACTIVE)', category: 'BOTNET & C2' },
+  { cmd: 'use <id|ip>', desc: 'Jump into a C2 session by session ID or IP — instant root, no exploit needed', category: 'BOTNET & C2' },
   { cmd: 'hping3 <ip>', desc: 'Botnet SYN flood DDoS — overwhelms target and lowers Blue Team alert level', category: 'BOTNET & C2' },
   { cmd: 'mimikatz <ip>', desc: 'Dump LSASS credentials from a botnet node', category: 'BOTNET & C2' },
   { cmd: 'stash <file>', desc: 'Route exfil through botnet node (+3% heat vs +10% direct)', category: 'BOTNET & C2' },

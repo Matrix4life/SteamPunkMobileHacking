@@ -2526,6 +2526,58 @@ if (!hasEntry || !hasHit) {
         return out;
       },
 
+    sessions: async () => {
+        if (botnet.length === 0) return `[-] No active sessions.\n[*] Deploy 'sliver' on a rooted node to open a C2 session.`;
+
+        const header = `\n[*] SLIVER C2 — Active Sessions\n${'─'.repeat(72)}\n ID  IP              ORG                       SEC      FLAGS\n${'─'.repeat(72)}`;
+        const rows = botnet.map((ip, idx) => {
+          const node = world[ip];
+          if (!node) return ` ${String(idx).padEnd(3)} ${ip.padEnd(16)} [node offline]`;
+          const orgName = (node.org?.orgName || 'Unknown').slice(0, 24).padEnd(24);
+          const sec = (node.sec || 'low').padEnd(8);
+          const flags = [
+            proxies.includes(ip) ? 'PROXY' : '',
+            (looted || []).some(l => l === `xmrig_${ip}`) ? 'MINER' : '',
+            ip === targetIP ? 'ACTIVE' : '',
+          ].filter(Boolean).join(' ') || '—';
+          return ` ${String(idx).padEnd(3)} ${ip.padEnd(16)} ${orgName} ${sec} ${flags}`;
+        });
+
+        return `${header}\n${rows.join('\n')}\n${'─'.repeat(72)}\n[*] ${botnet.length} session${botnet.length > 1 ? 's' : ''} open. Type 'use <id>' or 'use <ip>' to jump in.`;
+      },
+
+      use: async () => {
+        if (!arg1) return `[-] Usage: use <session_id | ip>\n[*] Run 'sessions' to list available C2 sessions.`;
+        if (isInside) return `[-] Already inside ${targetIP}. Type 'exit' first.`;
+
+        let resolvedIP = null;
+        const idx = parseInt(arg1, 10);
+        if (!isNaN(idx) && idx >= 0 && idx < botnet.length) {
+          resolvedIP = botnet[idx];
+        } else if (botnet.includes(arg1)) {
+          resolvedIP = arg1;
+        }
+
+        if (!resolvedIP) return `[-] Session '${arg1}' not found.\n[*] Run 'sessions' to list available C2 sessions.`;
+
+        const node = world[resolvedIP];
+        if (!node) return `[-] Beacon on ${resolvedIP} is unreachable. Node may have gone offline.`;
+
+        const orgName = node.org?.orgName || resolvedIP;
+        const startTrace = Math.max(Math.floor(heat / 5), 5);
+
+        setIsInside(true);
+        setTargetIP(resolvedIP);
+        setPrivilege('root');
+        setCurrentDir('/');
+        setTrace(startTrace);
+
+        playSuccess();
+        escalateBlueTeam(resolvedIP, 5);
+
+        return `[*] Tasking beacon on ${resolvedIP}...\n[*] Sliver implant responding.\n[+] SESSION RESUMED — ${orgName}\n[+] Privilege: root | Trace: ${startTrace}%\n[*] You have persistent access. Beacon stays alive when you exit.`;
+      },
+
       hping3: async () => {
         if (isInside) return "[-] hping3: Must be run from KALI-GATEWAY. Type 'exit' first.";
         if (!arg1) return "[-] Usage: hping3 <target_ip> --flood -S -p 80\n[*] Coordinates SYN flood from botnet nodes to overwhelm target defenses.";

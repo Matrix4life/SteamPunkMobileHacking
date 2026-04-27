@@ -2577,8 +2577,8 @@ if (!hasEntry || !hasHit) {
 
         return `${header}\n${rows.join('\n')}\n${'─'.repeat(72)}\n[*] ${liveBotnet.length} session${liveBotnet.length > 1 ? 's' : ''} open. Type 'use <id>' or 'use <ip>' to jump in.`;
       },
-      use: async () => {
-        if (!arg1) return `[-] Usage: use <session_id | ip>\n[*] Run 'sessions' to list available C2 sessions.`;
+      session: async () => {
+        if (!arg1) return `[-] Usage: session <id | ip>\n[*] Run 'sessions' to list available C2 sessions.`;
         if (isInside) return `[-] Already inside ${targetIP}. Type 'exit' first.`;
 
         const liveBotnet = botnet.filter(ip => ip !== 'local' && world[ip]);

@@ -1575,7 +1575,8 @@ const completeContractAndRemove = (id) => {
     const contents = isInside ? world[targetIP]?.contents : world.local.contents;
 
     // Active Blue Team Check
-    if (isInside && trace > 70 && Math.random() < 0.4) {
+    const BENIGN_CMDS = ['ls','cd','pwd','cat','clear','status','help','exit','wipe','download','exfil','stash'];
+if (isInside && trace > 70 && Math.random() < 0.4 && !BENIGN_CMDS.includes(cmd)) {
       setIsProcessing(true);
       const nodeName = world[targetIP]?.org?.orgName || targetIP;
       const blueTeamMsg = await invokeBlueTeamAI(trimmed, nodeName, trace, heat);
@@ -1935,7 +1936,7 @@ const verifyContract = (ip, objectiveType) => {
   
   // Privilege Check
   const role = emp.role.toLowerCase();
-  const isAdmin = role.includes('admin') || role.includes('director') || role.includes('chief') || role.includes('dba');
+  const isAdmin = role.includes('admin') || role.includes('director') || role.includes('chief') || role.includes('dba') || role.includes('ciso') || role.includes('cto') || role.includes('ceo') || role.includes('cfo') || role.includes('officer') || role.includes('manager') || role.includes('commander');
   
   setPrivilege(isAdmin ? 'root' : 'user');
   setTrace(0); // Zero trace for valid credentials
@@ -3793,8 +3794,10 @@ return `[+] ${actionResult}\n[+] CHAOS +10`;
 },
       cd: async () => {
         const dest = arg1 === '..' ? (currentDir.split('/').slice(0, -1).join('/') || '/') : resolvePath(arg1, currentDir);
-        if (fs[dest] || dest === '/') { setCurrentDir(dest); return ''; }
-        return `bash: cd: ${arg1}: No such file or directory`;
+const parentListing = fs[currentDir] || [];
+const appearsInParent = parentListing.some(f => f === arg1 + '/' || f === arg1);
+if (fs[dest] || dest === '/' || appearsInParent) { setCurrentDir(dest); return ''; }
+return `bash: cd: ${arg1}: No such file or directory`;
       },
       cat: async () => {
   try {
@@ -5152,7 +5155,7 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
     if (COMMANDS[cmd]) {
       output = await COMMANDS[cmd](); trackCommand(cmd, true);
       if (output === null) return; if (cmd === 'clear') return;
-      if (cmd !== 'cat') { setTerminal(prev => [...prev, { type: 'out', text: output, isNew: true }]); }
+      if (cmd !== 'cat' || (output && output !== null)) { setTerminal(prev => [...prev, { type: 'out', text: output, isNew: true }]); }
     } else {
       trackCommand(cmd, false);
       playFailure();

@@ -2575,7 +2575,7 @@ if (!hasEntry || !hasHit) {
           return ` ${String(idx).padEnd(3)} ${ip.padEnd(16)} ${orgName} ${sec} ${flags}`;
         });
 
-        return `${header}\n${rows.join('\n')}\n${'─'.repeat(72)}\n[*] ${liveBotnet.length} session${liveBotnet.length > 1 ? 's' : ''} open. Type 'use <id>' or 'use <ip>' to jump in.`;
+        return `${header}\n${rows.join('\n')}\n${'─'.repeat(72)}\n[*] ${liveBotnet.length} session${liveBotnet.length > 1 ? 's' : ''} open. Type 'session <id>' or 'session <ip>' to jump in.`;
       },
       session: async () => {
         if (!arg1) return `[-] Usage: session <id | ip>\n[*] Run 'sessions' to list available C2 sessions.`;

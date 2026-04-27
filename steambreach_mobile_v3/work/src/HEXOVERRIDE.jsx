@@ -118,7 +118,7 @@ const HEXOVERRIDE = () => {
   
   const [currentRegion, setCurrentRegion] = useState('us-gov');
   const [marketPrices, setMarketPrices] = useState(generateMarketPrices(currentRegion));
-  const [stash, setStash] = useState({ cc_dumps: 0, ssn_fullz: 0, botnets: 0, exploits: 0, zerodays: 0 });
+  const [stash, setStash] = useState({ cc_dumps: 0, personal_pii: 0, ssn_fullz: 0, medical_records: 0, bank_records: 0, corp_intel: 0, botnets: 0, trade_secrets: 0, exploits: 0, classified_docs: 0, zerodays: 0 });
   const [empireListings, setEmpireListings] = useState({
     cc_dumps:  { listed: 0, priceMult: 1.0 },
     ssn_fullz: { listed: 0, priceMult: 1.0 },
@@ -811,7 +811,7 @@ useEffect(() => {
     setSoftwareOwned(data.softwareOwned || []);
     setBtcIndex(data.btcIndex || 1.0);
     setConsumables(data.consumables || { decoy: 0, burner: 0, zeroday: 0 });
-    setStash(data.stash || { cc_dumps: 0, ssn_fullz: 0, botnets: 0, exploits: 0, zerodays: 0 });
+    setStash({ cc_dumps: 0, personal_pii: 0, ssn_fullz: 0, medical_records: 0, bank_records: 0, corp_intel: 0, botnets: 0, trade_secrets: 0, exploits: 0, classified_docs: 0, zerodays: 0, ...(data.stash || {}) });
     setCurrentRegion(data.currentRegion || 'us-gov');
     if (data.marketPrices) setMarketPrices(data.marketPrices);
     setUnlockedFiles(data.unlockedFiles || []);
@@ -2008,7 +2008,11 @@ const verifyContract = (ip, objectiveType) => {
         // 1. We stop calling setWorld(DEFAULT_WORLD) here so the nodes stay in state.
         // 2. We just change the active region view.
         setCurrentRegion(targetRegion);
-        setMarketPrices(generateMarketPrices(targetRegion));
+        const newPrices = generateMarketPrices(targetRegion);
+        setMarketPrices(newPrices);
+        if (newPrices._event) {
+          setTerminal(prev => [...prev, { type: 'out', text: `\n[DARKNET FEED] ${newPrices._event}\n`, isNew: true }]);
+        }
         
         // Reset WiFi state for new region (different networks)
         setWifiNetworks([]);
@@ -2682,7 +2686,32 @@ if (!hasEntry || !hasHit) {
 
         return `${mzData}\n\nmimikatz # exit\n[+] ${org?.employees?.length || 2} credential sets extracted from LSASS.\n[+] Plaintext passwords + NTLM hashes sold for ₿${intelValue.toLocaleString()}.`;
       },
-
+// Data drop table — maps org type + sec level → stash commodities
+const getExfilDrop = (orgType, sec) => {
+  const dropTable = {
+    personal:    [{ key: 'cc_dumps', w: 2 }, { key: 'personal_pii', w: 3 }, { key: 'ssn_fullz', w: 1 }],
+    startup:     [{ key: 'corp_intel', w: 2 }, { key: 'cc_dumps', w: 2 }, { key: 'personal_pii', w: 1 }],
+    smallbiz:    [{ key: 'personal_pii', w: 2 }, { key: 'cc_dumps', w: 2 }, { key: 'bank_records', w: 1 }],
+    corporation: [{ key: 'corp_intel', w: 3 }, { key: 'trade_secrets', w: 2 }, { key: 'exploits', w: 1 }],
+    government:  [{ key: 'classified_docs', w: 2 }, { key: 'personal_pii', w: 2 }, { key: 'ssn_fullz', w: 1 }],
+    military:    [{ key: 'classified_docs', w: 3 }, { key: 'trade_secrets', w: 2 }, { key: 'exploits', w: 1 }],
+    financial:   [{ key: 'bank_records', w: 3 }, { key: 'cc_dumps', w: 3 }, { key: 'ssn_fullz', w: 2 }],
+    classified:  [{ key: 'classified_docs', w: 3 }, { key: 'trade_secrets', w: 2 }, { key: 'zerodays', w: 1 }],
+  };
+  const secMult = { low: 1, mid: 2.5, high: 5, elite: 12 }[sec] || 1;
+  const pool = dropTable[orgType] || dropTable.smallbiz;
+  // Pick primary drop (weighted)
+  const totalW = pool.reduce((s, x) => s + x.w, 0);
+  let rand = Math.random() * totalW, primary = pool[pool.length - 1];
+  for (const entry of pool) { rand -= entry.w; if (rand <= 0) { primary = entry; break; } }
+  const qty = Math.max(1, Math.round((Math.random() * 2 + 1) * secMult));
+  // Chance for a bonus secondary drop
+  const secondary = pool.filter(e => e.key !== primary.key);
+  const bonusDrop = Math.random() < 0.35 && secondary.length > 0
+    ? { key: secondary[Math.floor(Math.random() * secondary.length)].key, qty: Math.max(1, Math.round(qty * 0.4)) }
+    : null;
+  return { primary: { key: primary.key, qty }, bonus: bonusDrop };
+};
      exfil: async () => {
         try {
           if (!isInside) return "[-] Must be on a remote host.";
@@ -2690,7 +2719,8 @@ if (!hasEntry || !hasHit) {
           const targetFile = resolvePath(arg1, currentDir);
           let rawData = contents[targetFile] || contents[arg1];
           if (!rawData) return `[-] exfil: ${arg1}: File not found`;
-          const val = getEconomyPayout({ action: 'exfil' });
+          const orgType = world[targetIP]?.org?.type || 'smallbiz';
+          const sec = world[targetIP]?.data?.sec || 'low';
           if (!val || val <= 0) return "[-] No extractable assets.";
           const fileKey = `${targetIP}:${targetFile}`;
           if (looted.includes(fileKey)) return "[-] Already exfiltrated.";
@@ -2699,12 +2729,19 @@ if (!hasEntry || !hasHit) {
           setTerminal(prev => [...prev, { type: 'out', text: `[*] Initiating encrypted SOCKS5 transfer...`, isNew: false }]);
           await new Promise(r => setTimeout(r, 2000));
           
-          setMoney(m => m + val);
+          const drop = getExfilDrop(orgType, sec);
+          const primaryItem = COMMODITIES[drop.primary.key];
+          const primaryValue = (marketPrices[drop.primary.key] || primaryItem?.base || 0) * drop.primary.qty;
+          setStash(prev => {
+            const next = { ...prev, [drop.primary.key]: (prev[drop.primary.key] || 0) + drop.primary.qty };
+            if (drop.bonus) next[drop.bonus.key] = (prev[drop.bonus.key] || 0) + drop.bonus.qty;
+            return next;
+          });
           setHeat(h => Math.min(h + 10, 100));
           setTrace(t => Math.min(t + 25, 100));
           setLooted(prev => [...prev, fileKey, targetIP]);
           escalateBlueTeam(targetIP, 30);
-          trackLoot(val);
+          trackLoot(primaryValue);
           playExfil();
 
           // --- BULLETPROOF CONTRACT CHECK (MOVED TO END) ---
@@ -2739,7 +2776,9 @@ if (!hasEntry || !hasHit) {
             rivalMsg = `\n\n[!!!] NEW RIVAL DETECTED [!!!]\n[*] ${newRival.handle} (${newRival.archetypeName}) noticed your activity.\n[*] Node: ${newRival.ip}\n[*] Type "dossier ${newRival.handle}" for intel.`;
           }
           
-          return `[+] EXFIL COMPLETE. ₿${val.toLocaleString()} secured.\n[!] Trace +25%, Heat +10%.${contractMsg}${rivalMsg}`;
+          const bonusLine = drop.bonus ? `\n[+] BONUS: +${drop.bonus.qty}x ${COMMODITIES[drop.bonus.key]?.name}` : '';
+          const mktVal = (marketPrices[drop.primary.key] || primaryItem?.base || 0);
+          return `[+] EXFIL COMPLETE. +${drop.primary.qty}x ${primaryItem?.name || drop.primary.key} acquired.${bonusLine}\n[*] Current market price: ₿${mktVal.toLocaleString()} each. Use 'sell ${drop.primary.key} ${drop.primary.qty}' to cash out.\n[!] Trace +25%, Heat +10%.${contractMsg}${rivalMsg}`;
         } catch (err) {
           setIsProcessing(false);
           return `[-] CRITICAL ERROR in exfil module: ${err.message}`;
@@ -2961,8 +3000,8 @@ return `[+] ${actionResult}\n[+] CHAOS +10`;
         let rawData = contents[targetFile] || contents[arg1];
         if (!rawData) return `[-] stash: ${arg1}: File not found`;
 
-        const val = getEconomyPayout({ action: 'stash', staged: true });
-        if (!val || val <= 0) return "[-] No extractable financial assets found.";
+        const orgType = world[targetIP]?.org?.type || 'smallbiz';
+        const sec = world[targetIP]?.data?.sec || 'low';
 
         const fileKey = `${targetIP}:${targetFile}`;
         if (looted.includes(fileKey)) return "[-] Data already exfiltrated.";
@@ -2975,12 +3014,19 @@ return `[+] ${actionResult}\n[+] CHAOS +10`;
 
         await new Promise(r => setTimeout(r, 2500));
 
-        setMoney(m => m + val);
+        const drop = getExfilDrop(orgType, sec);
+        const primaryItem = COMMODITIES[drop.primary.key];
+        const primaryValue = (marketPrices[drop.primary.key] || primaryItem?.base || 0) * drop.primary.qty;
+        setStash(prev => {
+          const next = { ...prev, [drop.primary.key]: (prev[drop.primary.key] || 0) + drop.primary.qty };
+          if (drop.bonus) next[drop.bonus.key] = (prev[drop.bonus.key] || 0) + drop.bonus.qty;
+          return next;
+        });
         setHeat(h => Math.min(h + 3, 100));
         setTrace(t => Math.min(t + 8, 100));
         setLooted(prev => [...prev, fileKey, targetIP]);
         escalateBlueTeam(targetIP, 15);
-        trackLoot(val);
+        trackLoot(primaryValue);
         playExfil();
 
         if (activeContract?.type === 'exfil' && activeContract.targetIP === targetIP) {
@@ -2990,7 +3036,7 @@ return `[+] ${actionResult}\n[+] CHAOS +10`;
             setReputation(r => r + activeContract.repReward);
             setContracts(prev => prev.map(c => c.id === activeContract.id ? { ...c, completed: true, active: false } : c));
             setActiveContract(null); trackContract(true); setIsProcessing(false);
-            return `[+] STASH EXFIL COMPLETE via ${stagingName}. ₿${val.toLocaleString()} secured.\n[+] Trace +8%, Heat +3% (staged routing).\n\n[FIXER] CONTRACT ${activeContract.id} FULFILLED.\n[+] BONUS: ₿${activeContract.reward.toLocaleString()} + ${activeContract.repReward} REP`;
+            return `[+] STASH EXFIL COMPLETE via ${stagingName}.\n[+] +${drop.primary.qty}x ${primaryItem?.name || drop.primary.key} staged through botnet. Trace +8%, Heat +3%.\n\n[FIXER] CONTRACT ${activeContract.id} FULFILLED.\n[+] BONUS: ₿${activeContract.reward.toLocaleString()} + ${activeContract.repReward} REP`;
           }
         }
 

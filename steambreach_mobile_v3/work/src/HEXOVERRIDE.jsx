@@ -1728,6 +1728,32 @@ const verifyContract = (ip, objectiveType) => {
     }]);
   };
 
+  const getExfilDrop = (orgType, sec) => {
+  const dropTable = {
+    personal:    [{ key: 'cc_dumps', w: 2 }, { key: 'personal_pii', w: 3 }, { key: 'ssn_fullz', w: 1 }],
+    startup:     [{ key: 'corp_intel', w: 2 }, { key: 'cc_dumps', w: 2 }, { key: 'personal_pii', w: 1 }],
+    smallbiz:    [{ key: 'personal_pii', w: 2 }, { key: 'cc_dumps', w: 2 }, { key: 'bank_records', w: 1 }],
+    corporation: [{ key: 'corp_intel', w: 3 }, { key: 'trade_secrets', w: 2 }, { key: 'exploits', w: 1 }],
+    government:  [{ key: 'classified_docs', w: 2 }, { key: 'personal_pii', w: 2 }, { key: 'ssn_fullz', w: 1 }],
+    military:    [{ key: 'classified_docs', w: 3 }, { key: 'trade_secrets', w: 2 }, { key: 'exploits', w: 1 }],
+    financial:   [{ key: 'bank_records', w: 3 }, { key: 'cc_dumps', w: 3 }, { key: 'ssn_fullz', w: 2 }],
+    classified:  [{ key: 'classified_docs', w: 3 }, { key: 'trade_secrets', w: 2 }, { key: 'zerodays', w: 1 }],
+  };
+  const secMult = { low: 1, mid: 2.5, high: 5, elite: 12 }[sec] || 1;
+  const pool = dropTable[orgType] || dropTable.smallbiz;
+  const totalW = pool.reduce((s, x) => s + x.w, 0);
+  let rand = Math.random() * totalW, primary = pool[pool.length - 1];
+  for (const entry of pool) { rand -= entry.w; if (rand <= 0) { primary = entry; break; } }
+  const qty = Math.max(1, Math.round((Math.random() * 2 + 1) * secMult));
+  const secondary = pool.filter(e => e.key !== primary.key);
+  const bonusDrop = Math.random() < 0.35 && secondary.length > 0
+    ? { key: secondary[Math.floor(Math.random() * secondary.length)].key, qty: Math.max(1, Math.round(qty * 0.4)) }
+    : null;
+  return { primary: { key: primary.key, qty }, bonus: bonusDrop };
+};
+
+const commands = {   // ← your existing command object starts here
+
   const COMMANDS = { // <--- Your existing commands object starts here
   
       rclone: async () => {
@@ -2686,33 +2712,8 @@ if (!hasEntry || !hasHit) {
 
         return `${mzData}\n\nmimikatz # exit\n[+] ${org?.employees?.length || 2} credential sets extracted from LSASS.\n[+] Plaintext passwords + NTLM hashes sold for ₿${intelValue.toLocaleString()}.`;
       },
-// Data drop table — maps org type + sec level → stash commodities
-const getExfilDrop = (orgType, sec) => {
-  const dropTable = {
-    personal:    [{ key: 'cc_dumps', w: 2 }, { key: 'personal_pii', w: 3 }, { key: 'ssn_fullz', w: 1 }],
-    startup:     [{ key: 'corp_intel', w: 2 }, { key: 'cc_dumps', w: 2 }, { key: 'personal_pii', w: 1 }],
-    smallbiz:    [{ key: 'personal_pii', w: 2 }, { key: 'cc_dumps', w: 2 }, { key: 'bank_records', w: 1 }],
-    corporation: [{ key: 'corp_intel', w: 3 }, { key: 'trade_secrets', w: 2 }, { key: 'exploits', w: 1 }],
-    government:  [{ key: 'classified_docs', w: 2 }, { key: 'personal_pii', w: 2 }, { key: 'ssn_fullz', w: 1 }],
-    military:    [{ key: 'classified_docs', w: 3 }, { key: 'trade_secrets', w: 2 }, { key: 'exploits', w: 1 }],
-    financial:   [{ key: 'bank_records', w: 3 }, { key: 'cc_dumps', w: 3 }, { key: 'ssn_fullz', w: 2 }],
-    classified:  [{ key: 'classified_docs', w: 3 }, { key: 'trade_secrets', w: 2 }, { key: 'zerodays', w: 1 }],
-  };
-  const secMult = { low: 1, mid: 2.5, high: 5, elite: 12 }[sec] || 1;
-  const pool = dropTable[orgType] || dropTable.smallbiz;
-  // Pick primary drop (weighted)
-  const totalW = pool.reduce((s, x) => s + x.w, 0);
-  let rand = Math.random() * totalW, primary = pool[pool.length - 1];
-  for (const entry of pool) { rand -= entry.w; if (rand <= 0) { primary = entry; break; } }
-  const qty = Math.max(1, Math.round((Math.random() * 2 + 1) * secMult));
-  // Chance for a bonus secondary drop
-  const secondary = pool.filter(e => e.key !== primary.key);
-  const bonusDrop = Math.random() < 0.35 && secondary.length > 0
-    ? { key: secondary[Math.floor(Math.random() * secondary.length)].key, qty: Math.max(1, Math.round(qty * 0.4)) }
-    : null;
-  return { primary: { key: primary.key, qty }, bonus: bonusDrop };
-};
-     exfil: async () => {
+
+    exfil: async () => {
         try {
           if (!isInside) return "[-] Must be on a remote host.";
           if (!arg1) return "[-] Usage: exfil <filename>";

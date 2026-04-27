@@ -131,28 +131,51 @@ const DEV_COMMANDS = [
 
 const REGIONS = ['us-gov', 'ru-darknet', 'cn-financial', 'eu-central'];
 const COMMODITIES = {
-  cc_dumps: { name: 'CC Dumps', base: 20, vol: 15 },
-  ssn_fullz: { name: 'SSN Fullz', base: 60, vol: 40 },
-  botnets: { name: 'Botnet Access', base: 300, vol: 200 },
-  exploits: { name: 'Exploit Kits', base: 1500, vol: 800 },
-  zerodays: { name: 'Weaponized 0-Days', base: 25000, vol: 15000 },
+  // --- Low-tier stolen data ---
+  cc_dumps:       { name: 'CC Dumps',         base: 20,    vol: 15,    tier: 1 },
+  personal_pii:   { name: 'Personal PII',     base: 45,    vol: 25,    tier: 1 },
+  ssn_fullz:      { name: 'SSN Fullz',        base: 60,    vol: 40,    tier: 1 },
+  medical_records:{ name: 'Medical Records',  base: 150,   vol: 80,    tier: 2 },
+  // --- Mid-tier intel ---
+  bank_records:   { name: 'Bank Records',     base: 400,   vol: 200,   tier: 2 },
+  corp_intel:     { name: 'Corp Intel',       base: 800,   vol: 400,   tier: 2 },
+  botnets:        { name: 'Botnet Access',    base: 300,   vol: 200,   tier: 2 },
+  // --- High-tier ---
+  trade_secrets:  { name: 'Trade Secrets',    base: 2000,  vol: 1000,  tier: 3 },
+  exploits:       { name: 'Exploit Kits',     base: 1500,  vol: 800,   tier: 3 },
+  classified_docs:{ name: 'Classified Docs',  base: 5000,  vol: 2500,  tier: 3 },
+  // --- Elite ---
+  zerodays:       { name: 'Weaponized 0-Days',base: 25000, vol: 15000, tier: 4 },
 };
 
-const generateMarketPrices = () => {
+// Regional multipliers — each region favors different commodities
+const REGION_MULTS = {
+  'ru-darknet':   { cc_dumps: 1.8, botnets: 1.6, personal_pii: 1.4, zerodays: 1.2 },
+  'cn-financial': { bank_records: 1.9, trade_secrets: 1.7, corp_intel: 1.5, exploits: 1.3 },
+  'us-gov':       { classified_docs: 2.0, military_docs: 1.8, corp_intel: 1.4, ssn_fullz: 1.3 },
+  'eu-central':   { medical_records: 2.1, personal_pii: 1.6, ssn_fullz: 1.4, bank_records: 1.3 },
+};
+
+const generateMarketPrices = (region = 'us-gov') => {
   const prices = {};
+  const regionMults = REGION_MULTS[region] || {};
   Object.keys(COMMODITIES).forEach(key => {
     const item = COMMODITIES[key];
     const variance = (Math.random() * item.vol * 2) - item.vol;
-    prices[key] = Math.max(1, Math.floor(item.base + variance));
+    const regionBonus = regionMults[key] || 1.0;
+    prices[key] = Math.max(1, Math.floor((item.base + variance) * regionBonus));
   });
-  if (Math.random() < 0.2) {
-    const keys = Object.keys(COMMODITIES);
-    const crashedKey = keys[Math.floor(Math.random() * keys.length)];
-    prices[crashedKey] = Math.floor(prices[crashedKey] * 0.2);
-  } else if (Math.random() < 0.2) {
-    const keys = Object.keys(COMMODITIES);
-    const boomKey = keys[Math.floor(Math.random() * keys.length)];
-    prices[boomKey] = Math.floor(prices[boomKey] * 2.5); 
+  // Random market event: crash or boom on a single commodity
+  const keys = Object.keys(COMMODITIES);
+  const roll = Math.random();
+  if (roll < 0.12) {
+    const key = keys[Math.floor(Math.random() * keys.length)];
+    prices[key] = Math.floor(prices[key] * 0.2);
+    prices._event = `MARKET CRASH: ${COMMODITIES[key].name} flooded (-80%)`;
+  } else if (roll < 0.24) {
+    const key = keys[Math.floor(Math.random() * keys.length)];
+    prices[key] = Math.floor(prices[key] * 2.8);
+    prices._event = `MARKET SPIKE: ${COMMODITIES[key].name} demand surge (+180%)`;
   }
   return prices;
 };

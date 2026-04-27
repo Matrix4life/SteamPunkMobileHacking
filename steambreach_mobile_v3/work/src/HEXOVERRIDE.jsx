@@ -2552,12 +2552,19 @@ if (!hasEntry || !hasHit) {
       },
 
     sessions: async () => {
-        if (botnet.length === 0) return `[-] No active sessions.\n[*] Deploy 'sliver' on a rooted node to open a C2 session.`;
+        // Auto-prune dead nodes from botnet (in world but deleted, or 'local')
+        const deadNodes = botnet.filter(ip => ip === 'local' || !world[ip]);
+        if (deadNodes.length > 0) {
+          setBotnet(prev => prev.filter(ip => ip !== 'local' && world[ip]));
+        }
+
+        const liveBotnet = botnet.filter(ip => ip !== 'local' && world[ip]);
+
+        if (liveBotnet.length === 0) return `[-] No active sessions.\n[*] Deploy 'sliver' on a rooted node to open a C2 session.`;
 
         const header = `\n[*] SLIVER C2 — Active Sessions\n${'─'.repeat(72)}\n ID  IP              ORG                       SEC      FLAGS\n${'─'.repeat(72)}`;
-        const rows = botnet.map((ip, idx) => {
+        const rows = liveBotnet.map((ip, idx) => {
           const node = world[ip];
-          if (!node) return ` ${String(idx).padEnd(3)} ${ip.padEnd(16)} [node offline]`;
           const orgName = (node.org?.orgName || 'Unknown').slice(0, 24).padEnd(24);
           const sec = (node.sec || 'low').padEnd(8);
           const flags = [
@@ -2568,18 +2575,18 @@ if (!hasEntry || !hasHit) {
           return ` ${String(idx).padEnd(3)} ${ip.padEnd(16)} ${orgName} ${sec} ${flags}`;
         });
 
-        return `${header}\n${rows.join('\n')}\n${'─'.repeat(72)}\n[*] ${botnet.length} session${botnet.length > 1 ? 's' : ''} open. Type 'use <id>' or 'use <ip>' to jump in.`;
+        return `${header}\n${rows.join('\n')}\n${'─'.repeat(72)}\n[*] ${liveBotnet.length} session${liveBotnet.length > 1 ? 's' : ''} open. Type 'use <id>' or 'use <ip>' to jump in.`;
       },
-
       use: async () => {
         if (!arg1) return `[-] Usage: use <session_id | ip>\n[*] Run 'sessions' to list available C2 sessions.`;
         if (isInside) return `[-] Already inside ${targetIP}. Type 'exit' first.`;
 
+        const liveBotnet = botnet.filter(ip => ip !== 'local' && world[ip]);
         let resolvedIP = null;
         const idx = parseInt(arg1, 10);
-        if (!isNaN(idx) && idx >= 0 && idx < botnet.length) {
-          resolvedIP = botnet[idx];
-        } else if (botnet.includes(arg1)) {
+        if (!isNaN(idx) && idx >= 0 && idx < liveBotnet.length) {
+          resolvedIP = liveBotnet[idx];
+        } else if (liveBotnet.includes(arg1)) {
           resolvedIP = arg1;
         }
 

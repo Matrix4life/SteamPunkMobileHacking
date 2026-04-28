@@ -175,72 +175,94 @@ const OS_PROFILES = {
 // 2. The Org Themes (Where the juicy stuff goes)
 const FILE_SYSTEM_THEMES = {
   personal: {
-    dirs: ['home/user/documents', 'home/user/pictures', 'home/user/downloads', 'home/user/desktop', 'home/user/private'],
+    dirs: ['home/user/documents', 'home/user/pictures', 'home/user/downloads', 'home/user/desktop', 'home/user/private', 'home/user/.ssh', 'home/user/finance'],
     files: {
-      'home/user/documents': ['tax_return_2025.pdf', 'bank_statements.pdf'],
-      'home/user/private': ['passwords.txt', 'seed_phrase.txt', 'blackmail_material.zip'],
-      'home/user/downloads': ['browser_history.sqlite']
+      'home/user/documents':  ['tax_return_2025.pdf', 'bank_statements.pdf', 'ssn_database.csv', 'insurance_claims.xml'],
+      'home/user/private':    ['passwords.txt', 'seed_phrase.txt', 'blackmail_material.zip', 'credit_cards.dump', 'passport_scans.zip'],
+      'home/user/downloads':  ['browser_history.sqlite', 'login_credentials.txt'],
+      'home/user/finance':    ['bank_account_list.xlsx', 'crypto_wallet_backup.dat'],
+      'home/user/.ssh':       ['id_rsa', 'known_hosts'],
     }
   },
   startup: {
-    dirs: ['opt/app', 'var/www/html', 'opt/aws'],
+    dirs: ['opt/app', 'var/www/html', 'opt/aws', 'opt/config', 'opt/backups', 'var/data'],
     files: {
-      'opt/app': ['server.js', '.env', 'docker-compose.yml', 'db_seed.sql'],
+      'opt/app':      ['server.js', '.env', 'docker-compose.yml', 'db_seed.sql', 'source_code.tar'],
       'var/www/html': ['index.html', 'user_metrics.csv'],
-      'opt/aws': ['api_keys.env', 'aws_billing.xlsx']
+      'opt/aws':      ['api_keys.env', 'aws_billing.xlsx', 'customer_database.sql'],
+      'opt/config':   ['.env', 'stripe_keys.json', 'oauth_secrets.txt'],
+      'opt/backups':  ['employee_records.csv', 'user_dump_2026.sql'],
+      'var/data':     ['analytics_raw.csv', 'ab_test_results.json'],
     }
   },
   smallbiz: {
-    dirs: ['mnt/accounting', 'mnt/hr', 'mnt/clients', 'mnt/legal'],
+    dirs: ['mnt/accounting', 'mnt/hr', 'mnt/clients', 'mnt/legal', 'mnt/pos', 'mnt/backups'],
     files: {
-      'mnt/accounting': ['payroll_2026.xlsx', 'tax_returns.pdf'],
-      'mnt/clients': ['client_list.csv'],
-      'mnt/legal': ['lawsuit_settlement.docx', 'vendor_contracts.zip']
+      'mnt/accounting': ['payroll_2026.xlsx', 'tax_returns.pdf', 'wire_transfers_pending.csv'],
+      'mnt/clients':    ['client_list.csv', 'customer_database.sql'],
+      'mnt/legal':      ['lawsuit_settlement.docx', 'vendor_contracts.zip'],
+      'mnt/pos':        ['card_processing_data.bin', 'transaction_log.csv'],
+      'mnt/hr':         ['employee_records.csv', 'ssn_database.csv'],
+      'mnt/backups':    ['login_credentials.txt', 'passwd.bak'],
     }
   },
   corporation: {
-    dirs: ['mnt/file-server', 'mnt/file-server/shared', 'mnt/rd', 'mnt/patents'],
+    dirs: ['mnt/file-server', 'mnt/file-server/shared', 'mnt/rd', 'mnt/patents', 'mnt/executive', 'mnt/devops', 'mnt/hr'],
     files: {
-      'mnt/file-server': ['company_data.zip', 'offshore_routing.csv'],
-      'mnt/file-server/shared': ['q4_earnings_unreleased.pdf', 'layoff_list.xlsx'],
-      'mnt/patents': ['patent_draft_994.docx'],
-      'mnt/rd': ['source_code_master.zip']
+      'mnt/file-server':        ['company_data.zip', 'offshore_routing.csv', 'customer_database.sql'],
+      'mnt/file-server/shared': ['q4_earnings_unreleased.pdf', 'layoff_list.xlsx', 'internal_emails.pst'],
+      'mnt/patents':            ['patent_draft_994.docx', 'trade_secrets.zip'],
+      'mnt/rd':                 ['source_code_master.zip', 'source_code.tar', 'trading_algorithms.zip'],
+      'mnt/executive':          ['internal_emails.pst', 'merger_plans.pdf', 'api_keys.env', 'board_minutes.pdf'],
+      'mnt/devops':             ['api_keys.env', 'ci_secrets.env', 'prod_db_creds.txt'],
+      'mnt/hr':                 ['employee_records.csv', 'salary_bands.xlsx', 'h1b_filings.pdf'],
     }
   },
   government: {
-    dirs: ['mnt/public_works', 'mnt/internal_affairs', 'mnt/surveillance'],
+    dirs: ['mnt/public_works', 'mnt/internal_affairs', 'mnt/surveillance', 'mnt/records', 'mnt/law_enforcement', 'mnt/budget'],
     files: {
-      'mnt/public_works': ['voter_registry.sql', 'budget_deficit.xlsx'],
-      'mnt/internal_affairs': ['subpoena_targets.docx', 'informant_list.csv'],
-      'mnt/surveillance': ['city_camera_feeds.mp4']
+      'mnt/public_works':      ['voter_registry.sql', 'budget_deficit.xlsx', 'voter_registration.db'],
+      'mnt/internal_affairs':  ['subpoena_targets.docx', 'informant_list.csv', 'classified_report.pdf', 'vpn_credentials.txt'],
+      'mnt/surveillance':      ['city_camera_feeds.mp4', 'network_topology.xml'],
+      'mnt/records':           ['personnel_roster.db', 'ssn_database.csv', 'witness_protection.db'],
+      'mnt/law_enforcement':   ['informant_list.csv', 'wiretap_authorizations.pdf', 'suspect_profiles.db'],
+      'mnt/budget':            ['classified_budget_2026.xlsx', 'black_ops_funding.pdf'],
     }
   },
   military: {
-    dirs: ['mnt/intel', 'mnt/drone_ops', 'mnt/sigint'],
+    dirs: ['mnt/intel', 'mnt/drone_ops', 'mnt/sigint', 'mnt/classified', 'mnt/logistics', 'mnt/cyber'],
     files: {
-      'mnt/intel': ['target_package_bravo.enc', 'black_budget.xlsx'],
-      'mnt/sigint': ['sat_recon_raw.ts'],
-      'mnt/drone_ops': ['roe_directives.pdf', 'troop_manifest.csv']
+      'mnt/intel':      ['target_package_bravo.enc', 'black_budget.xlsx', 'classified_report.pdf', 'personnel_roster.db'],
+      'mnt/sigint':     ['sat_recon_raw.ts', 'comms_intercept.bin', 'network_topology.xml'],
+      'mnt/drone_ops':  ['roe_directives.pdf', 'troop_manifest.csv', 'drone_specs.zip'],
+      'mnt/classified': ['nsa_tools.tar', 'classified_report.pdf', 'asset_list.enc'],
+      'mnt/logistics':  ['troop_manifest.csv', 'supply_chain.db', 'base_locations.gpx'],
+      'mnt/cyber':      ['weaponized_payload_v2.bin', 'zero_day_catalog.db', 'vpn_credentials.txt'],
     }
   },
   financial: {
-    dirs: ['mnt/db-server-backups', 'mnt/vault', 'mnt/aml'],
+    dirs: ['mnt/db-server-backups', 'mnt/vault', 'mnt/aml', 'mnt/trading', 'mnt/clients', 'mnt/wire'],
     files: {
-      'mnt/db-server-backups': ['vip_offshore_accounts.sql', 'wire_transfers_pending.csv'],
-      'mnt/vault': ['crypto_cold_wallet.dat', 'swift_keys.pgp'],
-      'mnt/aml': ['aml_flagged.xlsx']
+      'mnt/db-server-backups': ['vip_offshore_accounts.sql', 'wire_transfers_pending.csv', 'customer_database.sql'],
+      'mnt/vault':             ['crypto_cold_wallet.dat', 'swift_keys.pgp', 'swift_transactions.log', 'card_processing_data.bin'],
+      'mnt/aml':               ['aml_flagged.xlsx', 'cartel_routing_keys.pgp'],
+      'mnt/trading':           ['trading_algorithms.zip', 'account_statements.pdf', 'hft_source.tar'],
+      'mnt/clients':           ['vip_client_list.csv', 'account_statements.pdf', 'ssn_database.csv'],
+      'mnt/wire':              ['swift_transactions.log', 'wire_transfers_pending.csv', 'correspondent_banks.db'],
     }
   },
   classified: {
-    dirs: ['opt/umb_alpha', 'opt/stellar', 'opt/zero_days'],
+    dirs: ['opt/umb_alpha', 'opt/stellar', 'opt/zero_days', 'opt/assets', 'opt/blacksite', 'opt/signals'],
     files: {
-      'opt/umb_alpha': ['nsa_rootkit_src.zip'],
-      'opt/stellar': ['project_chimera.pdf', 'foreign_asset_list.enc'],
-      'opt/zero_days': ['weaponized_payload_v2.bin', 'blackmail_cache.tar.gz']
+      'opt/umb_alpha':  ['nsa_rootkit_src.zip', 'nsa_tools.tar', 'classified_report.pdf'],
+      'opt/stellar':    ['project_chimera.pdf', 'foreign_asset_list.enc', 'personnel_roster.db'],
+      'opt/zero_days':  ['weaponized_payload_v2.bin', 'blackmail_cache.tar.gz', 'zero_day_catalog.db'],
+      'opt/assets':     ['asset_termination_order.enc', 'drone_specs.zip', 'network_topology.xml'],
+      'opt/blacksite':  ['rendition_logs.db', 'black_budget.xlsx', 'identity_covers.zip'],
+      'opt/signals':    ['echelon_intercepts.bin', 'foreign_comms_raw.tar', 'sat_recon_raw.ts'],
     }
-  }
+  },
 };
-
 export const generateOrgFileSystem = (org, tier, layout) => {
   const theme = FILE_SYSTEM_THEMES[org.type] || FILE_SYSTEM_THEMES.corporation;
   
@@ -279,15 +301,12 @@ export const generateOrgFileSystem = (org, tier, layout) => {
     Object.keys(fileMap).forEach(folderName => {
       const targetDir = `/${folderName}`;
       const finalDir = filesObj[targetDir] ? targetDir : '/';
-      
       const count = Math.floor(Math.random() * 3) + 1;
       const selectedFiles = [...fileMap[folderName]].sort(() => 0.5 - Math.random()).slice(0, count);
-      
       selectedFiles.forEach(file => {
         filesObj[finalDir].push(file);
         const fullPath = `${finalDir}/${file}`;
         const isLocked = (tier === 'high' || tier === 'elite') ? '[LOCKED] ' : '';
-        
         if (file.endsWith('.sql') || file.endsWith('.env') || file.endsWith('.pgp') || file.endsWith('.sqlite')) {
           contents[fullPath] = `${isLocked}[HASH] SHA-512 System Hashes: df98a2b1c...`;
         } else {
@@ -311,8 +330,39 @@ export const generateOrgFileSystem = (org, tier, layout) => {
   placeFiles(osProfile.files);
 
   // 2. Layer the unique Org Theme on top
-  buildDirs(theme.dirs);
-  placeFiles(theme.files);
+  // 2. Layer the unique Org Theme on top — randomized folders and file scatter
+  // Pick a random subset of dirs (min 2, max all of them)
+  const allThemeDirs = [...theme.dirs].sort(() => 0.5 - Math.random());
+  const dirCount = Math.floor(Math.random() * (allThemeDirs.length - 1)) + 2;
+  const chosenDirs = allThemeDirs.slice(0, dirCount);
+  buildDirs(chosenDirs);
+
+  // Collect ALL files from the theme into one flat pool
+  const allThemeFiles = [];
+  Object.entries(theme.files).forEach(([folder, files]) => {
+    files.forEach(f => allThemeFiles.push({ file: f, preferredDir: `/${folder}` }));
+  });
+
+  // Shuffle the pool
+  allThemeFiles.sort(() => 0.5 - Math.random());
+
+  // Each node gets between 3 and 6 files total from the pool
+  const filePickCount = Math.floor(Math.random() * 6) + 6;
+  const pickedFiles = allThemeFiles.slice(0, filePickCount);
+
+  // Place each file — use preferred dir if it was built, otherwise pick a random built dir
+  const builtDirs = chosenDirs.map(d => `/${d}`).filter(d => filesObj[d]);
+  pickedFiles.forEach(({ file, preferredDir }) => {
+    const targetDir = filesObj[preferredDir] ? preferredDir : builtDirs[Math.floor(Math.random() * builtDirs.length)] || '/';
+    filesObj[targetDir].push(file);
+    const fullPath = `${targetDir}/${file}`;
+    const isLocked = (tier === 'high' || tier === 'elite') ? '[LOCKED] ' : '';
+    if (file.endsWith('.sql') || file.endsWith('.env') || file.endsWith('.pgp') || file.endsWith('.sqlite')) {
+      contents[fullPath] = `${isLocked}[HASH] SHA-512 System Hashes: df98a2b1c...`;
+    } else {
+      contents[fullPath] = `${isLocked}[PENDING_GENERATION]`;
+    }
+  });
 
   // 3. Inject Employee Emails
   const mailFiles = [];

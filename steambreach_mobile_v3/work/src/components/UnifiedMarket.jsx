@@ -584,7 +584,8 @@ export default function UnifiedMarket({
               virusFragments={virusFragments}
               virusInventory={virusInventory}
               onCraftVirus={onCraftVirus}
-              onTradeVirus={onTradeVirus}
+              onDeployVirus={onDeployVirus}
+              onRaidVirus={onRaidVirus}
               money={money}
             />
           ):tab==='commodities'?(

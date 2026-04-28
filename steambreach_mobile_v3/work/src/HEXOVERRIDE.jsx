@@ -3136,21 +3136,13 @@ return `[+] ${actionResult}\n[+] CHAOS +10`;
             return nw;
           });
 
-        const contractMsg = verifyContract(targetIP, 'exfil');
-          const timeTaken = (Date.now() - activeContract.startTime) / 1000;
-          if (timeTaken <= activeContract.timeLimit && heat <= activeContract.heatCap) {
-            setMoney(m => m + activeContract.reward);
-            setReputation(r => r + activeContract.repReward);
-            setContracts(prev => prev.map(c => c.id === activeContract.id ? { ...c, completed: true, active: false } : c));
-            setActiveContract(null); trackContract(true); setIsProcessing(false);
-            return `[+] STASH EXFIL COMPLETE via ${stagingName}.\n[+] +${drop.primary.qty}x ${primaryItem?.name || drop.primary.key} staged through botnet. Trace +8%, Heat +3%.\n\n[FIXER] CONTRACT ${activeContract.id} FULFILLED.\n[+] BONUS: ₿${activeContract.reward.toLocaleString()} + ${activeContract.repReward} REP`;
-      
-
        const contractMsg = verifyContract(targetIP, 'exfil');
         setIsProcessing(false);
-        return `[+] STASH EXFIL COMPLETE via ${stagingName}.\n[+] +${drop.primary.qty}x ${primaryItem?.name || drop.primary.key} staged through botnet.\n[*] Sell via 'sell ${drop.primary.key} ${drop.primary.qty}' to cash out. Trace +8%, Heat +3%.`,${contractMsg}`;
+        return `[+] STASH EXFIL COMPLETE via ${stagingName}.\n[+] +${drop.primary.qty}x ${primaryItem?.name || drop.primary.key} staged through botnet.\n[*] Sell via 'sell ${drop.primary.key} ${drop.primary.qty}' to cash out. Trace +8%, Heat +3%.${contractMsg}`;
       },
-
+  
+      wipe: async () => {
+        if (!isInside) return "[-] Must be on a remote host."
       wipe: async () => {
         if (!isInside) return "[-] Must be on a remote host.";
         if (privilege !== 'root') return "[-] Root required.";

@@ -226,6 +226,208 @@ function BagRow({partId,onInstall,onSell,sellPrice,rig}){
   );
 }
 
+// ─── VIRUS LAB PANEL ──────────────────────────────────────────
+const ROLES = ['entry','hit','spread','hide','trigger','stay'];
+const ROLE_COLORS = {
+  entry:   '#78dce8',
+  hit:     '#ff6188',
+  spread:  '#fc9867',
+  hide:    '#ab9df2',
+  trigger: '#ffd866',
+  stay:    '#a9dc76',
+};
+const TIER_COLORS = { common:'#727072', uncommon:'#a9dc76', rare:'#78dce8', ghost:'#ab9df2' };
+
+function VirusLabPanel({ virusFragments, virusInventory, onCraftVirus, onTradeVirus, money }) {
+  const [build, setBuild] = useState({ entry:null, hit:null, spread:null, hide:null, trigger:null, stay:null });
+  const [selectedVirus, setSelectedVirus] = useState(null);
+
+  const frags = virusFragments || { entry:[], hit:[], spread:[], hide:[], trigger:[], stay:[] };
+
+  const calcStats = () => {
+    const parts = Object.values(build).filter(Boolean);
+    const power = parts.reduce((s,p) => s + (p.power||0), 0);
+    const noise = parts.reduce((s,p) => s + (p.noise||0), 0);
+    const stability = power - noise;
+    const successChance = Math.max(20, Math.min(95, 50 + stability * 5));
+    return { power, noise, stability, successChance };
+  };
+
+  const getType = () => {
+    const hit = build.hit?.key;
+    const spread = build.spread?.key;
+    if (hit === 'lock') return spread ? 'ransom worm' : 'ransomware';
+    if (hit === 'burn') return spread ? 'wiper worm' : 'wiper';
+    if (['drain','scrape','tap'].includes(hit)) return spread ? 'stealer worm' : 'stealer';
+    if (spread) return 'worm';
+    return 'virus';
+  };
+
+  const canCraft = build.entry && build.hit;
+  const stats = calcStats();
+  const virusType = getType();
+
+  const slotFrag = (role, frag) => {
+    setBuild(prev => ({ ...prev, [role]: prev[role]?.key === frag.key ? null : frag }));
+  };
+
+  const clearBuild = () => setBuild({ entry:null, hit:null, spread:null, hide:null, trigger:null, stay:null });
+
+  const handleCraft = () => {
+    if (!canCraft) return;
+    onCraftVirus(build);
+    clearBuild();
+  };
+
+  const successColor = stats.successChance >= 75 ? C.sec : stats.successChance >= 50 ? C.warn : C.dan;
+
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:'10px', padding:'10px', height:'100%', overflowY:'auto', scrollbarWidth:'thin', scrollbarColor:`${C.bdr} transparent` }}>
+
+      {/* FRAGMENT INVENTORY */}
+      <div style={{ border:`1px solid ${C.bdr}`, borderRadius:'4px', padding:'10px' }}>
+        <div style={{ color:C.dim, fontSize:'11px', letterSpacing:'2px', marginBottom:'8px' }}>FRAGMENT INVENTORY — click to slot</div>
+        {ROLES.map(role => {
+          const list = frags[role] || [];
+          return (
+            <div key={role} style={{ display:'flex', alignItems:'flex-start', gap:'8px', marginBottom:'6px', minHeight:'28px' }}>
+              <span style={{ color:ROLE_COLORS[role], fontSize:'11px', letterSpacing:'1px', minWidth:'52px', paddingTop:'4px' }}>{role.toUpperCase()}</span>
+              <div style={{ display:'flex', flexWrap:'wrap', gap:'4px', flex:1 }}>
+                {list.length === 0 && <span style={{ color:C.bdr, fontSize:'11px', paddingTop:'4px' }}>—</span>}
+                {list.map((frag, i) => {
+                  const isSlotted = build[role]?.key === frag.key;
+                  return (
+                    <button key={i} onClick={() => slotFrag(role, frag)}
+                      style={{
+                        background: isSlotted ? `${ROLE_COLORS[role]}30` : `${C.bgP}`,
+                        border: `1px solid ${isSlotted ? ROLE_COLORS[role] : TIER_COLORS[frag.tier] || C.bdr}`,
+                        color: isSlotted ? ROLE_COLORS[role] : C.text,
+                        padding:'3px 8px', cursor:'pointer', borderRadius:'3px',
+                        fontFamily:'inherit', fontSize:'12px', letterSpacing:'0.5px',
+                        display:'flex', alignItems:'center', gap:'4px'
+                      }}>
+                      <span style={{ color: TIER_COLORS[frag.tier], fontSize:'9px' }}>●</span>
+                      {frag.key}
+                      <span style={{ color:C.dim, fontSize:'10px' }}>p{frag.power}/n{frag.noise}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              {/* Slotted indicator */}
+              {build[role] && (
+                <div style={{ display:'flex', alignItems:'center', gap:'4px', border:`1px solid ${ROLE_COLORS[role]}`, padding:'2px 8px', borderRadius:'3px', background:`${ROLE_COLORS[role]}15`, whiteSpace:'nowrap' }}>
+                  <span style={{ color:ROLE_COLORS[role], fontSize:'11px' }}>✓ {build[role].key}</span>
+                  <button onClick={() => setBuild(prev => ({...prev, [role]:null}))}
+                    style={{ background:'transparent', border:'none', color:C.dim, cursor:'pointer', padding:'0 0 0 4px', fontSize:'12px', fontFamily:'inherit' }}>✕</button>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* BUILD PREVIEW */}
+      <div style={{ border:`1px solid ${canCraft ? C.pri+'44' : C.bdr}`, borderRadius:'4px', padding:'10px', background: canCraft ? `${C.pri}06` : 'transparent' }}>
+        <div style={{ color:C.dim, fontSize:'11px', letterSpacing:'2px', marginBottom:'10px' }}>BUILD PREVIEW</div>
+        {!canCraft && (
+          <div style={{ color:C.bdr, fontSize:'12px', textAlign:'center', padding:'10px 0' }}>
+            Requires at minimum: <span style={{ color:ROLE_COLORS.entry }}>entry</span> + <span style={{ color:ROLE_COLORS.hit }}>hit</span>
+          </div>
+        )}
+        {canCraft && (
+          <>
+            <div style={{ display:'flex', justifyContent:'space-between', marginBottom:'10px' }}>
+              <div>
+                <div style={{ color:C.text, fontSize:'13px', fontWeight:700, letterSpacing:'1px' }}>{virusType.toUpperCase()}</div>
+                <div style={{ color:C.dim, fontSize:'11px', marginTop:'2px' }}>
+                  {Object.entries(build).filter(([,v])=>v).map(([role,frag]) => (
+                    <span key={role} style={{ marginRight:'8px' }}>
+                      <span style={{ color:ROLE_COLORS[role] }}>{role}</span>:{frag.key}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr 1fr', gap:'6px', marginBottom:'12px' }}>
+              {[
+                { label:'POWER', value:stats.power, color:C.pri },
+                { label:'NOISE', value:stats.noise, color:C.dan },
+                { label:'STABILITY', value:stats.stability, color:stats.stability>=0?C.sec:C.dan },
+                { label:'SUCCESS', value:`${stats.successChance}%`, color:successColor },
+              ].map(s => (
+                <div key={s.label} style={{ background:C.bgP, border:`1px solid ${C.bdr}`, borderRadius:'3px', padding:'6px', textAlign:'center' }}>
+                  <div style={{ color:C.dim, fontSize:'10px', letterSpacing:'1px' }}>{s.label}</div>
+                  <div style={{ color:s.color, fontSize:'16px', fontWeight:700 }}>{s.value}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{ display:'flex', gap:'6px' }}>
+              <button onClick={handleCraft}
+                style={{ flex:2, padding:'10px', background:`${C.pri}20`, border:`1px solid ${C.pri}`, color:C.pri,
+                  fontFamily:'inherit', fontSize:'13px', fontWeight:700, letterSpacing:'1.5px', cursor:'pointer', borderRadius:'3px' }}>
+                COMPILE VIRUS
+              </button>
+              <button onClick={clearBuild}
+                style={{ flex:1, padding:'10px', background:'transparent', border:`1px solid ${C.bdr}`, color:C.dim,
+                  fontFamily:'inherit', fontSize:'13px', cursor:'pointer', borderRadius:'3px' }}>
+                CLEAR
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* VIRUS INVENTORY */}
+      <div style={{ border:`1px solid ${C.bdr}`, borderRadius:'4px', padding:'10px' }}>
+        <div style={{ color:C.dim, fontSize:'11px', letterSpacing:'2px', marginBottom:'8px' }}>
+          COMPILED VIRUSES ({(virusInventory||[]).length})
+        </div>
+        {(virusInventory||[]).length === 0 && (
+          <div style={{ color:C.bdr, fontSize:'12px', textAlign:'center', padding:'10px 0' }}>No compiled viruses. Build one above.</div>
+        )}
+        {(virusInventory||[]).map((virus, i) => {
+          const successCol = virus.successChance >= 75 ? C.sec : virus.successChance >= 50 ? C.warn : C.dan;
+          const isSelected = selectedVirus === i;
+          return (
+            <div key={virus.id} onClick={() => setSelectedVirus(isSelected ? null : i)}
+              style={{ border:`1px solid ${isSelected ? C.warn : C.bdr}`, borderRadius:'3px', padding:'8px 10px',
+                marginBottom:'6px', cursor:'pointer', background: isSelected ? `${C.warn}08` : C.bgP,
+                transition:'all 0.1s' }}>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                <div>
+                  <span style={{ color:C.warn, fontSize:'12px', fontWeight:700, letterSpacing:'1px' }}>{virus.code}</span>
+                  <span style={{ color:C.dim, fontSize:'11px', marginLeft:'8px' }}>{virus.name}</span>
+                  {virus.discoveredNamed && <span style={{ color:C.chat, fontSize:'10px', marginLeft:'6px' }}>★ NAMED</span>}
+                </div>
+                <span style={{ color:C.dim, fontSize:'11px' }}>{virus.type?.toUpperCase()}</span>
+              </div>
+              <div style={{ display:'flex', gap:'12px', marginTop:'5px', fontSize:'11px' }}>
+                <span style={{ color:C.pri }}>PWR {virus.power}</span>
+                <span style={{ color:C.dan }}>NSE {virus.noise}</span>
+                <span style={{ color:successCol }}>SUC {virus.successChance}%</span>
+              </div>
+              {isSelected && (
+                <div style={{ display:'flex', gap:'6px', marginTop:'8px' }}>
+                  <button onClick={(e) => { e.stopPropagation(); onTradeVirus(virus.id); setSelectedVirus(null); }}
+                    style={{ flex:1, padding:'7px', background:`${C.warn}20`, border:`1px solid ${C.warn}`,
+                      color:C.warn, fontFamily:'inherit', fontSize:'12px', cursor:'pointer', borderRadius:'3px' }}>
+                    TRADE ON DARKNET
+                  </button>
+                  <button onClick={(e) => { e.stopPropagation(); setSelectedVirus(null); }}
+                    style={{ padding:'7px 12px', background:'transparent', border:`1px solid ${C.bdr}`,
+                      color:C.dim, fontFamily:'inherit', fontSize:'12px', cursor:'pointer', borderRadius:'3px' }}>
+                    CANCEL
+                  </button>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+    </div>
+  );
+}
 // ═══════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════════
@@ -235,6 +437,7 @@ export default function UnifiedMarket({
   onBuyHW, onSellHW, onInstall, onUninstall, onBuyAndInstall,
   onBuySW, onBuyCommodity, onSellCommodity,
   returnToGame,
+  virusFragments, virusInventory, onCraftVirus, onTradeVirus,
 }){
   const [tab,setTab]=useState('cpu');
   const [sort,setSort]=useState('price');
@@ -351,7 +554,15 @@ export default function UnifiedMarket({
         {/* LEFT: LISTINGS */}
         {(!isMobile || mobileView==='shop') && (
         <div style={{flex:1,overflow:'auto',padding:'8px 10px',scrollbarWidth:'thin',scrollbarColor:`${C.bdr} transparent`}}>
-          {tab==='commodities'?(
+         {tab==='viruslab'?(
+            <VirusLabPanel
+              virusFragments={virusFragments}
+              virusInventory={virusInventory}
+              onCraftVirus={onCraftVirus}
+              onTradeVirus={onTradeVirus}
+              money={money}
+            />
+          ):tab==='commodities'?(
             <div>
               {Object.entries(COMMODITIES).map(([id,data])=>(
                 <CommodityRow key={id} id={id} data={data}
@@ -360,7 +571,7 @@ export default function UnifiedMarket({
                   onBuy={onBuyCommodity} onSell={onSellCommodity} money={money}/>
               ))}
             </div>
-          ):(
+          ):()
             <div>
               {filtered.length===0&&<div style={{color:C.dim,textAlign:'center',padding:'30px',fontSize:'13px'}}>No stock in {currentRegion}</div>}
               {filtered.map(item=>(

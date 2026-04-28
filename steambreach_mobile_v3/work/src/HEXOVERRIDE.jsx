@@ -3144,8 +3144,7 @@ return `[+] ${actionResult}\n[+] CHAOS +10`;
             setContracts(prev => prev.map(c => c.id === activeContract.id ? { ...c, completed: true, active: false } : c));
             setActiveContract(null); trackContract(true); setIsProcessing(false);
             return `[+] STASH EXFIL COMPLETE via ${stagingName}.\n[+] +${drop.primary.qty}x ${primaryItem?.name || drop.primary.key} staged through botnet. Trace +8%, Heat +3%.\n\n[FIXER] CONTRACT ${activeContract.id} FULFILLED.\n[+] BONUS: ₿${activeContract.reward.toLocaleString()} + ${activeContract.repReward} REP`;
-          }
-        }
+      
 
        const contractMsg = verifyContract(targetIP, 'exfil');
         setIsProcessing(false);

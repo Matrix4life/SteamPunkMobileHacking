@@ -241,6 +241,7 @@ const TIER_COLORS = { common:'#727072', uncommon:'#a9dc76', rare:'#78dce8', ghos
 function VirusLabPanel({ virusFragments, virusInventory, onCraftVirus, onDeployVirus, onRaidVirus, money }) {
   const [build, setBuild] = useState({ entry:null, hit:null, spread:null, hide:null, trigger:null, stay:null });
   const [selectedVirus, setSelectedVirus] = useState(null);
+  const [virusName, setVirusName] = useState('');
 
   const frags = virusFragments || { entry:[], hit:[], spread:[], hide:[], trigger:[], stay:[] };
 
@@ -275,7 +276,8 @@ function VirusLabPanel({ virusFragments, virusInventory, onCraftVirus, onDeployV
 
   const handleCraft = () => {
     if (!canCraft) return;
-    onCraftVirus(build);
+    onCraftVirus(build, virusName.trim());
+    setVirusName('');
     clearBuild();
   };
 
@@ -361,8 +363,24 @@ function VirusLabPanel({ virusFragments, virusInventory, onCraftVirus, onDeployV
                 </div>
               ))}
             </div>
+            <div style={{ marginBottom:'8px' }}>
+              <div style={{ color:C.dim, fontSize:'11px', letterSpacing:'2px', marginBottom:'4px' }}>VIRUS NAME (optional)</div>
+              <input
+                value={virusName}
+                onChange={e => setVirusName(e.target.value)}
+                placeholder={`${virusType.toUpperCase()}-${Date.now().toString(36).toUpperCase().slice(-4)}`}
+                maxLength={24}
+                style={{
+                  width:'100%', background:C.bgP, border:`1px solid ${C.bdr}`,
+                  color:C.dan, fontFamily:'inherit', fontSize:'13px', padding:'6px 10px',
+                  outline:'none', borderRadius:'3px', letterSpacing:'1px', boxSizing:'border-box',
+                }}
+                onFocus={e => e.target.style.borderColor = C.dan}
+                onBlur={e => e.target.style.borderColor = C.bdr}
+              />
+            </div>
             <div style={{ display:'flex', gap:'6px' }}>
-              <button onClick={handleCraft}
+              <button onClick={handleCraft} disabled={!canCraft}
                 style={{ flex:2, padding:'10px', background:`${C.pri}20`, border:`1px solid ${C.pri}`, color:C.pri,
                   fontFamily:'inherit', fontSize:'13px', fontWeight:700, letterSpacing:'1.5px', cursor:'pointer', borderRadius:'3px' }}>
                 COMPILE VIRUS

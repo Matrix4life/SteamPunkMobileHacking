@@ -5661,7 +5661,7 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
     return <IntroScreenInner />;
   }
 
-  if (screen === 'hardware') return (
+ if (screen === 'hardware') return (
     <UnifiedMarket
       money={money} rig={rig} partsBag={partsBag}
       softwareOwned={softwareOwned}
@@ -5675,6 +5675,21 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
       onBuyCommodity={handleBuyCommodity}
       onSellCommodity={handleSellCommodity}
       returnToGame={() => setScreen('game')}
+      virusFragments={virusFragments}
+      virusInventory={virusInventory}
+      onCraftVirus={(build) => {
+        const args = [
+          build.entry?.key, build.hit?.key,
+          build.spread?.key || null, build.hide?.key || null,
+          build.trigger?.key || null, build.stay?.key || null,
+        ].filter(Boolean);
+        handleCommand(null, `craftvirus ${args.join(' ')}`);
+        setScreen('hardware');
+      }}
+      onTradeVirus={(id) => {
+        handleCommand(null, `tradevirus ${id}`);
+        setScreen('hardware');
+      }}
     />
   );
 

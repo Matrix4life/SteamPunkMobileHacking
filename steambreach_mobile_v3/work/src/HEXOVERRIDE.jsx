@@ -2093,8 +2093,7 @@ const COMMANDS = {// ← your existing command object starts here
       },
       
       market: async () => {
-  if (isInside) return `[-] Cannot access market while inside a target.`;
-  openMarketHub();
+   openMarketHub();
         if (walletFrozen) return `[!] WALLET FROZEN — limited trading. Reduce heat below 75%.`;
         return '';
       },
@@ -2426,8 +2425,8 @@ if (!hasEntry || !hasHit) {
           }
           setHeat(h => Math.min(100, h + 6));
         } else if (virus.type.includes('stealer')) {
-          const dumps = Math.max(1, Math.floor(virus.potency / 3));
-          const fullz = Math.max(1, Math.floor(virus.potency / 4));
+          const dumps = Math.max(1, Math.floor(virus.power / 3));
+          const fullz = Math.max(1, Math.floor(virus.power / 4));
           setStash(prev => ({
             ...prev,
             cc_dumps: (prev.cc_dumps || 0) + dumps,

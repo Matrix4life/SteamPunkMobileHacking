@@ -3136,7 +3136,7 @@ return `[+] ${actionResult}\n[+] CHAOS +10`;
             return nw;
           });
 
-        if (activeContract?.type === 'exfil' && activeContract.targetIP === targetIP) {
+        const contractMsg = verifyContract(targetIP, 'exfil');
           const timeTaken = (Date.now() - activeContract.startTime) / 1000;
           if (timeTaken <= activeContract.timeLimit && heat <= activeContract.heatCap) {
             setMoney(m => m + activeContract.reward);

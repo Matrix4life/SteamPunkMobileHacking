@@ -5677,14 +5677,24 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
       returnToGame={() => setScreen('game')}
       virusFragments={virusFragments}
       virusInventory={virusInventory}
-      onCraftVirus={(build) => {
+      onCraftVirus={(build, customName) => {
         const args = [
           build.entry?.key, build.hit?.key,
           build.spread?.key || null, build.hide?.key || null,
           build.trigger?.key || null, build.stay?.key || null,
         ].filter(Boolean);
-        handleCommand(null, `craftvirus ${args.join(' ')}`);
+       handleCommand(null, `craftvirus ${args.join(' ')}`);
+        if (customName) {
+          setTimeout(() => {
+            setVirusInventory(prev => {
+              if (prev.length === 0) return prev;
+              const last = prev[prev.length - 1];
+              return [...prev.slice(0, -1), { ...last, name: customName }];
+            });
+          }, 100);
+        }
         setScreen('hardware');
+      }}
       }}
       onDeployVirus={(id) => {
         setScreen('game');

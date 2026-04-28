@@ -1575,7 +1575,7 @@ const completeContractAndRemove = (id) => {
     const contents = isInside ? world[targetIP]?.contents : world.local.contents;
 
     // Active Blue Team Check
-    const BENIGN_CMDS = ['ls','cd','pwd','cat','clear','status','help','exit','wipe','download','exfil','stash'];
+   const BENIGN_CMDS = ['ls','cd','pwd','cat','clear','status','help','exit','wipe','download','exfil','stash','exploits','viruses','sessions','rivals','dossier'];
 if (isInside && trace > 70 && Math.random() < 0.4 && !BENIGN_CMDS.includes(cmd)) {
       setIsProcessing(true);
       const nodeName = world[targetIP]?.org?.orgName || targetIP;
@@ -3031,12 +3031,23 @@ if (choice !== '1' && choice !== '2') {
     // Use the payout from the story generator, or fall back to 5k
     
     // Clear the story so it can't be spammed
-   const actionResult = activeStory.good_action;
+  const actionResult = activeStory.good_action;
 const storyIP = activeStory.ip;
 setActiveStory(null);
 setWorld(prev => {
   const nw = { ...prev };
-  if (nw[storyIP]) nw[storyIP].storyCompleted = true;
+  if (nw[storyIP]) {
+    nw[storyIP] = { ...nw[storyIP], storyCompleted: true };
+    const nodeFiles = nw[storyIP].files || {};
+    const updatedFiles = {};
+    Object.keys(nodeFiles).forEach(dir => {
+      updatedFiles[dir] = nodeFiles[dir].filter(f => {
+        const fullPath = `${dir}/${f}`;
+        return nw[storyIP].contents?.[fullPath] !== '[STORY_TRIGGER]';
+      });
+    });
+    nw[storyIP] = { ...nw[storyIP], files: updatedFiles };
+  }
   return nw;
 });
 return `[+] ${actionResult}\n[+] SIGNAL +10`;
@@ -3056,7 +3067,18 @@ const storyIP = activeStory.ip;
 setActiveStory(null);
 setWorld(prev => {
   const nw = { ...prev };
-  if (nw[storyIP]) nw[storyIP].storyCompleted = true;
+  if (nw[storyIP]) {
+    nw[storyIP] = { ...nw[storyIP], storyCompleted: true };
+    const nodeFiles = nw[storyIP].files || {};
+    const updatedFiles = {};
+    Object.keys(nodeFiles).forEach(dir => {
+      updatedFiles[dir] = nodeFiles[dir].filter(f => {
+        const fullPath = `${dir}/${f}`;
+        return nw[storyIP].contents?.[fullPath] !== '[STORY_TRIGGER]';
+      });
+    });
+    nw[storyIP] = { ...nw[storyIP], files: updatedFiles };
+  }
   return nw;
 });
 return `[+] ${actionResult}\n[+] CHAOS +10`;
@@ -3087,7 +3109,7 @@ return `[+] ${actionResult}\n[+] CHAOS +10`;
           const fileName = arg1.split('/').pop();
           if (!validFiles.includes(fileName)) {
             const hint = validFiles.slice(0, 3).join(', ');
-            return `[-] exfil: ${arg1}: No extractable market data.\n[*] Valuable files on ${orgType} nodes: ${hint}`;
+            return `[-] stash: ${arg1}: No extractable market data.\n[*] Valuable files on ${orgType} nodes: ${hint}`;
           }
 
         const fileKey = `${targetIP}:${targetFile}`;
@@ -4661,7 +4683,7 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
             if (!world[t.ip]) {
               const newNode = generateNewTarget('mid', null, directorRef.current?.modifiers);
               newNode.data.region = currentRegion;
-              newNode.data.org = { orgName: t.org, industry: 'Corporate', employees: [] };
+              newNode.data.org = { orgName: t.org, type: 'government', industry: 'Corporate', employees: [] };
               setWorld(prev => ({ ...prev, [t.ip]: newNode.data }));
             }
           });

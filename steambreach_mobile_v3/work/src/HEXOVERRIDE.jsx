@@ -5686,9 +5686,30 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
         handleCommand(null, `craftvirus ${args.join(' ')}`);
         setScreen('hardware');
       }}
-      onTradeVirus={(id) => {
-        handleCommand(null, `tradevirus ${id}`);
-        setScreen('hardware');
+      onDeployVirus={(id) => {
+        setScreen('game');
+        setTimeout(() => {
+          if (!isInside) {
+            setTerminal(prev => [...prev, { type:'out', text:`[-] Must be inside a target node to deploy a virus.\n[*] Hack a node first, then open the market to deploy.`, isNew:true }]);
+          } else {
+            handleCommand(null, `usevirus ${id}`);
+          }
+        }, 150);
+      }}
+      onRaidVirus={(id) => {
+        setScreen('game');
+        setTimeout(() => {
+          if (rivals.length === 0) {
+            setTerminal(prev => [...prev, { type:'out', text:`[-] No rivals known. Exfil data from high-value nodes to attract rival attention.\n[*] Type 'rivals' to see your enemy list.`, isNew:true }]);
+          } else {
+            const topRival = rivals.filter(r => r.status !== 'destroyed').sort((a,b) => b.rep - a.rep)[0];
+            if (topRival) {
+              setVirusInventory(prev => prev.filter(v => v.id !== id));
+              handleCommand(null, `raid ${topRival.handle}`);
+              setTerminal(prev => [...prev, { type:'out', text:`[+] Virus loaded into raid payload against ${topRival.handle}.`, isNew:true }]);
+            }
+          }
+        }, 150);
       }}
     />
   );

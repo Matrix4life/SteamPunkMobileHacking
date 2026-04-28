@@ -175,91 +175,83 @@ const OS_PROFILES = {
 // 2. The Org Themes (Where the juicy stuff goes)
 const FILE_SYSTEM_THEMES = {
   personal: {
-    dirs: ['home/user/documents', 'home/user/pictures', 'home/user/downloads', 'home/user/desktop', 'home/user/private', 'home/user/.ssh', 'home/user/finance'],
+    dirs: ['home/user/documents', 'home/user/private', 'home/user/downloads', 'home/user/desktop', 'home/user/.ssh'],
     files: {
-      'home/user/documents':  ['tax_return_2025.pdf', 'bank_statements.pdf', 'ssn_database.csv', 'insurance_claims.xml'],
-      'home/user/private':    ['passwords.txt', 'seed_phrase.txt', 'blackmail_material.zip', 'credit_cards.dump', 'passport_scans.zip'],
-      'home/user/downloads':  ['browser_history.sqlite', 'login_credentials.txt'],
-      'home/user/finance':    ['bank_account_list.xlsx', 'crypto_wallet_backup.dat'],
+      'home/user/private':    ['credit_cards.dump', 'login_credentials.txt', 'crypto_cold_wallet.dat'],
+      'home/user/documents':  ['ssn_database.csv', 'tax_return_2025.pdf', 'insurance_claims.xml'],
+      'home/user/downloads':  ['browser_history.sqlite', 'notes.txt'],
       'home/user/.ssh':       ['id_rsa', 'known_hosts'],
     }
   },
   startup: {
-    dirs: ['opt/app', 'var/www/html', 'opt/aws', 'opt/config', 'opt/backups', 'var/data'],
+    dirs: ['opt/app', 'opt/aws', 'opt/config', 'var/www/html'],
     files: {
-      'opt/app':      ['server.js', '.env', 'docker-compose.yml', 'db_seed.sql', 'source_code.tar'],
-      'var/www/html': ['index.html', 'user_metrics.csv'],
-      'opt/aws':      ['api_keys.env', 'aws_billing.xlsx', 'customer_database.sql'],
-      'opt/config':   ['.env', 'stripe_keys.json', 'oauth_secrets.txt'],
-      'opt/backups':  ['employee_records.csv', 'user_dump_2026.sql'],
-      'var/data':     ['analytics_raw.csv', 'ab_test_results.json'],
+      'opt/aws':     ['customer_database.sql', 'api_keys.env'],
+      'opt/app':     ['source_code.tar', 'docker-compose.yml'],
+      'opt/config':  ['employee_records.csv', '.env'],
+      'var/www/html':['index.html', 'user_metrics.csv'],
     }
   },
   smallbiz: {
-    dirs: ['mnt/accounting', 'mnt/hr', 'mnt/clients', 'mnt/legal', 'mnt/pos', 'mnt/backups'],
+    dirs: ['mnt/pos', 'mnt/hr', 'mnt/clients', 'mnt/accounting'],
     files: {
-      'mnt/accounting': ['payroll_2026.xlsx', 'tax_returns.pdf', 'wire_transfers_pending.csv'],
-      'mnt/clients':    ['client_list.csv', 'customer_database.sql'],
-      'mnt/legal':      ['lawsuit_settlement.docx', 'vendor_contracts.zip'],
-      'mnt/pos':        ['card_processing_data.bin', 'transaction_log.csv'],
-      'mnt/hr':         ['employee_records.csv', 'ssn_database.csv'],
-      'mnt/backups':    ['login_credentials.txt', 'passwd.bak'],
+      'mnt/pos':        ['credit_cards.dump', 'login_credentials.txt'],
+      'mnt/clients':    ['customer_database.sql'],
+      'mnt/hr':         ['employee_records.csv', 'payroll_2026.xlsx'],
+      'mnt/accounting': ['tax_returns.pdf', 'vendor_contracts.zip'],
     }
   },
   corporation: {
-    dirs: ['mnt/file-server', 'mnt/file-server/shared', 'mnt/rd', 'mnt/patents', 'mnt/executive', 'mnt/devops', 'mnt/hr'],
+    dirs: ['mnt/rd', 'mnt/executive', 'mnt/devops', 'mnt/file-server', 'mnt/file-server/shared'],
     files: {
-      'mnt/file-server':        ['company_data.zip', 'offshore_routing.csv', 'customer_database.sql'],
-      'mnt/file-server/shared': ['q4_earnings_unreleased.pdf', 'layoff_list.xlsx', 'internal_emails.pst'],
-      'mnt/patents':            ['patent_draft_994.docx', 'trade_secrets.zip'],
-      'mnt/rd':                 ['source_code_master.zip', 'source_code.tar', 'trading_algorithms.zip'],
-      'mnt/executive':          ['internal_emails.pst', 'merger_plans.pdf', 'api_keys.env', 'board_minutes.pdf'],
-      'mnt/devops':             ['api_keys.env', 'ci_secrets.env', 'prod_db_creds.txt'],
-      'mnt/hr':                 ['employee_records.csv', 'salary_bands.xlsx', 'h1b_filings.pdf'],
+      'mnt/rd':                ['source_code.tar', 'trading_algorithms.zip', 'trade_secrets.zip'],
+      'mnt/executive':         ['internal_emails.pst', 'merger_plans.pdf'],
+      'mnt/devops':            ['api_keys.env', 'ci_pipeline.yml'],
+      'mnt/file-server':       ['company_data.zip', 'offshore_routing.csv'],
+      'mnt/file-server/shared':['q4_earnings_unreleased.pdf', 'layoff_list.xlsx'],
     }
   },
   government: {
-    dirs: ['mnt/public_works', 'mnt/internal_affairs', 'mnt/surveillance', 'mnt/records', 'mnt/law_enforcement', 'mnt/budget'],
+    dirs: ['mnt/records', 'mnt/internal_affairs', 'mnt/surveillance', 'mnt/public_works'],
     files: {
-      'mnt/public_works':      ['voter_registry.sql', 'budget_deficit.xlsx', 'voter_registration.db'],
-      'mnt/internal_affairs':  ['subpoena_targets.docx', 'informant_list.csv', 'classified_report.pdf', 'vpn_credentials.txt'],
-      'mnt/surveillance':      ['city_camera_feeds.mp4', 'network_topology.xml'],
-      'mnt/records':           ['personnel_roster.db', 'ssn_database.csv', 'witness_protection.db'],
-      'mnt/law_enforcement':   ['informant_list.csv', 'wiretap_authorizations.pdf', 'suspect_profiles.db'],
-      'mnt/budget':            ['classified_budget_2026.xlsx', 'black_ops_funding.pdf'],
+      'mnt/records':          ['personnel_roster.db', 'ssn_database.csv', 'voter_registration.db'],
+      'mnt/internal_affairs': ['classified_report.pdf', 'login_credentials.txt'],
+      'mnt/surveillance':     ['network_topology.xml', 'city_camera_feeds.mp4'],
+      'mnt/public_works':     ['budget_deficit.xlsx', 'subpoena_targets.docx'],
     }
   },
   military: {
-    dirs: ['mnt/intel', 'mnt/drone_ops', 'mnt/sigint', 'mnt/classified', 'mnt/logistics', 'mnt/cyber'],
+    dirs: ['mnt/intel', 'mnt/drone_ops', 'mnt/classified', 'mnt/cyber'],
     files: {
-      'mnt/intel':      ['target_package_bravo.enc', 'black_budget.xlsx', 'classified_report.pdf', 'personnel_roster.db'],
-      'mnt/sigint':     ['sat_recon_raw.ts', 'comms_intercept.bin', 'network_topology.xml'],
-      'mnt/drone_ops':  ['roe_directives.pdf', 'troop_manifest.csv', 'drone_specs.zip'],
-      'mnt/classified': ['nsa_tools.tar', 'classified_report.pdf', 'asset_list.enc'],
-      'mnt/logistics':  ['troop_manifest.csv', 'supply_chain.db', 'base_locations.gpx'],
-      'mnt/cyber':      ['weaponized_payload_v2.bin', 'zero_day_catalog.db', 'vpn_credentials.txt'],
+      'mnt/classified': ['nsa_tools.tar', 'classified_report.pdf'],
+      'mnt/intel':      ['personnel_roster.db', 'network_topology.xml'],
+      'mnt/drone_ops':  ['drone_specs.zip', 'roe_directives.pdf'],
+      'mnt/cyber':      ['login_credentials.txt', 'weaponized_payload_v2.bin'],
     }
   },
   financial: {
-    dirs: ['mnt/db-server-backups', 'mnt/vault', 'mnt/aml', 'mnt/trading', 'mnt/clients', 'mnt/wire'],
+    dirs: ['mnt/vault', 'mnt/trading', 'mnt/clients', 'mnt/db-server-backups'],
     files: {
-      'mnt/db-server-backups': ['vip_offshore_accounts.sql', 'wire_transfers_pending.csv', 'customer_database.sql'],
-      'mnt/vault':             ['crypto_cold_wallet.dat', 'swift_keys.pgp', 'swift_transactions.log', 'card_processing_data.bin'],
-      'mnt/aml':               ['aml_flagged.xlsx', 'cartel_routing_keys.pgp'],
-      'mnt/trading':           ['trading_algorithms.zip', 'account_statements.pdf', 'hft_source.tar'],
-      'mnt/clients':           ['vip_client_list.csv', 'account_statements.pdf', 'ssn_database.csv'],
-      'mnt/wire':              ['swift_transactions.log', 'wire_transfers_pending.csv', 'correspondent_banks.db'],
+      'mnt/vault':             ['swift_transactions.log', 'crypto_cold_wallet.dat'],
+      'mnt/trading':           ['trading_algorithms.zip', 'account_statements.pdf'],
+      'mnt/clients':           ['customer_database.sql', 'credit_cards.dump'],
+      'mnt/db-server-backups': ['vip_offshore_accounts.sql', 'wire_transfers_pending.csv'],
     }
   },
   classified: {
-    dirs: ['opt/umb_alpha', 'opt/stellar', 'opt/zero_days', 'opt/assets', 'opt/blacksite', 'opt/signals'],
+    dirs: ['opt/umb_alpha', 'opt/stellar', 'opt/blacksite'],
     files: {
-      'opt/umb_alpha':  ['nsa_rootkit_src.zip', 'nsa_tools.tar', 'classified_report.pdf'],
-      'opt/stellar':    ['project_chimera.pdf', 'foreign_asset_list.enc', 'personnel_roster.db'],
-      'opt/zero_days':  ['weaponized_payload_v2.bin', 'blackmail_cache.tar.gz', 'zero_day_catalog.db'],
-      'opt/assets':     ['asset_termination_order.enc', 'drone_specs.zip', 'network_topology.xml'],
-      'opt/blacksite':  ['rendition_logs.db', 'black_budget.xlsx', 'identity_covers.zip'],
-      'opt/signals':    ['echelon_intercepts.bin', 'foreign_comms_raw.tar', 'sat_recon_raw.ts'],
+      'opt/umb_alpha':  ['nsa_tools.tar', 'classified_report.pdf'],
+      'opt/stellar':    ['project_chimera.pdf', 'personnel_roster.db'],
+      'opt/blacksite':  ['drone_specs.zip', 'network_topology.xml'],
+    }
+  },
+  healthcare: {
+    dirs: ['mnt/patients', 'mnt/billing', 'mnt/hr'],
+    files: {
+      'mnt/patients': ['patient_records.db', 'prescription_history.csv'],
+      'mnt/billing':  ['insurance_claims.xml', 'ssn_database.csv'],
+      'mnt/hr':       ['employee_records.csv', 'payroll_2026.xlsx'],
     }
   },
 };

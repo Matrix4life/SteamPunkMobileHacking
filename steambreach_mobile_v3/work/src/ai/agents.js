@@ -560,29 +560,27 @@ const type = availableActions[Math.floor(Math.random() * availableActions.length
     let targetFile = null;
 
     if (type === 'exfil') {
+      const VALUABLE = [
+        'credit_cards.dump','login_credentials.txt','ssn_database.csv','crypto_cold_wallet.dat',
+        'insurance_claims.xml','tax_return_2025.pdf','customer_database.sql','employee_records.csv',
+        'api_keys.env','source_code.tar','internal_emails.pst','trading_algorithms.zip',
+        'trade_secrets.zip','swift_transactions.log','account_statements.pdf','personnel_roster.db',
+        'classified_report.pdf','voter_registration.db','network_topology.xml','drone_specs.zip',
+        'nsa_tools.tar','project_chimera.pdf','patient_records.db','prescription_history.csv',
+        'shadow','passwd',
+      ];
       const allFiles = [];
       if (node.files && typeof node.files === 'object') {
         Object.keys(node.files).forEach((dir) => {
           const dirFiles = node.files[dir];
           if (Array.isArray(dirFiles)) {
-            dirFiles.forEach((f) => {
-              if (
-                !f.endsWith('/') &&
-                f !== '.bash_history' &&
-                !f.endsWith('.tmp') &&
-                !f.endsWith('.eml')
-              ) {
-                allFiles.push(f);
-              }
-            });
+            dirFiles.forEach((f) => { if (VALUABLE.includes(f)) allFiles.push(f); });
           }
         });
       }
-      targetFile = allFiles.length > 0
-        ? allFiles[Math.floor(Math.random() * allFiles.length)]
-        : 'proprietary_data.zip';
+      if (allFiles.length === 0) continue;
+      targetFile = allFiles[Math.floor(Math.random() * allFiles.length)];
     }
-
     let label = '';
     if (type === 'exfil') label = `Exfiltrate ${targetFile || 'proprietary_data.zip'} from ${node?.org?.orgName || 'target node'}`;
     else if (type === 'destroy') label = `Destroy the target environment at ${node?.org?.orgName || 'target node'}`;

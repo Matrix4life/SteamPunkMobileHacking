@@ -1828,8 +1828,9 @@ const COMMANDS = {// ← your existing command object starts here
         setLooted(prev => [...prev, exfilKey]);
         setConsumables(prev => ({ ...prev, intel: (prev.intel || 0) + (gameMode === 'operator' ? 2 : 1) }));
         
+        const contractMsg = verifyContract(targetIP, 'breach');
         setIsProcessing(false);
-        return `[+] EXFILTRATION COMPLETE: ${totalSize} GB of proprietary R&D secured.\n[!] Massive network anomaly detected. Incident logged by SOC.\n[+] 'Corporate Intel' added to local stash. Type 'exit' and use 'fence intel' to sell it.`;
+        return `[+] EXFILTRATION COMPLETE: ${totalSize} GB of proprietary R&D secured.\n[!] Massive network anomaly detected. Incident logged by SOC.\n[+] 'Corporate Intel' added to local stash.${contractMsg}`;
       },
 
       fence: async () => {
@@ -2793,7 +2794,11 @@ if (!hasEntry || !hasHit) {
           let contractMsg = '';
           const currentContract = contracts.find(c => c.active && !c.completed);
           if (currentContract) {
-            const isExfil = currentContract.objectives?.some(o => o.ip === targetIP && o.type === 'exfil');
+            const isExfil = currentContract.objectives?.some(o => 
+              o.ip === targetIP && 
+              o.type === 'exfil' && 
+              (!o.targetFile || o.targetFile === fileName)
+            );
             if (isExfil) {
               const timeTaken = (Date.now() - currentContract.startTime) / 1000;
               const rewardVal = currentContract.reward || 0;

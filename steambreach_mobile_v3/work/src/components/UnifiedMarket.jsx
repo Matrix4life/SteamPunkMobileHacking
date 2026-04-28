@@ -238,7 +238,7 @@ const ROLE_COLORS = {
 };
 const TIER_COLORS = { common:'#727072', uncommon:'#a9dc76', rare:'#78dce8', ghost:'#ab9df2' };
 
-function VirusLabPanel({ virusFragments, virusInventory, onCraftVirus, onTradeVirus, money }) {
+function VirusLabPanel({ virusFragments, virusInventory, onCraftVirus, onDeployVirus, onRaidVirus, money }) {
   const [build, setBuild] = useState({ entry:null, hit:null, spread:null, hide:null, trigger:null, stay:null });
   const [selectedVirus, setSelectedVirus] = useState(null);
 
@@ -407,16 +407,23 @@ function VirusLabPanel({ virusFragments, virusInventory, onCraftVirus, onTradeVi
                 <span style={{ color:successCol }}>SUC {virus.successChance}%</span>
               </div>
               {isSelected && (
-                <div style={{ display:'flex', gap:'6px', marginTop:'8px' }}>
-                  <button onClick={(e) => { e.stopPropagation(); onTradeVirus(virus.id); setSelectedVirus(null); }}
+               <div style={{ display:'flex', gap:'6px', marginTop:'8px' }}>
+                  <button onClick={(e) => { e.stopPropagation(); onDeployVirus(virus.id); setSelectedVirus(null); }}
+                    style={{ flex:1, padding:'7px', background:`${C.dan}20`, border:`1px solid ${C.dan}`,
+                      color:C.dan, fontFamily:'inherit', fontSize:'12px', cursor:'pointer', borderRadius:'3px',
+                      fontWeight:700, letterSpacing:'1px' }}>
+                    ⚡ DEPLOY
+                  </button>
+                  <button onClick={(e) => { e.stopPropagation(); onRaidVirus(virus.id); setSelectedVirus(null); }}
                     style={{ flex:1, padding:'7px', background:`${C.warn}20`, border:`1px solid ${C.warn}`,
-                      color:C.warn, fontFamily:'inherit', fontSize:'12px', cursor:'pointer', borderRadius:'3px' }}>
-                    TRADE ON DARKNET
+                      color:C.warn, fontFamily:'inherit', fontSize:'12px', cursor:'pointer', borderRadius:'3px',
+                      fontWeight:700, letterSpacing:'1px' }}>
+                    ⚔ RAID RIVAL
                   </button>
                   <button onClick={(e) => { e.stopPropagation(); setSelectedVirus(null); }}
                     style={{ padding:'7px 12px', background:'transparent', border:`1px solid ${C.bdr}`,
                       color:C.dim, fontFamily:'inherit', fontSize:'12px', cursor:'pointer', borderRadius:'3px' }}>
-                    CANCEL
+                    ✕
                   </button>
                 </div>
               )}

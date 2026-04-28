@@ -9,7 +9,7 @@ const SyntaxText = ({ text }) => {
       {parts.map((part, i) => {
         if (!part) return null;
         if (part.match(/\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/)) return <span key={i} style={{ color: COLORS.ip }}>{part}</span>;
-        if (part.match(/\b[\w-]+\.(?:txt|zip|sql|db|log|yaml|bak|msg|bin|exe|hashes|eml|tmp|cap|csv)\b/)) return <span key={i} style={{ color: COLORS.file }}>{part}</span>;
+        if (part.match(/\b[\w-]+\.(?:txt|zip|sql|db|log|yaml|bak|msg|bin|exe|hashes|eml|tmp|cap|csv|dump|pst|tar|env|pdf|xlsx|pgp|enc|sqlite|ts|docx|dat|xml)\b/)) return <span key={i} style={{ color: COLORS.file }}>{part}</span>;
         if (part.match(/\$\d+(?:,\d+)*/)) return <span key={i} style={{ color: COLORS.warning }}>{part}</span>;
         if (part.startsWith('[') && part.endsWith(']')) {
           if (part.includes('ERROR') || part.includes('!!!') || part.includes('-') || part.includes('LOCKED') || part.includes('FATAL') || part.includes('ALERT') || part.includes('BREACH') || part.includes('DETONATION')) return <span key={i} style={{ color: COLORS.danger }}>{part}</span>;

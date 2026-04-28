@@ -58,8 +58,8 @@ export const MAKERS = {
 
 export const HW_SLOTS = ['cpu','gpu','ram','ssd','psu','cool','net','case'];
 export const SLOTS = HW_SLOTS;
-export const ALL_TABS = ['cpu','gpu','ram','ssd','psu','cool','net','case','software','commodities'];
-export const TAB_LABELS = { cpu:'CPU',gpu:'GPU',ram:'RAM',ssd:'SSD',psu:'PSU',cool:'COOL',net:'NET',case:'CASE',software:'SOFTWARE',commodities:'TRADE' };
+export const ALL_TABS = ['cpu','gpu','ram','ssd','psu','cool','net','case','software','commodities','viruslab'];
+export const TAB_LABELS = { cpu:'CPU',gpu:'GPU',ram:'RAM',ssd:'SSD',psu:'PSU',cool:'COOL',net:'NET',case:'CASE',software:'SOFTWARE',commodities:'TRADE',viruslab:'VIRUS LAB' };
 export const SLOT_LABELS = TAB_LABELS;
 
 const COMPAT_PAIRS = [['cpu','ram'],['cpu','gpu'],['gpu','psu'],['gpu','cool'],['ram','ssd'],['cpu','cool']];

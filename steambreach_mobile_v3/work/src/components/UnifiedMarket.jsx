@@ -462,7 +462,7 @@ export default function UnifiedMarket({
   onBuyHW, onSellHW, onInstall, onUninstall, onBuyAndInstall,
   onBuySW, onBuyCommodity, onSellCommodity,
   returnToGame,
-  virusFragments, virusInventory, onCraftVirus, onTradeVirus,
+  virusFragments, virusInventory, onCraftVirus, onDeployVirus, onRaidVirus,
 }){
   const [tab,setTab]=useState('cpu');
   const [sort,setSort]=useState('price');

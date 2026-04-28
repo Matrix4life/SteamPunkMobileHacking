@@ -1728,28 +1728,84 @@ const verifyContract = (ip, objectiveType) => {
     }]);
   };
 
-  const getExfilDrop = (orgType, sec) => {
-  const dropTable = {
-    personal:    [{ key: 'cc_dumps', w: 2 }, { key: 'personal_pii', w: 3 }, { key: 'ssn_fullz', w: 1 }],
-    startup:     [{ key: 'corp_intel', w: 2 }, { key: 'cc_dumps', w: 2 }, { key: 'personal_pii', w: 1 }],
-    smallbiz:    [{ key: 'personal_pii', w: 2 }, { key: 'cc_dumps', w: 2 }, { key: 'bank_records', w: 1 }],
-    corporation: [{ key: 'corp_intel', w: 3 }, { key: 'trade_secrets', w: 2 }, { key: 'exploits', w: 1 }],
-    government:  [{ key: 'classified_docs', w: 2 }, { key: 'personal_pii', w: 2 }, { key: 'ssn_fullz', w: 1 }],
-    military:    [{ key: 'classified_docs', w: 3 }, { key: 'trade_secrets', w: 2 }, { key: 'exploits', w: 1 }],
-    financial:   [{ key: 'bank_records', w: 3 }, { key: 'cc_dumps', w: 3 }, { key: 'ssn_fullz', w: 2 }],
-    classified:  [{ key: 'classified_docs', w: 3 }, { key: 'trade_secrets', w: 2 }, { key: 'zerodays', w: 1 }],
+  const getExfilDrop = (orgType, sec, fileName = '') => {
+  // File-specific drops — what you steal determines what you get
+  const FILE_DROPS = {
+    'credit_cards.dump':      { key: 'cc_dumps',        qty: [2, 6] },
+    'card_processing_data.bin':{ key: 'cc_dumps',       qty: [3, 8] },
+    'transaction_log.csv':    { key: 'cc_dumps',         qty: [1, 4] },
+    'login_credentials.txt':  { key: 'personal_pii',    qty: [2, 5] },
+    'ssn_database.csv':       { key: 'ssn_fullz',        qty: [2, 6] },
+    'passport_scans.zip':     { key: 'ssn_fullz',        qty: [1, 3] },
+    'bank_account_list.xlsx': { key: 'bank_records',     qty: [1, 3] },
+    'seed_phrase.txt':        { key: 'bank_records',     qty: [1, 2] },
+    'crypto_wallet_backup.dat':{ key: 'bank_records',   qty: [1, 2] },
+    'insurance_claims.xml':   { key: 'medical_records',  qty: [2, 5] },
+    'customer_database.sql':  { key: 'personal_pii',     qty: [3, 7] },
+    'user_dump_2026.sql':     { key: 'personal_pii',     qty: [2, 5] },
+    'vip_offshore_accounts.sql':{ key: 'bank_records',   qty: [2, 5] },
+    'swift_transactions.log': { key: 'bank_records',     qty: [3, 7] },
+    'wire_transfers_pending.csv':{ key: 'bank_records',  qty: [2, 4] },
+    'account_statements.pdf': { key: 'bank_records',     qty: [1, 3] },
+    'cartel_routing_keys.pgp':{ key: 'bank_records',     qty: [2, 4] },
+    'aml_flagged.xlsx':       { key: 'bank_records',     qty: [1, 3] },
+    'employee_records.csv':   { key: 'corp_intel',        qty: [1, 3] },
+    'internal_emails.pst':    { key: 'corp_intel',        qty: [2, 4] },
+    'board_minutes.pdf':      { key: 'corp_intel',        qty: [1, 2] },
+    'q4_earnings_unreleased.pdf':{ key: 'corp_intel',    qty: [1, 2] },
+    'offshore_routing.csv':   { key: 'corp_intel',        qty: [1, 3] },
+    'merger_plans.pdf':       { key: 'corp_intel',        qty: [1, 2] },
+    'api_keys.env':           { key: 'exploits',          qty: [1, 2] },
+    'stripe_keys.json':       { key: 'exploits',          qty: [1, 2] },
+    'ci_secrets.env':         { key: 'exploits',          qty: [1, 2] },
+    'source_code.tar':        { key: 'trade_secrets',     qty: [1, 3] },
+    'source_code_master.zip': { key: 'trade_secrets',     qty: [1, 3] },
+    'trading_algorithms.zip': { key: 'trade_secrets',     qty: [1, 2] },
+    'hft_source.tar':         { key: 'trade_secrets',     qty: [1, 2] },
+    'trade_secrets.zip':      { key: 'trade_secrets',     qty: [1, 3] },
+    'patent_draft_994.docx':  { key: 'trade_secrets',     qty: [1, 2] },
+    'project_chimera.pdf':    { key: 'classified_docs',   qty: [1, 2] },
+    'classified_report.pdf':  { key: 'classified_docs',   qty: [1, 3] },
+    'personnel_roster.db':    { key: 'classified_docs',   qty: [2, 4] },
+    'voter_registration.db':  { key: 'classified_docs',   qty: [1, 3] },
+    'informant_list.csv':     { key: 'classified_docs',   qty: [1, 2] },
+    'witness_protection.db':  { key: 'classified_docs',   qty: [1, 2] },
+    'network_topology.xml':   { key: 'classified_docs',   qty: [1, 2] },
+    'vpn_credentials.txt':    { key: 'classified_docs',   qty: [1, 2] },
+    'nsa_tools.tar':          { key: 'zerodays',           qty: [1, 2] },
+    'weaponized_payload_v2.bin':{ key: 'zerodays',         qty: [1, 1] },
+    'zero_day_catalog.db':    { key: 'zerodays',           qty: [1, 2] },
+    'echelon_intercepts.bin': { key: 'zerodays',           qty: [1, 1] },
+    'drone_specs.zip':        { key: 'classified_docs',   qty: [1, 2] },
+    'rendition_logs.db':      { key: 'classified_docs',   qty: [1, 2] },
+    'foreign_asset_list.enc': { key: 'classified_docs',   qty: [1, 2] },
+    'asset_termination_order.enc':{ key: 'classified_docs',qty: [1, 1] },
   };
-  const secMult = { low: 1, mid: 2.5, high: 5, elite: 12 }[sec] || 1;
-  const pool = dropTable[orgType] || dropTable.smallbiz;
-  const totalW = pool.reduce((s, x) => s + x.w, 0);
-  let rand = Math.random() * totalW, primary = pool[pool.length - 1];
-  for (const entry of pool) { rand -= entry.w; if (rand <= 0) { primary = entry; break; } }
-  const qty = Math.max(1, Math.round((Math.random() * 2 + 1) * secMult));
-  const secondary = pool.filter(e => e.key !== primary.key);
-  const bonusDrop = Math.random() < 0.35 && secondary.length > 0
-    ? { key: secondary[Math.floor(Math.random() * secondary.length)].key, qty: Math.max(1, Math.round(qty * 0.4)) }
-    : null;
-  return { primary: { key: primary.key, qty }, bonus: bonusDrop };
+
+  const secMult = { low: 1, mid: 1.5, high: 2.5, elite: 5 }[sec] || 1;
+  const baseName = fileName.split('/').pop();
+  const match = FILE_DROPS[baseName];
+
+  if (match) {
+    const [min, max] = match.qty;
+    const qty = Math.max(1, Math.round((Math.random() * (max - min) + min) * secMult));
+    return { primary: { key: match.key, qty }, bonus: null };
+  }
+
+  // Fallback for unlisted files — org-type based
+  const fallbackTable = {
+    personal:    'cc_dumps',
+    startup:     'corp_intel',
+    smallbiz:    'cc_dumps',
+    corporation: 'corp_intel',
+    government:  'classified_docs',
+    military:    'classified_docs',
+    financial:   'bank_records',
+    classified:  'zerodays',
+  };
+  const key = fallbackTable[orgType] || 'personal_pii';
+  const qty = Math.max(1, Math.round(Math.random() * 2 + 1));
+  return { primary: { key, qty }, bonus: null };
 };
 
 const COMMANDS = {// ← your existing command object starts here

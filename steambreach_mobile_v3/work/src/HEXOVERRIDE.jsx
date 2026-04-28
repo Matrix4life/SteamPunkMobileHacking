@@ -2721,6 +2721,22 @@ if (!hasEntry || !hasHit) {
           if (!rawData) return `[-] exfil: ${arg1}: File not found`;
           const orgType = world[targetIP]?.org?.type || 'smallbiz';
           const sec = world[targetIP]?.data?.sec || 'low';
+          const VALUABLE_FILES = {
+            personal:    ['credit_cards.dump','login_credentials.txt','ssn_database.csv','passport_scans.zip','bank_account_list.xlsx','seed_phrase.txt','crypto_wallet_backup.dat'],
+            startup:     ['customer_database.sql','api_keys.env','source_code.tar','employee_records.csv','stripe_keys.json','user_dump_2026.sql'],
+            smallbiz:    ['customer_database.sql','card_processing_data.bin','login_credentials.txt','employee_records.csv','ssn_database.csv','transaction_log.csv'],
+            corporation: ['source_code.tar','internal_emails.pst','customer_database.sql','trading_algorithms.zip','api_keys.env','trade_secrets.zip','board_minutes.pdf','ci_secrets.env'],
+            government:  ['personnel_roster.db','classified_report.pdf','voter_registration.db','network_topology.xml','vpn_credentials.txt','informant_list.csv','witness_protection.db'],
+            military:    ['nsa_tools.tar','personnel_roster.db','drone_specs.zip','classified_report.pdf','network_topology.xml','weaponized_payload_v2.bin','zero_day_catalog.db'],
+            financial:   ['swift_transactions.log','card_processing_data.bin','account_statements.pdf','trading_algorithms.zip','customer_database.sql','vip_offshore_accounts.sql','cartel_routing_keys.pgp','hft_source.tar'],
+            classified:  ['nsa_tools.tar','drone_specs.zip','classified_report.pdf','personnel_roster.db','network_topology.xml','project_chimera.pdf','rendition_logs.db','echelon_intercepts.bin'],
+          };
+          const validFiles = VALUABLE_FILES[orgType] || VALUABLE_FILES.smallbiz;
+          const fileName = arg1.split('/').pop();
+          if (!validFiles.includes(fileName)) {
+            const hint = validFiles.slice(0, 3).join(', ');
+            return `[-] exfil: ${arg1}: No extractable market data.\n[*] Valuable files on ${orgType} nodes: ${hint}`;
+          }
           const fileKey = `${targetIP}:${targetFile}`;
           if (looted.includes(fileKey)) return "[-] Already exfiltrated.";
           
@@ -3001,6 +3017,22 @@ return `[+] ${actionResult}\n[+] CHAOS +10`;
 
         const orgType = world[targetIP]?.org?.type || 'smallbiz';
         const sec = world[targetIP]?.data?.sec || 'low';
+        const VALUABLE_FILES = {
+            personal:    ['credit_cards.dump','login_credentials.txt','ssn_database.csv','passport_scans.zip','bank_account_list.xlsx','seed_phrase.txt','crypto_wallet_backup.dat'],
+            startup:     ['customer_database.sql','api_keys.env','source_code.tar','employee_records.csv','stripe_keys.json','user_dump_2026.sql'],
+            smallbiz:    ['customer_database.sql','card_processing_data.bin','login_credentials.txt','employee_records.csv','ssn_database.csv','transaction_log.csv'],
+            corporation: ['source_code.tar','internal_emails.pst','customer_database.sql','trading_algorithms.zip','api_keys.env','trade_secrets.zip','board_minutes.pdf','ci_secrets.env'],
+            government:  ['personnel_roster.db','classified_report.pdf','voter_registration.db','network_topology.xml','vpn_credentials.txt','informant_list.csv','witness_protection.db'],
+            military:    ['nsa_tools.tar','personnel_roster.db','drone_specs.zip','classified_report.pdf','network_topology.xml','weaponized_payload_v2.bin','zero_day_catalog.db'],
+            financial:   ['swift_transactions.log','card_processing_data.bin','account_statements.pdf','trading_algorithms.zip','customer_database.sql','vip_offshore_accounts.sql','cartel_routing_keys.pgp','hft_source.tar'],
+            classified:  ['nsa_tools.tar','drone_specs.zip','classified_report.pdf','personnel_roster.db','network_topology.xml','project_chimera.pdf','rendition_logs.db','echelon_intercepts.bin'],
+          };
+          const validFiles = VALUABLE_FILES[orgType] || VALUABLE_FILES.smallbiz;
+          const fileName = arg1.split('/').pop();
+          if (!validFiles.includes(fileName)) {
+            const hint = validFiles.slice(0, 3).join(', ');
+            return `[-] exfil: ${arg1}: No extractable market data.\n[*] Valuable files on ${orgType} nodes: ${hint}`;
+          }
 
         const fileKey = `${targetIP}:${targetFile}`;
         if (looted.includes(fileKey)) return "[-] Data already exfiltrated.";
@@ -3021,12 +3053,31 @@ return `[+] ${actionResult}\n[+] CHAOS +10`;
           if (drop.bonus) next[drop.bonus.key] = (prev[drop.bonus.key] || 0) + drop.bonus.qty;
           return next;
         });
-        setHeat(h => Math.min(h + 3, 100));
-        setTrace(t => Math.min(t + 8, 100));
-        setLooted(prev => [...prev, fileKey, targetIP]);
-        escalateBlueTeam(targetIP, 15);
-        trackLoot(primaryValue);
-        playExfil();
+        setHeat(h => Math.min(h + 10, 100));
+          setTrace(t => Math.min(t + 25, 100));
+          setLooted(prev => [...prev, fileKey, targetIP]);
+          escalateBlueTeam(targetIP, 30);
+          trackLoot(primaryValue);
+          playExfil();
+          // Remove the file from the node so it can't be exfiled again
+          setWorld(prev => {
+            const nw = { ...prev };
+            if (nw[targetIP]?.files) {
+              const fileDir = Object.keys(nw[targetIP].files).find(d =>
+                nw[targetIP].files[d].includes(fileName)
+              );
+              if (fileDir) {
+                nw[targetIP] = {
+                  ...nw[targetIP],
+                  files: {
+                    ...nw[targetIP].files,
+                    [fileDir]: nw[targetIP].files[fileDir].filter(f => f !== fileName)
+                  }
+                };
+              }
+            }
+            return nw;
+          });
 
         if (activeContract?.type === 'exfil' && activeContract.targetIP === targetIP) {
           const timeTaken = (Date.now() - activeContract.startTime) / 1000;
@@ -3833,9 +3884,24 @@ return `[+] ${actionResult}\n[+] CHAOS +10`;
 
     ls: async () => {
   const target = resolvePath(arg1, currentDir);
-  const listing = fs[target]; // (If 'fs' throws an error, change it to activeNode.files[target])
+  const listing = fs[target];
   if (!listing) return `ls: cannot access '${arg1 || currentDir}': No such file or directory`;
-  return listing.join('  ');
+  const orgType = isInside ? (world[targetIP]?.org?.type || 'smallbiz') : null;
+  const VALUABLE_FILES_LS = {
+    personal:    ['credit_cards.dump','login_credentials.txt','ssn_database.csv','passport_scans.zip','bank_account_list.xlsx'],
+    startup:     ['customer_database.sql','api_keys.env','source_code.tar','employee_records.csv'],
+    smallbiz:    ['customer_database.sql','card_processing_data.bin','login_credentials.txt','employee_records.csv'],
+    corporation: ['source_code.tar','internal_emails.pst','customer_database.sql','trading_algorithms.zip','api_keys.env'],
+    government:  ['personnel_roster.db','classified_report.pdf','voter_registration.db','network_topology.xml','vpn_credentials.txt'],
+    military:    ['nsa_tools.tar','personnel_roster.db','drone_specs.zip','classified_report.pdf','network_topology.xml'],
+    financial:   ['swift_transactions.log','card_processing_data.bin','account_statements.pdf','trading_algorithms.zip','customer_database.sql'],
+    classified:  ['nsa_tools.tar','drone_specs.zip','classified_report.pdf','personnel_roster.db','network_topology.xml'],
+  };
+  const valuables = orgType ? (VALUABLE_FILES_LS[orgType] || []) : [];
+  const dirs = listing.filter(f => f.endsWith('/'));
+  const files = listing.filter(f => !f.endsWith('/'));
+  const tagged = files.map(f => valuables.includes(f) ? `₿ ${f}` : f);
+  return [...dirs, ...tagged].join('  ');
 },
       cd: async () => {
         const dest = arg1 === '..' ? (currentDir.split('/').slice(0, -1).join('/') || '/') : resolvePath(arg1, currentDir);

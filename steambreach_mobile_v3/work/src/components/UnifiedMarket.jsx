@@ -571,7 +571,7 @@ export default function UnifiedMarket({
                   onBuy={onBuyCommodity} onSell={onSellCommodity} money={money}/>
               ))}
             </div>
-          ):()
+          ):(
             <div>
               {filtered.length===0&&<div style={{color:C.dim,textAlign:'center',padding:'30px',fontSize:'13px'}}>No stock in {currentRegion}</div>}
               {filtered.map(item=>(

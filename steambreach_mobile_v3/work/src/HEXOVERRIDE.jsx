@@ -5695,7 +5695,7 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
         }
         setScreen('hardware');
       }}
-      }}
+    
       onDeployVirus={(id) => {
         setScreen('game');
         setTimeout(() => {

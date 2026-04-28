@@ -3147,8 +3147,9 @@ return `[+] ${actionResult}\n[+] CHAOS +10`;
           }
         }
 
+       const contractMsg = verifyContract(targetIP, 'exfil');
         setIsProcessing(false);
-        return `[+] STASH EXFIL COMPLETE via ${stagingName}.\n[+] +${drop.primary.qty}x ${primaryItem?.name || drop.primary.key} staged through botnet.\n[*] Sell via 'sell ${drop.primary.key} ${drop.primary.qty}' to cash out. Trace +8%, Heat +3%.`;
+        return `[+] STASH EXFIL COMPLETE via ${stagingName}.\n[+] +${drop.primary.qty}x ${primaryItem?.name || drop.primary.key} staged through botnet.\n[*] Sell via 'sell ${drop.primary.key} ${drop.primary.qty}' to cash out. Trace +8%, Heat +3%.`,${contractMsg}`;
       },
 
       wipe: async () => {

@@ -2745,7 +2745,25 @@ if (!hasEntry || !hasHit) {
 
         return `${mzData}\n\nmimikatz # exit\n[+] ${org?.employees?.length || 2} credential sets extracted from LSASS.\n[+] Plaintext passwords + NTLM hashes sold for ₿${intelValue.toLocaleString()}.`;
       },
-
+creds: async () => {
+        if (!arg1) {
+          const nodes = Object.entries(world)
+            .filter(([, n]) => n.crackedCreds?.length > 0)
+            .map(([ip, n]) => `  ${ip.padEnd(18)} ${(n.org?.orgName || 'Unknown').padEnd(24)} ${n.crackedCreds.length} account${n.crackedCreds.length > 1 ? 's' : ''}`)
+            .join('\n');
+          return nodes.length > 0
+            ? `[+] CREDENTIAL VAULT\n${'─'.repeat(55)}\n${nodes}\n\n[*] Type 'creds <ip>' to view passwords`
+            : `[-] No credentials harvested yet. Run mimikatz on botnet nodes.`;
+        }
+        const node = world[arg1];
+        if (!node) return `[-] creds: ${arg1}: host not found.`;
+        if (!node.crackedCreds?.length) return `[-] No credentials harvested from ${arg1}. Run mimikatz first.`;
+        const orgName = node.org?.orgName || arg1;
+        const lines = node.crackedCreds.map(c =>
+          `  ${c.user.padEnd(32)} ${c.password.padEnd(22)} ${c.role}`
+        ).join('\n');
+        return `[+] CREDENTIAL VAULT — ${orgName}\n${'─'.repeat(65)}\n  USERNAME                         PASSWORD               ROLE\n${'─'.repeat(65)}\n${lines}\n${'─'.repeat(65)}\n[*] Use: ssh ${node.crackedCreds[0]?.user}@${arg1} ${node.crackedCreds[0]?.password}`;
+      },
     exfil: async () => {
         try {
           if (!isInside) return "[-] Must be on a remote host.";

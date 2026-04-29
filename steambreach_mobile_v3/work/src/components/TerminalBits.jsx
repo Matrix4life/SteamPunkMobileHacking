@@ -73,6 +73,7 @@ const MODE_COMMANDS = {
       { cmd: 'wireshark', desc: 'Analyze capture file' },
       { cmd: 'wardrive', desc: 'Toggle mobile WiFi recon' },
       { cmd: 'wifistatus', desc: 'Show attack progress + next step' },
+      { cmd: 'creds [ip]', desc: 'Query credential vault — no arg = all nodes' },
     ],
     operator: [
       { cmd: 'iwconfig', desc: 'Display wireless interface configuration' },
@@ -87,6 +88,7 @@ const MODE_COMMANDS = {
       { cmd: 'wireshark', desc: 'Packet analysis on capture-01.cap' },
       { cmd: 'wardrive', desc: 'Mobile passive scanning (monitor mode required)' },
       { cmd: 'wifistatus', desc: 'Show current attack state' },
+      
     ],
   },
 
@@ -159,6 +161,7 @@ const MODE_COMMANDS = {
       { cmd: 'disconnect <ip>', desc: 'Remove proxy/botnet node' },
       { cmd: 'hping3 <ip>', desc: 'DDoS attack from botnet' },
       { cmd: 'mimikatz <ip>', desc: 'Dump credentials from node' },
+      { cmd: 'creds [ip]', desc: 'View harvested credentials vault' },
       { cmd: 'stash <file>', desc: 'Exfil through botnet (low heat)' },
     ],
     field: [
@@ -167,7 +170,9 @@ const MODE_COMMANDS = {
       { cmd: 'disconnect <ip>', desc: 'Remove node from botnet' },
       { cmd: 'hping3 <ip>', desc: 'SYN flood DDoS attack' },
       { cmd: 'mimikatz <ip>', desc: 'Dump LSASS credentials' },
+      { cmd: 'creds [ip]', desc: 'View harvested credentials vault' },
       { cmd: 'stash <file>', desc: 'Route exfil through botnet' },
+      { cmd: 'creds [ip]', desc: 'View credentials from mimikatz dumps' },
     ],
     operator: [
       { cmd: 'sliver', desc: 'Deploy Sliver C2 implant (requires root)' },
@@ -176,6 +181,7 @@ const MODE_COMMANDS = {
       { cmd: 'hping3 -S --flood -V -p 80 <ip>', desc: 'SYN flood attack' },
       { cmd: 'mimikatz "sekurlsa::logonpasswords" <ip>', desc: 'Extract cleartext passwords' },
       { cmd: 'stash <file>', desc: 'Exfil via botnet relay (+3% heat)' },
+      { cmd: 'creds [ip]', desc: 'Query credential vault — no arg = all nodes' },
     ],
   },
 
@@ -196,6 +202,7 @@ const MODE_COMMANDS = {
       { cmd: 'craftvirus <type>', desc: 'Build worm/stealer/wiper/ransom payload' },
       { cmd: 'viruses', desc: 'List crafted payload inventory' },
       { cmd: 'usevirus <id>', desc: 'Deploy crafted virus on current target' },
+      { cmd: 'execute-assembly <id>', desc: 'Push virus through Sliver beacon remotely' },
     ],
     field: [
       { cmd: 'msfvenom reverse', desc: 'Reverse shell payload' },
@@ -214,6 +221,7 @@ const MODE_COMMANDS = {
       { cmd: 'craftvirus <worm|stealer|wiper|ransom>', desc: 'Compile custom malware' },
       { cmd: 'viruses', desc: 'View virus lab inventory and values' },
       { cmd: 'usevirus <id>', desc: 'Execute crafted payload on target host' },
+      { cmd: 'execute-assembly <virus_id> <session_ip>', desc: 'Deploy virus via C2 channel without entering node' },
     ],
     operator: [
       { cmd: 'msfvenom -p linux/x64/meterpreter/reverse_tcp LHOST=<ip> LPORT=4444 -f elf -o shell.bin', desc: 'Generate reverse shell' },
@@ -228,6 +236,7 @@ const MODE_COMMANDS = {
       { cmd: 'craftvirus <type>', desc: 'Compile polymorphic malware payload' },
       { cmd: 'viruses', desc: 'List compiled payloads and trade value' },
       { cmd: 'usevirus <virus_id>', desc: 'Deploy one crafted virus (consumable)' },
+      { cmd: 'execute-assembly <virus_id> <session_ip>', desc: 'Inject compiled payload into beacon process memory' },
     ],
   },
 

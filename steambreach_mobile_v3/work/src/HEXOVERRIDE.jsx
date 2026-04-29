@@ -794,6 +794,7 @@ useEffect(() => {
     operator, gameMode, money, reputation, heat, botnet, proxies, looted, wipedNodes,
     inventory, rig, partsBag, softwareOwned, btcIndex, consumables, stash, currentRegion, marketPrices, world, unlockedFiles, contracts, director, morality, pendingInteraction, wifiState,
     rivals, zeroDays, rivalRaidCooldowns, virusFragments, virusInventory, virusArchive, virusScans,
+    terminalHistory: terminal.slice(-200),
     timestamp: Date.now(),
   });
 
@@ -843,7 +844,11 @@ setVirusInventory(
 setVirusArchive(data.virusArchive || []);
 setVirusScans(data.virusScans || {});
   };
-
+  
+if (data.terminalHistory?.length) {
+      setTerminal(data.terminalHistory.map(t => ({ ...t, isNew: false })));
+    }
+  
   const saveGame = (slotName) => {
     const state = collectCurrentState();
     localStorage.setItem(`breach_slot_${slotName}`, JSON.stringify(state));
@@ -1575,7 +1580,7 @@ const completeContractAndRemove = (id) => {
     const contents = isInside ? world[targetIP]?.contents : world.local.contents;
 
     // Active Blue Team Check
-   const BENIGN_CMDS = ['ls','cd','pwd','cat','clear','status','help','exit','wipe','download','exfil','stash','exploits','viruses','sessions','rivals','dossier'];
+  const BENIGN_CMDS = ['ls','cd','pwd','cat','clear','status','help','exit','wipe','download','exfil','stash','exploits','viruses','sessions','rivals','dossier','creds'];
 if (isInside && trace > 70 && Math.random() < 0.4 && !BENIGN_CMDS.includes(cmd)) {
       setIsProcessing(true);
       const nodeName = world[targetIP]?.org?.orgName || targetIP;

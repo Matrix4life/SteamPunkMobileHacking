@@ -2738,12 +2738,19 @@ if (!hasEntry || !hasHit) {
         }
 
         const intelValue = Math.floor(Math.random() * 800 + 300);
+        const parsedCreds = (org?.employees || []).map(e => ({
+          user: e.email, password: e.password, role: e.role
+        }));
+        setWorld(prev => ({
+          ...prev,
+          [arg1]: { ...prev[arg1], crackedCreds: parsedCreds }
+        }));
         setMoney(m => m + intelValue);
         setLooted(prev => [...prev, mzKey]);
         playSuccess();
         setIsProcessing(false);
 
-        return `${mzData}\n\nmimikatz # exit\n[+] ${org?.employees?.length || 2} credential sets extracted from LSASS.\n[+] Plaintext passwords + NTLM hashes sold for ₿${intelValue.toLocaleString()}.`;
+        return `${mzData}\n\nmimikatz # exit\n[+] ${org?.employees?.length || 2} credential sets extracted from LSASS.\n[+] Plaintext passwords + NTLM hashes sold for ₿${intelValue.toLocaleString()}\n[*] Credentials saved — type 'creds ${arg1}' to retrieve anytime.`;
       },
 creds: async () => {
         if (!arg1) {

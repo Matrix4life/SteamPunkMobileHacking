@@ -2,26 +2,67 @@ const tracks = {
   ambient: new Audio("/sounds/music/ambient_loop.wav"),
   pulse: new Audio("/sounds/music/pulse_loop.wav"),
   tension: new Audio("/sounds/music/tension_loop.wav"),
-  attack: new Audio("/sounds/music/attack_loop.wav")
+  attack: new Audio("/sounds/music/attack_loop.wav"),
 };
 
-// setup
-Object.values(tracks).forEach(track => {
+let started = false;
+
+Object.values(tracks).forEach((track) => {
   track.loop = true;
   track.volume = 0;
-  track.play();
 });
 
-// core control
+function fade(track, target, speed = 0.03) {
+  const step = () => {
+    const diff = target - track.volume;
+
+    if (Math.abs(diff) < 0.01) {
+      track.volume = target;
+      return;
+    }
+
+    track.volume = Math.max(0, Math.min(1, track.volume + Math.sign(diff) * speed));
+    requestAnimationFrame(step);
+  };
+
+  step();
+}
+
+export async function startMusic() {
+  if (started) return;
+  started = true;
+
+  await Promise.all(
+    Object.values(tracks).map((track) =>
+      track.play().catch(() => {})
+    )
+  );
+
+  setIntensity(0);
+}
+
 export function setIntensity(level) {
-  // 0 = idle
-  // 1 = scanning
-  // 2 = spreading
-  // 3 = detected / chaos
+  fade(tracks.ambient, 0.35);
 
-  tracks.ambient.volume = 0.4;
+  fade(tracks.pulse, level >= 1 ? 0.25 : 0);
+  fade(tracks.tension, level >= 2 ? 0.35 : 0);
+  fade(tracks.attack, level >= 3 ? 0.65 : 0);
+}
 
-  tracks.pulse.volume   = level >= 1 ? 0.3 : 0;
-  tracks.tension.volume = level >= 2 ? 0.4 : 0;
-  tracks.attack.volume  = level >= 3 ? 0.7 : 0;
+export function stopMusic() {
+  Object.values(tracks).forEach((track) => {
+    track.pause();
+    track.currentTime = 0;
+    track.volume = 0;
+  });
+
+  started = false;
+}
+
+export function triggerDrop() {
+  fade(tracks.attack, 1, 0.08);
+
+  setTimeout(() => {
+    fade(tracks.attack, 0.65, 0.04);
+  }, 1500);
 }

@@ -843,12 +843,11 @@ setVirusInventory(
 );
 setVirusArchive(data.virusArchive || []);
 setVirusScans(data.virusScans || {});
-  };
-  
-if (data.terminalHistory?.length) {
+    if (data.terminalHistory?.length) {
       setTerminal(data.terminalHistory.map(t => ({ ...t, isNew: false })));
     }
-  
+  };
+
   const saveGame = (slotName) => {
     const state = collectCurrentState();
     localStorage.setItem(`breach_slot_${slotName}`, JSON.stringify(state));
@@ -876,7 +875,7 @@ if (data.terminalHistory?.length) {
         const earned = Math.floor(hours * savedMinerNodes * HOURLY_RATE * savedMineMult * savedMarketMult);
         if (earned > 0) {
           setMoney(m => m + earned);
-          setTerminal([{ type: 'out', text: `[SYSTEM] Offline mining revenue: +₿${earned.toLocaleString()} from ${savedMinerNodes} active miner node${savedMinerNodes > 1 ? 's' : ''}`, isNew: false }]);
+          setTerminal(prev => [...prev, { type: 'out', text: `[SYSTEM] Offline mining revenue: +₿${earned.toLocaleString()} from ${savedMinerNodes} active miner node${savedMinerNodes > 1 ? 's' : ''}`, isNew: false }]);
         }
       }
       return true;

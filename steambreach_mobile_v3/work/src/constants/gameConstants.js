@@ -65,8 +65,8 @@ const COMMAND_REGISTRY = [
   { cmd: 'session <id|ip>', desc: 'Jump into a C2 session by session ID or IP — instant root, no exploit needed', category: 'BOTNET & C2' },
   { cmd: 'hping3 <ip>', desc: 'Botnet SYN flood DDoS — overwhelms target and lowers Blue Team alert level', category: 'BOTNET & C2' },
   { cmd: 'mimikatz <ip>', desc: 'Dump LSASS credentials from a botnet node', category: 'BOTNET & C2' },
+  { cmd: 'creds [ip]', desc: 'View harvested credentials. No arg = vault overview. With IP = show passwords for that node', category: 'BOTNET & C2' },
   { cmd: 'stash <file>', desc: 'Route exfil through botnet node (+3% heat vs +10% direct)', category: 'BOTNET & C2' },
-
   // --- PAYLOADS & MALWARE ---
   { cmd: 'msfvenom <arg>', desc: 'Deploy viral payloads (root)', category: 'PAYLOADS & MALWARE' },
   { cmd: 'eternalblue <arg>', desc: 'Mass SMBv1 propagation (root)', category: 'PAYLOADS & MALWARE' },
@@ -81,6 +81,7 @@ const COMMAND_REGISTRY = [
   { cmd: 'craftvirus <entry> <hit> [spread] [hide] [trigger] [stay]', desc: 'Assemble a custom virus from stored fragments', category: 'PAYLOADS & MALWARE' },
   { cmd: 'viruses', desc: 'Open the Virus Lab archive, fragments, and crafted builds', category: 'PAYLOADS & MALWARE' },
   { cmd: 'usevirus <id>', desc: 'Deploy crafted virus on active target node', category: 'PAYLOADS & MALWARE' },
+  { cmd: 'execute-assembly <virus_id> <session_ip>', desc: 'Push compiled virus through active Sliver beacon remotely — no entry required', category: 'PAYLOADS & MALWARE' },
 
   // --- DATA & CRACKING ---
   { cmd: 'exfil <file>', desc: 'Extract financial assets. Trace +25%, Heat +10%', category: 'DATA & CRACKING' },
@@ -99,6 +100,7 @@ const COMMAND_REGISTRY = [
   { cmd: 'buy <item> <qty>', desc: 'Buy a commodity at current market price', category: 'ECONOMY & ITEMS' },
   { cmd: 'sell <item> <qty>', desc: 'Sell a commodity from your stash', category: 'ECONOMY & ITEMS' },
   { cmd: 'tradevirus <id>', desc: 'Trade crafted malware on darknet exchange for BTC', category: 'ECONOMY & ITEMS' },
+  { cmd: 'sell <item> <qty> / sell <item> all', desc: 'Sell commodities from stash at current market price', category: 'ECONOMY & ITEMS' },
   { cmd: 'shop / hardware / rig', desc: 'Legacy aliases → opens the unified Market Hub', category: 'ECONOMY & ITEMS' },
 
   // --- MORALITY ---

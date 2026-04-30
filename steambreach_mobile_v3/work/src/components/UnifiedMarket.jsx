@@ -189,21 +189,26 @@ function CommodityRow({id,data,price,qty,onBuy,onSell,money}){
       {/* Quantity input */}
       <div style={{display:'flex',flexDirection:'column',gap:'3px',alignItems:'center'}}>
         <div style={{color:C.dim,fontSize:'10px',letterSpacing:'1px'}}>QTY</div>
-        <input
-          type="number" min="1" max={Math.max(qty,999)} value={amount}
-          onChange={e=>{
-            const v=parseInt(e.target.value)||1;
-            setAmount(Math.max(1,v));
-          }}
-          style={{width:'52px',background:'#0a0d12',border:`1px solid ${C.bdr}`,
-            color:C.text,fontFamily:'inherit',fontSize:'13px',padding:'4px 6px',
-            borderRadius:'2px',textAlign:'center',outline:'none'}}
-        />
+        <div style={{display:'flex',alignItems:'center',border:`1px solid ${C.bdr}`,borderRadius:'2px',overflow:'hidden'}}>
+          <button onClick={()=>setAmount(a=>Math.max(1,a-1))}
+            style={{background:'transparent',border:'none',color:C.dim,fontSize:'14px',
+              padding:'4px 7px',cursor:'pointer',fontFamily:'inherit',lineHeight:1}}>−</button>
+          <input
+            type="text" inputMode="numeric" value={amount}
+            onChange={e=>{const v=parseInt(e.target.value)||1;setAmount(Math.max(1,v));}}
+            style={{width:'34px',background:'#0a0d12',border:'none',borderLeft:`1px solid ${C.bdr}`,
+              borderRight:`1px solid ${C.bdr}`,color:C.text,fontFamily:'inherit',fontSize:'12px',
+              padding:'4px 0',textAlign:'center',outline:'none'}}
+          />
+          <button onClick={()=>setAmount(a=>a+1)}
+            style={{background:'transparent',border:'none',color:C.dim,fontSize:'14px',
+              padding:'4px 7px',cursor:'pointer',fontFamily:'inherit',lineHeight:1}}>+</button>
+        </div>
         {qty>0&&(
           <button onClick={()=>setAmount(qty)}
             style={{background:'transparent',border:`1px solid ${C.bdr}`,color:C.dim,
               fontSize:'9px',padding:'2px 6px',cursor:'pointer',borderRadius:'2px',
-              fontFamily:'inherit',letterSpacing:'1px',width:'52px'}}>ALL</button>
+              fontFamily:'inherit',letterSpacing:'1px',width:'100%'}}>ALL</button>
         )}
       </div>
       <div style={{display:'flex',flexDirection:'column',gap:'3px'}}>

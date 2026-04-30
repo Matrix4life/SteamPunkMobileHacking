@@ -357,3 +357,30 @@ export function setMusicVolume(val) {
 export function isMusicPlaying() {
   return musicAudio && !musicAudio.paused;
 }
+
+// ── Background music player ─────────────────────────────────────
+let _musicAudio   = null;
+let _musicVolume  = 0.35;
+
+export function playMusic() {
+  const url = _soundMap['bgMusic']?.url;
+  if (!url || !enabled) return;
+  stopMusic();
+  _musicAudio = new Audio(url);
+  _musicAudio.loop   = true;
+  _musicAudio.volume = _musicVolume;
+  _musicAudio.play().catch(() => {});
+}
+
+export function stopMusic() {
+  if (_musicAudio) {
+    _musicAudio.pause();
+    _musicAudio.currentTime = 0;
+    _musicAudio = null;
+  }
+}
+
+export function setMusicVolume(val) {
+  _musicVolume = Math.max(0, Math.min(1, val));
+  if (_musicAudio) _musicAudio.volume = _musicVolume;
+}

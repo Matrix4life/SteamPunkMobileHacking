@@ -334,41 +334,21 @@ export function playContractDone() {
     osc('sine',65,t+.26,.28,.19); nf('highpass',3000,1,t+.26,.16,.09);
   });
 }
-let musicAudio = null;
-let musicVolume = 0.25;
-
-export function playMusic(url) {
-  stopMusic();
-  musicAudio = new Audio(url);
-  musicAudio.loop = true;
-  musicAudio.volume = musicVolume;
-  musicAudio.play().catch(() => {});
-}
-
-export function stopMusic() {
-  if (musicAudio) { musicAudio.pause(); musicAudio.currentTime = 0; musicAudio = null; }
-}
-
-export function setMusicVolume(val) {
-  musicVolume = Math.max(0, Math.min(1, val));
-  if (musicAudio) musicAudio.volume = musicVolume;
-}
-
-export function isMusicPlaying() {
-  return musicAudio && !musicAudio.paused;
-}
 
 // ── Background music player ─────────────────────────────────────
-let _musicAudio   = null;
-let _musicVolume  = 0.35;
+// Reads bgMusic URL from _soundMap — set by SoundManager after upload.
+// playMusic() silently does nothing if no track has been uploaded yet.
+
+let _musicAudio  = null;
+let _musicVolume = 0.35;
 
 export function playMusic() {
   const url = _soundMap['bgMusic']?.url;
   if (!url || !enabled) return;
   stopMusic();
-  _musicAudio = new Audio(url);
-  _musicAudio.loop   = true;
-  _musicAudio.volume = _musicVolume;
+  _musicAudio          = new Audio(url);
+  _musicAudio.loop     = true;
+  _musicAudio.volume   = _musicVolume;
   _musicAudio.play().catch(() => {});
 }
 
@@ -383,4 +363,8 @@ export function stopMusic() {
 export function setMusicVolume(val) {
   _musicVolume = Math.max(0, Math.min(1, val));
   if (_musicAudio) _musicAudio.volume = _musicVolume;
+}
+
+export function isMusicPlaying() {
+  return !!_musicAudio && !_musicAudio.paused;
 }

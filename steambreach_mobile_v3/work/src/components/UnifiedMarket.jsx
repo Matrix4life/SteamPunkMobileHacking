@@ -186,24 +186,16 @@ function CommodityRow({id,data,price,qty,onBuy,onSell,money}){
         <div style={{color:C.dim,fontSize:'13px'}}>STASH</div>
         <div style={{color:C.text,fontSize:'12px'}}>{qty}</div>
       </div>
-      {/* Quantity input */}
+     {/* Quantity input */}
       <div style={{display:'flex',flexDirection:'column',gap:'3px',alignItems:'center'}}>
         <div style={{color:C.dim,fontSize:'10px',letterSpacing:'1px'}}>QTY</div>
-        <div style={{display:'flex',alignItems:'center',border:`1px solid ${C.bdr}`,borderRadius:'2px',overflow:'hidden'}}>
-          <button onClick={()=>setAmount(a=>Math.max(1,a-1))}
-            style={{background:'transparent',border:'none',color:C.dim,fontSize:'14px',
-              padding:'4px 7px',cursor:'pointer',fontFamily:'inherit',lineHeight:1}}>−</button>
-          <input
-            type="text" inputMode="numeric" value={amount}
-            onChange={e=>{const v=parseInt(e.target.value)||1;setAmount(Math.max(1,v));}}
-            style={{width:'34px',background:'#0a0d12',border:'none',borderLeft:`1px solid ${C.bdr}`,
-              borderRight:`1px solid ${C.bdr}`,color:C.text,fontFamily:'inherit',fontSize:'12px',
-              padding:'4px 0',textAlign:'center',outline:'none'}}
-          />
-          <button onClick={()=>setAmount(a=>a+1)}
-            style={{background:'transparent',border:'none',color:C.dim,fontSize:'14px',
-              padding:'4px 7px',cursor:'pointer',fontFamily:'inherit',lineHeight:1}}>+</button>
-        </div>
+        <input
+          type="text" inputMode="numeric" value={amount}
+          onChange={e=>{const v=parseInt(e.target.value)||1;setAmount(Math.max(1,v));}}
+          style={{width:'48px',background:'#0a0d12',border:`1px solid ${C.bdr}`,
+            color:C.text,fontFamily:'inherit',fontSize:'12px',padding:'5px 6px',
+            borderRadius:'2px',textAlign:'center',outline:'none'}}
+        />
         {qty>0&&(
           <button onClick={()=>setAmount(qty)}
             style={{background:'transparent',border:`1px solid ${C.bdr}`,color:C.dim,

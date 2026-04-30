@@ -524,11 +524,10 @@ const generateStory = async (ip, orgData) => {
   const terminalEndRef = useRef(null);
   const inputRef = useRef(null);
         
-         // Add state:
-const [soundMap, setSoundMapState] = useState({});
 
-// Pass to soundEngine whenever it changes:
-useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
+
+
+
 useEffect(() => {
   if (screen !== 'game') return;
 

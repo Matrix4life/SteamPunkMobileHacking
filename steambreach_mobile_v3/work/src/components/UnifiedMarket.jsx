@@ -164,9 +164,13 @@ function MarketRow({partId,price,qty,trend,ratio,onBuy,onBuyAndInstall,canAfford
 
 // ─── COMMODITY ROW ────────────────────────────────────────────
 function CommodityRow({id,data,price,qty,onBuy,onSell,money}){
-  const canBuy=money>=price;
-  const prevRatio=Math.round(price/data.base*100);
-  const trend=prevRatio>130?'up':prevRatio<70?'down':'flat';
+  const [amount, setAmount] = React.useState(1);
+  const canBuy = money >= price * amount;
+  const canSell = qty >= amount;
+  const prevRatio = Math.round(price/data.base*100);
+  const trend = prevRatio>130?'up':prevRatio<70?'down':'flat';
+  const maxSell = qty;
+
   return(
     <div style={{display:'flex',alignItems:'center',gap:'8px',padding:'8px',marginBottom:'3px',borderRadius:'3px',
       background:C.bgP,border:`1px solid ${C.bdr}`}}>
@@ -182,14 +186,34 @@ function CommodityRow({id,data,price,qty,onBuy,onSell,money}){
         <div style={{color:C.dim,fontSize:'13px'}}>STASH</div>
         <div style={{color:C.text,fontSize:'12px'}}>{qty}</div>
       </div>
+      {/* Quantity input */}
+      <div style={{display:'flex',flexDirection:'column',gap:'3px',alignItems:'center'}}>
+        <div style={{color:C.dim,fontSize:'10px',letterSpacing:'1px'}}>QTY</div>
+        <input
+          type="number" min="1" max={Math.max(qty,999)} value={amount}
+          onChange={e=>{
+            const v=parseInt(e.target.value)||1;
+            setAmount(Math.max(1,v));
+          }}
+          style={{width:'52px',background:'#0a0d12',border:`1px solid ${C.bdr}`,
+            color:C.text,fontFamily:'inherit',fontSize:'13px',padding:'4px 6px',
+            borderRadius:'2px',textAlign:'center',outline:'none'}}
+        />
+        {qty>0&&(
+          <button onClick={()=>setAmount(qty)}
+            style={{background:'transparent',border:`1px solid ${C.bdr}`,color:C.dim,
+              fontSize:'9px',padding:'2px 6px',cursor:'pointer',borderRadius:'2px',
+              fontFamily:'inherit',letterSpacing:'1px',width:'52px'}}>ALL</button>
+        )}
+      </div>
       <div style={{display:'flex',flexDirection:'column',gap:'3px'}}>
-        <button onClick={()=>onBuy(id,1)} disabled={!canBuy}
+        <button onClick={()=>onBuy(id,amount)} disabled={!canBuy}
           style={{background:canBuy?`${C.sec}20`:'transparent',border:`1px solid ${canBuy?C.sec:C.bdr}`,
             color:canBuy?C.sec:C.dim,fontSize:'13px',padding:'8px 14px',cursor:canBuy?'pointer':'default',
             borderRadius:'2px',fontFamily:'inherit'}}>BUY</button>
-        <button onClick={()=>onSell(id,1)} disabled={qty<1}
-          style={{background:qty>0?`${C.warn}20`:'transparent',border:`1px solid ${qty>0?C.warn:C.bdr}`,
-            color:qty>0?C.warn:C.dim,fontSize:'13px',padding:'8px 14px',cursor:qty>0?'pointer':'default',
+        <button onClick={()=>onSell(id,amount)} disabled={!canSell}
+          style={{background:canSell?`${C.warn}20`:'transparent',border:`1px solid ${canSell?C.warn:C.bdr}`,
+            color:canSell?C.warn:C.dim,fontSize:'13px',padding:'8px 14px',cursor:canSell?'pointer':'default',
             borderRadius:'2px',fontFamily:'inherit'}}>SELL</button>
       </div>
     </div>

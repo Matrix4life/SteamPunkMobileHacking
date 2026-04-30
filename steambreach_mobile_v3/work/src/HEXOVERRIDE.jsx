@@ -5501,11 +5501,11 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
       
 
       const menuItems = [
-        { id:'soundmanager', label:'AUDIO MANAGER',    sub:'Sounds, music, uploads',    color:C_I.pri, icon:'♪', onClick:()=>setScreen('soundmanager') },
-        { id:'aisettings',   label:'AI DIRECTOR',       sub:'Tune game AI & difficulty',  color:C_I.pri, icon:'◈', onClick:()=>setScreen('aisettings') },
-        { id:'newgame',      label:'NEW OPERATION',     sub:'Start clean. Fresh handle.', color:C_I.sec, icon:'▸', onClick:()=>{setMenuMode('newgame');setMenuIndex(0);setOperator('');} },
-        { id:'load',         label:'CONTINUE',          sub:`${saves.length} saved session${saves.length!==1?'s':''}`, color:C_I.pri, icon:'◉', disabled:saves.length===0, onClick:()=>{setMenuMode('load');setMenuIndex(0);} },
-        { id:'delete',       label:'DELETE SAVE',       sub:'Purge a session file',       color:C_I.dan, icon:'✕', disabled:saves.length===0, onClick:()=>{setMenuMode('delete');setMenuIndex(0);} },
+       { id:'soundmanager', label:'AUDIO MANAGER',    sub:'Sounds, music, uploads',    color:C_I.pri, icon:'♪', onClick:()=>{ playBlip(); setScreen('soundmanager'); } },
+{ id:'aisettings',   label:'AI DIRECTOR',       sub:'Tune game AI & difficulty',  color:C_I.pri, icon:'◈', onClick:()=>{ playBlip(); setScreen('aisettings'); } },
+{ id:'newgame',      label:'NEW OPERATION',     sub:'Start clean. Fresh handle.', color:C_I.sec, icon:'▸', onClick:()=>{ playBlip(); setMenuMode('newgame'); setMenuIndex(0); setOperator(''); } },
+{ id:'load',         label:'CONTINUE',          sub:`${saves.length} saved session${saves.length!==1?'s':''}`, color:C_I.pri, icon:'◉', disabled:saves.length===0, onClick:()=>{ playBlip(); setMenuMode('load'); setMenuIndex(0); } },
+{ id:'delete',       label:'DELETE SAVE',       sub:'Purge a session file',       color:C_I.dan, icon:'✕', disabled:saves.length===0, onClick:()=>{ playBlip(); setMenuMode('delete'); setMenuIndex(0); } },
       ];
 
       return (
@@ -5582,7 +5582,7 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
                   <input autoFocus style={{background:'transparent',border:'none',borderBottom:`1px solid ${C_I.pri}`,color:C_I.pri,outline:'none',fontFamily:'inherit',fontSize:14,padding:'4px 2px',width:'100%'}} placeholder="handle_" value={operator} onChange={e=>setOperator(e.target.value)} onKeyDown={e=>e.key==='Enter'&&operator.length>0&&startNewGame(operator,gameMode)}/>
                   <div style={{color:C_I.dim,fontSize:9,letterSpacing:2,marginTop:4}}>SELECT MODE</div>
                   <div style={{display:'flex',flexDirection:'column',gap:6}}>
-                    {introModes.map(m=>{const sel=gameMode===m.id;return(<div key={m.id} onClick={()=>setGameMode(m.id)} style={{border:`1px solid ${sel?m.color:C_I.border}`,background:sel?`${m.color}12`:'transparent',padding:'8px 12px',cursor:'pointer',transition:'all 0.12s',display:'flex',alignItems:'baseline',gap:8}}>
+                    {introModes.map(m=>{const sel=gameMode===m.id;return(<div key={m.id} onClick={()=>{ playBlip(); setGameMode(m.id); }} style={{border:`1px solid ${sel?m.color:C_I.border}`,background:sel?`${m.color}12`:'transparent',padding:'8px 12px',cursor:'pointer',transition:'all 0.12s',display:'flex',alignItems:'baseline',gap:8}}>
                       <span style={{color:sel?C_I.text:C_I.dim,fontSize:10,width:14}}>{sel?'▸':' '}</span>
                       <span style={{color:sel?C_I.text:C_I.dim,fontSize:11,letterSpacing:1.8,fontWeight:700,minWidth:80}}>{m.name}</span>
                       <span style={{color:m.color,fontSize:11,fontWeight:700}}>{m.mult}</span>
@@ -5590,8 +5590,8 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
                     </div>);})}
                   </div>
                   <div style={{display:'flex',gap:8,marginTop:'auto'}}>
-                    <button onClick={()=>{setMenuMode('main');setMenuIndex(0);}} style={{flex:1,padding:'10px',background:'transparent',border:`1px solid ${C_I.border}`,color:C_I.dim,fontFamily:'inherit',fontSize:11,cursor:'pointer',letterSpacing:1}}>← BACK</button>
-                    <button onClick={()=>operator.length>0&&startNewGame(operator,gameMode)} disabled={operator.length===0} style={{flex:2,padding:'10px',fontFamily:'inherit',fontSize:12,letterSpacing:2,fontWeight:700,cursor:operator.length>0?'pointer':'default',background:operator.length>0?C_I.pri:C_I.bgPanel,color:operator.length>0?C_I.bg:C_I.dim,border:`1px solid ${operator.length>0?C_I.pri:C_I.border}`,opacity:operator.length>0?1:0.4,transition:'all 0.15s'}}>BREACH IN →</button>
+                    <button onClick={()=>{ playBlip(); setMenuMode('main'); setMenuIndex(0); }} style={{flex:1,padding:'10px',background:'transparent',border:`1px solid ${C_I.border}`,color:C_I.dim,fontFamily:'inherit',fontSize:11,cursor:'pointer',letterSpacing:1}}>← BACK</button>
+                    <button onClick={()=>{ if(operator.length>0){ playBlip(); startNewGame(operator,gameMode); } }} disabled={operator.length===0} style={{flex:2,padding:'10px',fontFamily:'inherit',fontSize:12,letterSpacing:2,fontWeight:700,cursor:operator.length>0?'pointer':'default',background:operator.length>0?C_I.pri:C_I.bgPanel,color:operator.length>0?C_I.bg:C_I.dim,border:`1px solid ${operator.length>0?C_I.pri:C_I.border}`,opacity:operator.length>0?1:0.4,transition:'all 0.15s'}}>BREACH IN →</button>
                   </div>
                   <div style={{color:C_I.dimmer,fontSize:9,textAlign:'center'}}>[ENTER] START · [ESC] CANCEL</div>
                 </div>

@@ -15,7 +15,9 @@ import {
   playHeatSpike,
   playBeacon,
   playDestroy,
-  playBlip
+  playBlip,
+  playMusic,
+  stopMusic,
 } from './audio/soundEngine';
 
 // Sound + haptic wrappers (haptics no-op on desktop)
@@ -527,7 +529,15 @@ const generateStory = async (ip, orgData) => {
 
 
 
-
+// ── Music: start on game entry, stop when leaving ──
+  useEffect(() => {
+    if (screen === 'game') {
+      playMusic();
+    } else {
+      stopMusic();
+    }
+  }, [screen]);
+  
 useEffect(() => {
   if (screen !== 'game') return;
 

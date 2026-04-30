@@ -141,7 +141,7 @@ const COMMODITIES = {
   // --- Mid-tier intel ---
   bank_records:   { name: 'Bank Records',     base: 400,   vol: 200,   tier: 2 },
   corp_intel:     { name: 'Corp Intel',       base: 800,   vol: 400,   tier: 2 },
-  botnets:        { name: 'Botnet Access',    base: 300,   vol: 200,   tier: 2 },
+  botnets:        { name: 'Botnet Access',    base: 60,    vol: 30,    tier: 1 },
   // --- High-tier ---
   trade_secrets:  { name: 'Trade Secrets',    base: 2000,  vol: 1000,  tier: 3 },
   exploits:       { name: 'Exploit Kits',     base: 1500,  vol: 800,   tier: 3 },

@@ -164,9 +164,9 @@ function MarketRow({partId,price,qty,trend,ratio,onBuy,onBuyAndInstall,canAfford
 
 // ─── COMMODITY ROW ────────────────────────────────────────────
 function CommodityRow({id,data,price,qty,onBuy,onSell,money}){
-  const [amount, setAmount] = React.useState(1);
-  const canBuy = money >= price * amount;
-  const canSell = qty >= amount;
+  const parsedAmt = Math.max(1, parseInt(amount) || 1);
+      const canBuy = money >= price * parsedAmt;
+      const canSell = qty >= parsedAmt;
   const prevRatio = Math.round(price/data.base*100);
   const trend = prevRatio>130?'up':prevRatio<70?'down':'flat';
   const maxSell = qty;

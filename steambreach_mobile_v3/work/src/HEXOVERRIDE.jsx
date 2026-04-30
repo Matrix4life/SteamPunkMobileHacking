@@ -2803,7 +2803,7 @@ creds: async () => {
           setTerminal(prev => [...prev, { type: 'out', text: `[*] Initiating encrypted SOCKS5 transfer...`, isNew: false }]);
           await new Promise(r => setTimeout(r, 2000));
           
-          const drop = getExfilDrop(orgType, sec);
+          const drop = getExfilDrop(orgType, sec, fileName);
           const primaryItem = COMMODITIES[drop.primary.key];
           const primaryValue = (marketPrices[drop.primary.key] || primaryItem?.base || 0) * drop.primary.qty;
           setStash(prev => {

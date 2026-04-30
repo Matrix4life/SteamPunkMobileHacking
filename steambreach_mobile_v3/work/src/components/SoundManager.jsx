@@ -14,6 +14,7 @@ import {
 // SOUND SLOTS — id must match the key used in soundEngine play(id,…)
 // ─────────────────────────────────────────────────────────────────
 const SOUND_SLOTS = [
+  { id: 'bgMusic', label: 'BACKGROUND MUSIC', desc: 'Loops during gameplay', icon: '♫', fn: null },
   { id: 'nmap',         label: 'NMAP SCAN',            desc: 'nmap, nmap <ip>, wardrive',                   icon: '◎', fn: playNmap },
   { id: 'breach',       label: 'BREACH',               desc: 'hydra, sqlmap, msfconsole, curl',             icon: '⚡', fn: playBreach },
   { id: 'social',       label: 'SOCIAL VECTOR',        desc: 'spearphish connect, ettercap intercept',      icon: '◈', fn: playSocial },

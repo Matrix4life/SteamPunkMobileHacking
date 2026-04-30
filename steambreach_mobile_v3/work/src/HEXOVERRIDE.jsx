@@ -15,9 +15,7 @@ import {
   playHeatSpike,
   playBeacon,
   playDestroy,
-  playBlip,
-  playMusic,
-  stopMusic,
+  playBlip
 } from './audio/soundEngine';
 
 // Sound + haptic wrappers (haptics no-op on desktop)
@@ -526,18 +524,11 @@ const generateStory = async (ip, orgData) => {
   const terminalEndRef = useRef(null);
   const inputRef = useRef(null);
         
+         // Add state:
+const [soundMap, setSoundMapState] = useState({});
 
-
-
-// ── Music: start on game entry, stop when leaving ──
-  useEffect(() => {
-    if (screen === 'game') {
-      playMusic();
-    } else {
-      stopMusic();
-    }
-  }, [screen]);
-  
+// Pass to soundEngine whenever it changes:
+useEffect(() => { setSoundMap(soundMap); }, [soundMap]);
 useEffect(() => {
   if (screen !== 'game') return;
 
@@ -1764,10 +1755,40 @@ const verifyContract = (ip, objectiveType) => {
   'voter_registration.db':   { key: 'classified_docs', qty: [1, 3] },
   'network_topology.xml':    { key: 'classified_docs', qty: [1, 2] },
   'drone_specs.zip':         { key: 'classified_docs', qty: [1, 2] },
-  'nsa_tools.tar':           { key: 'zerodays',        qty: [1, 2] },
-  'project_chimera.pdf':     { key: 'classified_docs', qty: [1, 2] },
-  'patient_records.db':      { key: 'medical_records', qty: [2, 5] },
-  'prescription_history.csv':{ key: 'medical_records', qty: [1, 3] },
+  'nsa_tools.tar':             { key: 'zerodays',        qty: [1, 2] },
+  'project_chimera.pdf':       { key: 'classified_docs', qty: [1, 2] },
+  'patient_records.db':        { key: 'medical_records', qty: [2, 5] },
+  'prescription_history.csv':  { key: 'medical_records', qty: [1, 3] },
+  // Military / classified payloads
+  'weaponized_payload_v2.bin': { key: 'zerodays',        qty: [1, 3] },
+  'cyberweapon_alpha.bin':     { key: 'zerodays',        qty: [1, 2] },
+  'exploit_framework.bin':     { key: 'exploits',        qty: [1, 2] },
+  'rootkit_bundle.bin':        { key: 'exploits',        qty: [1, 2] },
+  'zero_day_catalog.db':       { key: 'zerodays',        qty: [2, 4] },
+  'rendition_logs.db':         { key: 'classified_docs', qty: [1, 3] },
+  'echelon_intercepts.bin':    { key: 'classified_docs', qty: [1, 2] },
+  // Government extras
+  'vpn_credentials.txt':       { key: 'exploits',        qty: [1, 2] },
+  'informant_list.csv':        { key: 'classified_docs', qty: [1, 2] },
+  'witness_protection.db':     { key: 'classified_docs', qty: [1, 2] },
+  // Financial extras
+  'card_processing_data.bin':  { key: 'cc_dumps',        qty: [3, 8] },
+  'vip_offshore_accounts.sql': { key: 'bank_records',    qty: [2, 5] },
+  'cartel_routing_keys.pgp':   { key: 'bank_records',    qty: [1, 3] },
+  'hft_source.tar':            { key: 'trade_secrets',   qty: [1, 2] },
+  // Startup extras
+  'stripe_keys.json':          { key: 'exploits',        qty: [1, 2] },
+  'user_dump_2026.sql':        { key: 'personal_pii',    qty: [3, 7] },
+  // Corp extras
+  'board_minutes.pdf':         { key: 'corp_intel',      qty: [1, 2] },
+  'ci_secrets.env':            { key: 'exploits',        qty: [1, 2] },
+  // Personal extras
+  'passport_scans.zip':        { key: 'personal_pii',    qty: [2, 4] },
+  'bank_account_list.xlsx':    { key: 'bank_records',    qty: [1, 3] },
+  'seed_phrase.txt':           { key: 'bank_records',    qty: [1, 2] },
+  'crypto_wallet_backup.dat':  { key: 'bank_records',    qty: [1, 2] },
+  // Transaction logs
+  'transaction_log.csv':       { key: 'bank_records',    qty: [2, 5] },
 };
   const secMult = { low: 1, mid: 1.5, high: 2.5, elite: 5 }[sec] || 1;
   const baseName = fileName.split('/').pop();
@@ -2788,23 +2809,12 @@ creds: async () => {
           let rawData = contents[targetFile] || contents[arg1];
           if (!rawData) return `[-] exfil: ${arg1}: File not found`;
           const orgType = world[targetIP]?.org?.type || 'smallbiz';
-          const sec = world[targetIP]?.data?.sec || 'low';
-          const VALUABLE_FILES = {
-  personal:    ['credit_cards.dump','login_credentials.txt','ssn_database.csv','crypto_cold_wallet.dat','insurance_claims.xml','tax_return_2025.pdf'],
-  startup:     ['customer_database.sql','api_keys.env','source_code.tar','employee_records.csv'],
-  smallbiz:    ['customer_database.sql','credit_cards.dump','login_credentials.txt','employee_records.csv'],
-  corporation: ['source_code.tar','internal_emails.pst','customer_database.sql','trading_algorithms.zip','api_keys.env','trade_secrets.zip'],
-  government:  ['personnel_roster.db','classified_report.pdf','voter_registration.db','network_topology.xml','login_credentials.txt'],
-  military:    ['nsa_tools.tar','personnel_roster.db','drone_specs.zip','classified_report.pdf','network_topology.xml'],
-  financial:   ['swift_transactions.log','credit_cards.dump','account_statements.pdf','trading_algorithms.zip','customer_database.sql','crypto_cold_wallet.dat'],
-  classified:  ['nsa_tools.tar','drone_specs.zip','classified_report.pdf','personnel_roster.db','project_chimera.pdf'],
-  healthcare:  ['patient_records.db','prescription_history.csv','insurance_claims.xml','ssn_database.csv'],
-};
-          const validFiles = VALUABLE_FILES[orgType] || VALUABLE_FILES.smallbiz;
+          const sec = world[targetIP]?.sec || world[targetIP]?.data?.sec || 'low';
           const fileName = arg1.split('/').pop();
-          if (!validFiles.includes(fileName)) {
-            const hint = validFiles.slice(0, 3).join(', ');
-            return `[-] exfil: ${arg1}: No extractable market data.\n[*] Valuable files on ${orgType} nodes: ${hint}`;
+          // getExfilDrop is the single source of truth — if it has a mapping, it's exfiltrable
+          const testDrop = getExfilDrop(orgType, sec, fileName);
+          if (!testDrop?.primary?.key) {
+            return `[-] exfil: ${arg1}: No extractable market data.`;
           }
           const fileKey = `${targetIP}:${targetFile}`;
           if (looted.includes(fileKey)) return "[-] Already exfiltrated.";
@@ -3111,23 +3121,13 @@ return `[+] ${actionResult}\n[+] CHAOS +10`;
         if (!rawData) return `[-] stash: ${arg1}: File not found`;
 
         const orgType = world[targetIP]?.org?.type || 'smallbiz';
-        const sec = world[targetIP]?.data?.sec || 'low';
-        const VALUABLE_FILES = {
-            personal:    ['credit_cards.dump','login_credentials.txt','ssn_database.csv','passport_scans.zip','bank_account_list.xlsx','seed_phrase.txt','crypto_wallet_backup.dat'],
-            startup:     ['customer_database.sql','api_keys.env','source_code.tar','employee_records.csv','stripe_keys.json','user_dump_2026.sql'],
-            smallbiz:    ['customer_database.sql','card_processing_data.bin','login_credentials.txt','employee_records.csv','ssn_database.csv','transaction_log.csv'],
-            corporation: ['source_code.tar','internal_emails.pst','customer_database.sql','trading_algorithms.zip','api_keys.env','trade_secrets.zip','board_minutes.pdf','ci_secrets.env'],
-            government:  ['personnel_roster.db','classified_report.pdf','voter_registration.db','network_topology.xml','vpn_credentials.txt','informant_list.csv','witness_protection.db'],
-            military:    ['nsa_tools.tar','personnel_roster.db','drone_specs.zip','classified_report.pdf','network_topology.xml','weaponized_payload_v2.bin','zero_day_catalog.db'],
-            financial:   ['swift_transactions.log','card_processing_data.bin','account_statements.pdf','trading_algorithms.zip','customer_database.sql','vip_offshore_accounts.sql','cartel_routing_keys.pgp','hft_source.tar'],
-            classified:  ['nsa_tools.tar','drone_specs.zip','classified_report.pdf','personnel_roster.db','network_topology.xml','project_chimera.pdf','rendition_logs.db','echelon_intercepts.bin'],
-          };
-          const validFiles = VALUABLE_FILES[orgType] || VALUABLE_FILES.smallbiz;
-          const fileName = arg1.split('/').pop();
-          if (!validFiles.includes(fileName)) {
-            const hint = validFiles.slice(0, 3).join(', ');
-            return `[-] stash: ${arg1}: No extractable market data.\n[*] Valuable files on ${orgType} nodes: ${hint}`;
-          }
+        const sec = world[targetIP]?.sec || world[targetIP]?.data?.sec || 'low';
+        const fileName = arg1.split('/').pop();
+        // getExfilDrop is the single source of truth
+        const testDrop = getExfilDrop(orgType, sec, fileName);
+        if (!testDrop?.primary?.key) {
+          return `[-] stash: ${arg1}: No extractable market data.`;
+        }
 
         const fileKey = `${targetIP}:${targetFile}`;
         if (looted.includes(fileKey)) return "[-] Data already exfiltrated.";
@@ -3140,7 +3140,7 @@ return `[+] ${actionResult}\n[+] CHAOS +10`;
 
         await new Promise(r => setTimeout(r, 2500));
 
-        const drop = getExfilDrop(orgType, sec);
+        const drop = getExfilDrop(orgType, sec, fileName);
         const primaryItem = COMMODITIES[drop.primary.key];
         const primaryValue = (marketPrices[drop.primary.key] || primaryItem?.base || 0) * drop.primary.qty;
         setStash(prev => {
@@ -5511,11 +5511,11 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
       
 
       const menuItems = [
-       { id:'soundmanager', label:'AUDIO MANAGER',    sub:'Sounds, music, uploads',    color:C_I.pri, icon:'♪', onClick:()=>{ playBlip(); setScreen('soundmanager'); } },
-{ id:'aisettings',   label:'AI DIRECTOR',       sub:'Tune game AI & difficulty',  color:C_I.pri, icon:'◈', onClick:()=>{ playBlip(); setScreen('aisettings'); } },
-{ id:'newgame',      label:'NEW OPERATION',     sub:'Start clean. Fresh handle.', color:C_I.sec, icon:'▸', onClick:()=>{ playBlip(); setMenuMode('newgame'); setMenuIndex(0); setOperator(''); } },
-{ id:'load',         label:'CONTINUE',          sub:`${saves.length} saved session${saves.length!==1?'s':''}`, color:C_I.pri, icon:'◉', disabled:saves.length===0, onClick:()=>{ playBlip(); setMenuMode('load'); setMenuIndex(0); } },
-{ id:'delete',       label:'DELETE SAVE',       sub:'Purge a session file',       color:C_I.dan, icon:'✕', disabled:saves.length===0, onClick:()=>{ playBlip(); setMenuMode('delete'); setMenuIndex(0); } },
+        { id:'soundmanager', label:'AUDIO MANAGER',    sub:'Sounds, music, uploads',    color:C_I.pri, icon:'♪', onClick:()=>setScreen('soundmanager') },
+        { id:'aisettings',   label:'AI DIRECTOR',       sub:'Tune game AI & difficulty',  color:C_I.pri, icon:'◈', onClick:()=>setScreen('aisettings') },
+        { id:'newgame',      label:'NEW OPERATION',     sub:'Start clean. Fresh handle.', color:C_I.sec, icon:'▸', onClick:()=>{setMenuMode('newgame');setMenuIndex(0);setOperator('');} },
+        { id:'load',         label:'CONTINUE',          sub:`${saves.length} saved session${saves.length!==1?'s':''}`, color:C_I.pri, icon:'◉', disabled:saves.length===0, onClick:()=>{setMenuMode('load');setMenuIndex(0);} },
+        { id:'delete',       label:'DELETE SAVE',       sub:'Purge a session file',       color:C_I.dan, icon:'✕', disabled:saves.length===0, onClick:()=>{setMenuMode('delete');setMenuIndex(0);} },
       ];
 
       return (
@@ -5592,7 +5592,7 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
                   <input autoFocus style={{background:'transparent',border:'none',borderBottom:`1px solid ${C_I.pri}`,color:C_I.pri,outline:'none',fontFamily:'inherit',fontSize:14,padding:'4px 2px',width:'100%'}} placeholder="handle_" value={operator} onChange={e=>setOperator(e.target.value)} onKeyDown={e=>e.key==='Enter'&&operator.length>0&&startNewGame(operator,gameMode)}/>
                   <div style={{color:C_I.dim,fontSize:9,letterSpacing:2,marginTop:4}}>SELECT MODE</div>
                   <div style={{display:'flex',flexDirection:'column',gap:6}}>
-                    {introModes.map(m=>{const sel=gameMode===m.id;return(<div key={m.id} onClick={()=>{ playBlip(); setGameMode(m.id); }} style={{border:`1px solid ${sel?m.color:C_I.border}`,background:sel?`${m.color}12`:'transparent',padding:'8px 12px',cursor:'pointer',transition:'all 0.12s',display:'flex',alignItems:'baseline',gap:8}}>
+                    {introModes.map(m=>{const sel=gameMode===m.id;return(<div key={m.id} onClick={()=>setGameMode(m.id)} style={{border:`1px solid ${sel?m.color:C_I.border}`,background:sel?`${m.color}12`:'transparent',padding:'8px 12px',cursor:'pointer',transition:'all 0.12s',display:'flex',alignItems:'baseline',gap:8}}>
                       <span style={{color:sel?C_I.text:C_I.dim,fontSize:10,width:14}}>{sel?'▸':' '}</span>
                       <span style={{color:sel?C_I.text:C_I.dim,fontSize:11,letterSpacing:1.8,fontWeight:700,minWidth:80}}>{m.name}</span>
                       <span style={{color:m.color,fontSize:11,fontWeight:700}}>{m.mult}</span>
@@ -5600,8 +5600,8 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
                     </div>);})}
                   </div>
                   <div style={{display:'flex',gap:8,marginTop:'auto'}}>
-                    <button onClick={()=>{ playBlip(); setMenuMode('main'); setMenuIndex(0); }} style={{flex:1,padding:'10px',background:'transparent',border:`1px solid ${C_I.border}`,color:C_I.dim,fontFamily:'inherit',fontSize:11,cursor:'pointer',letterSpacing:1}}>← BACK</button>
-                    <button onClick={()=>{ if(operator.length>0){ playBlip(); startNewGame(operator,gameMode); } }} disabled={operator.length===0} style={{flex:2,padding:'10px',fontFamily:'inherit',fontSize:12,letterSpacing:2,fontWeight:700,cursor:operator.length>0?'pointer':'default',background:operator.length>0?C_I.pri:C_I.bgPanel,color:operator.length>0?C_I.bg:C_I.dim,border:`1px solid ${operator.length>0?C_I.pri:C_I.border}`,opacity:operator.length>0?1:0.4,transition:'all 0.15s'}}>BREACH IN →</button>
+                    <button onClick={()=>{setMenuMode('main');setMenuIndex(0);}} style={{flex:1,padding:'10px',background:'transparent',border:`1px solid ${C_I.border}`,color:C_I.dim,fontFamily:'inherit',fontSize:11,cursor:'pointer',letterSpacing:1}}>← BACK</button>
+                    <button onClick={()=>operator.length>0&&startNewGame(operator,gameMode)} disabled={operator.length===0} style={{flex:2,padding:'10px',fontFamily:'inherit',fontSize:12,letterSpacing:2,fontWeight:700,cursor:operator.length>0?'pointer':'default',background:operator.length>0?C_I.pri:C_I.bgPanel,color:operator.length>0?C_I.bg:C_I.dim,border:`1px solid ${operator.length>0?C_I.pri:C_I.border}`,opacity:operator.length>0?1:0.4,transition:'all 0.15s'}}>BREACH IN →</button>
                   </div>
                   <div style={{color:C_I.dimmer,fontSize:9,textAlign:'center'}}>[ENTER] START · [ESC] CANCEL</div>
                 </div>

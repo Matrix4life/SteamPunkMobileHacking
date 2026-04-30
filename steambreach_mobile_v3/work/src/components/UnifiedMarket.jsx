@@ -191,8 +191,9 @@ function CommodityRow({id,data,price,qty,onBuy,onSell,money}){
         <div style={{color:C.dim,fontSize:'10px',letterSpacing:'1px'}}>QTY</div>
         <input
           type="text" inputMode="numeric" value={amount}
-         onChange={e=>{const v=parseInt(e.target.value)||1;setAmount(Math.max(1,v));}}
+          onChange={e=>setAmount(e.target.value)}
           onFocus={e=>e.target.select()}
+          onBlur={e=>{const v=parseInt(e.target.value);setAmount(isNaN(v)||v<1?1:v);}}
           style={{width:'48px',background:'#0a0d12',border:`1px solid ${C.bdr}`,
             color:C.text,fontFamily:'inherit',fontSize:'12px',padding:'5px 6px',
             borderRadius:'2px',textAlign:'center',outline:'none'}}

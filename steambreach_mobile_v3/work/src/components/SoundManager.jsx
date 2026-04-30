@@ -6,6 +6,7 @@ import {
   playNmap, playBreach, playSocial, playTunnel, playDisconnect,
   playStealth, playMiner, playMinerTick, playDump, playWipe,
   playSniff, playAlarm, playZeroDay, playContractDone,
+  setMusicVolume,
 } from '../audio/soundEngine';
 
 // ─── Supabase config ────────────────────────────────────────────
@@ -251,6 +252,12 @@ const SoundManager = ({ returnToGame }) => {
               onChange={e => setVol(parseFloat(e.target.value))}
               style={{ width:'70px', accentColor:C.primary, cursor:'pointer' }} />
             <span style={{ color:C.primary, fontSize:'10px', width:'28px' }}>{Math.round(volume*100)}%</span>
+          </div>
+          <div style={{ display:'flex', alignItems:'center', gap:'7px' }}>
+            <span style={{ color:C.textDim, fontSize:'10px', letterSpacing:'1px' }}>MUSIC VOL</span>
+            <input type="range" min="0" max="1" step="0.05" defaultValue="0.35"
+              onChange={e => setMusicVolume(parseFloat(e.target.value))}
+              style={{ width:'70px', accentColor:C.primary, cursor:'pointer' }} />
           </div>
           {/* Bulk */}
           <button onClick={() => { fileRef.current.multiple = true; slotPend.current = '__bulk__'; fileRef.current.click(); }}

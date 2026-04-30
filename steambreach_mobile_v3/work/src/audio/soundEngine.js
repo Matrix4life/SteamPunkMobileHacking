@@ -334,3 +334,26 @@ export function playContractDone() {
     osc('sine',65,t+.26,.28,.19); nf('highpass',3000,1,t+.26,.16,.09);
   });
 }
+let musicAudio = null;
+let musicVolume = 0.25;
+
+export function playMusic(url) {
+  stopMusic();
+  musicAudio = new Audio(url);
+  musicAudio.loop = true;
+  musicAudio.volume = musicVolume;
+  musicAudio.play().catch(() => {});
+}
+
+export function stopMusic() {
+  if (musicAudio) { musicAudio.pause(); musicAudio.currentTime = 0; musicAudio = null; }
+}
+
+export function setMusicVolume(val) {
+  musicVolume = Math.max(0, Math.min(1, val));
+  if (musicAudio) musicAudio.volume = musicVolume;
+}
+
+export function isMusicPlaying() {
+  return musicAudio && !musicAudio.paused;
+}

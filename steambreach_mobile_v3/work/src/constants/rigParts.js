@@ -208,7 +208,7 @@ export const COMMODITIES = {
   medical_records:{ name:'Medical Records',    desc:'Patient data and histories',   base:150,   vol:80    },
   bank_records:   { name:'Bank Records',       desc:'Account and routing data',     base:400,   vol:200   },
   corp_intel:     { name:'Corp Intel',         desc:'Internal corporate documents', base:800,   vol:400   },
-  botnets:        { name:'Botnet Access',      desc:'Zombie net rentals',           base:300,   vol:200   },
+  botnets:        { name:'Botnet Access',      desc:'Zombie net rentals',           base:60,    vol:30    },
   trade_secrets:  { name:'Trade Secrets',      desc:'Proprietary IP and R&D',       base:2000,  vol:1000  },
   exploits:       { name:'Exploit Kits',       desc:'Pre-packaged vuln tools',      base:1500,  vol:800   },
   classified_docs:{ name:'Classified Docs',    desc:'Government/military intel',    base:5000,  vol:2500  },

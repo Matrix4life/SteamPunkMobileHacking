@@ -4715,6 +4715,7 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
               const newNode = generateNewTarget('mid', null, directorRef.current?.modifiers);
               newNode.data.region = currentRegion;
               newNode.data.org = { orgName: t.org, type: 'government', industry: 'Corporate', employees: [] };
+              newNode.data.wifiSpawned = true;
               setWorld(prev => ({ ...prev, [t.ip]: newNode.data }));
             }
           });

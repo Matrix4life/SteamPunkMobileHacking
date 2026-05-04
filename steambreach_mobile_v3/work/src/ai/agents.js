@@ -821,7 +821,7 @@ export const generateWiFiContract = (wifiNetwork, currentRep, directorModifiers 
     targetBssid: wifiNetwork.bssid,
     targetName: `${wifiNetwork.essid} Network`,
     desc: contractDef.desc,
-    briefing: `[FIXER] Got a wireless job for you. Target is ${wifiNetwork.essid}. ${wifiNetwork.enc} encryption, ${wifiNetwork.clients} active clients. ${wifiNetwork.target ? 'High-value corporate network - big payday if you can get inside.' : 'Standard residential network.'}`,
+    briefing: `[FIXER] Got a wireless job for you. Target is ${wifiNetwork.essid}. ${wifiNetwork.enc} encryption, ${wifiNetwork.clients?.length || 0} active clients. ${wifiNetwork.target ? 'High-value corporate network - big payday if you can get inside.' : 'Standard residential network.'}`,
     objectives: objectives,
     reward: reward,
     repReward: repReward,

@@ -580,7 +580,7 @@ useEffect(() => {
       } else if (screen === 'hardware' || screen === 'shop' || screen === 'market' || screen === 'contracts' || screen === 'sounds') {
         setScreen('game');
       } else if (screen === 'soundmanager' || screen === 'aisettings') {
-        setScreen('intro');
+        setScreen('intro'); setMenuMode('options');
       } else if (screen === 'intro') {
         if (menuMode !== 'main') { setMenuMode('main'); setMenuIndex(0); setDeleteTarget(null); }
         else { return; /* let browser handle — actually exit */ }
@@ -739,7 +739,21 @@ useEffect(() => {
     const handleKeyDown = (e) => {
       const saves = getAllSaveSlots();
       
-      if (menuMode === 'main') {
+      if (menuMode === 'options') {
+        const maxIdx = saves.length > 0 ? 3 : 2;
+        if (e.key === 'ArrowDown') setMenuIndex(prev => Math.min(prev + 1, maxIdx));
+        if (e.key === 'ArrowUp') setMenuIndex(prev => Math.max(prev - 1, 0));
+        if (e.key === 'Escape') { setMenuMode('main'); setMenuIndex(0); }
+        if (e.key === 'Enter') {
+          const opts = ['soundmanager','aisettings','delete','back'];
+          const chosen = opts[menuIndex];
+          if (chosen === 'soundmanager') { playBlip(); setScreen('soundmanager'); }
+          else if (chosen === 'aisettings') { playBlip(); setScreen('aisettings'); }
+          else if (chosen === 'delete') { playBlip(); setMenuMode('delete'); setMenuIndex(0); }
+          else { playBlip(); setMenuMode('main'); setMenuIndex(0); }
+        }
+      }
+      else if (menuMode === 'main') {
         const maxIdx = saves.length > 0 ? 2 : 0;
         if (e.key === 'ArrowDown') setMenuIndex(prev => Math.min(prev + 1, maxIdx));
         if (e.key === 'ArrowUp') setMenuIndex(prev => Math.max(prev - 1, 0));
@@ -5510,12 +5524,15 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
       useEffect(() => { const ro=new ResizeObserver(es=>{const r=es[0].contentRect;setDims({w:r.width,h:r.height});}); ro.observe(document.documentElement); return()=>ro.disconnect(); },[]);
       
 
-      const menuItems = [
-        { id:'soundmanager', label:'AUDIO MANAGER',    sub:'Sounds, music, uploads',    color:C_I.pri, icon:'♪', onClick:()=>setScreen('soundmanager') },
-        { id:'aisettings',   label:'AI DIRECTOR',       sub:'Tune game AI & difficulty',  color:C_I.pri, icon:'◈', onClick:()=>setScreen('aisettings') },
-        { id:'newgame',      label:'NEW OPERATION',     sub:'Start clean. Fresh handle.', color:C_I.sec, icon:'▸', onClick:()=>{setMenuMode('newgame');setMenuIndex(0);setOperator('');} },
-        { id:'load',         label:'CONTINUE',          sub:`${saves.length} saved session${saves.length!==1?'s':''}`, color:C_I.pri, icon:'◉', disabled:saves.length===0, onClick:()=>{setMenuMode('load');setMenuIndex(0);} },
-        { id:'delete',       label:'DELETE SAVE',       sub:'Purge a session file',       color:C_I.dan, icon:'✕', disabled:saves.length===0, onClick:()=>{setMenuMode('delete');setMenuIndex(0);} },
+      const menuItems = menuMode === 'options' ? [
+        { id:'soundmanager', label:'AUDIO MANAGER', sub:'Sounds, music, uploads',    color:C_I.pri, icon:'♪', onClick:()=>{ playBlip(); setScreen('soundmanager'); } },
+        { id:'aisettings',   label:'AI DIRECTOR',   sub:'Tune game AI & difficulty', color:C_I.pri, icon:'◈', onClick:()=>{ playBlip(); setScreen('aisettings'); } },
+        { id:'delete',       label:'DELETE SAVE',   sub:'Purge a session file',      color:C_I.dan, icon:'✕', disabled:saves.length===0, onClick:()=>{ playBlip(); setMenuMode('delete'); setMenuIndex(0); } },
+        { id:'back',         label:'← BACK',        sub:'Return to main menu',       color:C_I.dim, icon:'◂', onClick:()=>{ playBlip(); setMenuMode('main'); setMenuIndex(0); } },
+      ] : [
+        { id:'newgame',  label:'NEW OPERATION', sub:'Start clean. Fresh handle.',                                  color:C_I.sec, icon:'▸', onClick:()=>{ playBlip(); setMenuMode('newgame'); setMenuIndex(0); setOperator(''); } },
+        { id:'load',     label:'CONTINUE',      sub:`${saves.length} saved session${saves.length!==1?'s':''}`,    color:C_I.pri, icon:'◉', disabled:saves.length===0, onClick:()=>{ playBlip(); setMenuMode('load'); setMenuIndex(0); } },
+        { id:'options',  label:'OPTIONS',        sub:'Audio, AI director, delete save',                            color:C_I.pri, icon:'◧', onClick:()=>{ playBlip(); setMenuMode('options'); setMenuIndex(0); } },
       ];
 
       return (
@@ -5571,7 +5588,7 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
                 );
               })()}
               {/* Main menu */}
-              {menuMode==='main'&&(
+              {(menuMode==='main'||menuMode==='options')&&(
                 <div style={{border:`1px solid ${C_I.pri}55`,background:'rgba(10,13,18,0.82)',padding:'10px 0',opacity:1,flex:1}}>
                   <div style={{padding:'0 14px 8px',color:C_I.dim,fontSize:9,letterSpacing:2,borderBottom:`1px dashed ${C_I.border}`,marginBottom:6}}>┌─ SESSION ──── select to continue ─</div>
                   {menuItems.map(item=>{

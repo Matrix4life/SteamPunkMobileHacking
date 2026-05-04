@@ -22,6 +22,7 @@ const COLORS = {
   elite: '#ff6188',
   border: '#2d2a2e',
   borderActive: '#403e41',
+  wifi: '#4ecdc4',
 };
 
 // ==========================================

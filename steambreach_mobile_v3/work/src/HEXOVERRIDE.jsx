@@ -168,6 +168,8 @@ const HEXOVERRIDE = () => {
     pwd: null,         // Cracked password
     connected: false,  // Connected to target network
     targetBssid: null, // Currently targeted network
+    connectedBssid: null, // BSSID of the network we're actually ON
+    subnetIndex: 0,    // Increments per new WiFi connection for unique IPs
   });
   
   // Dynamic WiFi networks (replaces static WIFI_NETS)
@@ -837,7 +839,7 @@ useEffect(() => {
     setHeat(data.heat || 0);
     setMorality(data.morality || { chaos: 0, signal: 0 });
     setPendingInteraction(data.pendingInteraction || null);
-    setWifiState(data.wifiState || { mon: false, scanned: false, focused: false, capFile: false, hshake: false, cracked: false, pwd: null, connected: false, targetBssid: null });
+    setWifiState(data.wifiState || { mon: false, scanned: false, focused: false, capFile: false, hshake: false, cracked: false, pwd: null, connected: false, targetBssid: null, connectedBssid: null, subnetIndex: 0 });
     setRivals((data.rivals || []).map(ensureRivalStash));
     setZeroDays(data.zeroDays || []);
     setRivalRaidCooldowns(data.rivalRaidCooldowns || {});
@@ -922,7 +924,7 @@ setVirusScans(data.virusScans || {});
     setWantedTier('COLD'); setWalletFrozen(false); lastWantedTier.current = 'COLD';
     setMorality({ chaos: 0, signal: 0 });
     setPendingInteraction(null);
-    setWifiState({ mon: false, scanned: false, focused: false, capFile: false, hshake: false, cracked: false, pwd: null, connected: false, targetBssid: null });
+    setWifiState({ mon: false, scanned: false, focused: false, capFile: false, hshake: false, cracked: false, pwd: null, connected: false, targetBssid: null, connectedBssid: null, subnetIndex: 0 });
     setRivals([]); setZeroDays([]);
     setRivalRaidCooldowns({});
     setVirusFragments({
@@ -4690,16 +4692,23 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
         if (!isOpen && !wifiState.cracked) { 
           return `[!] No cracked password available.\n[*] For encrypted networks: Run the full attack chain first.\n[*] For OPEN networks: Select with 'airodump-ng <network_name>' then 'nmcli'`;
         }
-        if (wifiState.connected) { 
-          return `[*] Already connected to ${targetName} (10.0.0.187)\n[*] Gateway: 10.0.0.1\n[*] Internal hosts are accessible via nmap.`; 
+        if (wifiState.connected && wifiState.connectedBssid === currentTarget?.bssid) { 
+          const sub = wifiState.subnetIndex;
+          return `[*] Already connected to ${targetName} (10.0.${sub}.187)\n[*] Gateway: 10.0.${sub}.1\n[*] Internal hosts are accessible via nmap.`; 
+        }
+        // If connected to a DIFFERENT network, reset wifi chain but keep subnetIndex
+        if (wifiState.connected && wifiState.connectedBssid !== currentTarget?.bssid) {
+          setWifiState(prev => ({ ...prev, connected: false, connectedBssid: null, hshake: false, capFile: false, focused: false }));
         }
 
+        const nextSubnet = wifiState.connected ? wifiState.subnetIndex + 1 : wifiState.subnetIndex;
         const spawnInternalNodes = () => {
           const orgName = currentTarget?.linkedOrg || currentTarget?.essid || 'WiFi-Network';
+          const sub = nextSubnet;
           const newTargets = [
-            { ip: '10.0.0.20', org: `${orgName} File Server` },
-            { ip: '10.0.0.30', org: `${orgName} Database` },
-            { ip: '10.0.0.50', org: `${orgName} Domain Controller` },
+            { ip: `10.0.${sub}.20`, org: `${orgName} File Server` },
+            { ip: `10.0.${sub}.30`, org: `${orgName} Database` },
+            { ip: `10.0.${sub}.50`, org: `${orgName} Domain Controller` },
           ];
           newTargets.forEach(t => {
             if (!world[t.ip]) {
@@ -4717,12 +4726,12 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
           const connectMsg = isOpen ? `[*] Connecting to OPEN network ${targetName}...` : `[*] ARCADE MODE — Auto-connecting to ${targetName}...`;
           setTerminal(prev => [...prev, { type: 'out', text: connectMsg, isNew: true }]);
           await new Promise(r => setTimeout(r, 1500));
-          setWifiState(prev => ({ ...prev, connected: true }));
+          setWifiState(prev => ({ ...prev, connected: true, connectedBssid: currentTarget?.bssid, subnetIndex: nextSubnet }));
           spawnInternalNodes();
           setIsProcessing(false);
           playSuccess();
           const contractMsg = verifyContract(null, 'connect');
-          return `[+] Connected to ${targetName}!\n[+] IP: 10.0.0.187 | Gateway: 10.0.0.1\n\n[!] New targets added to network map:\n    • 10.0.0.20 — File Server\n    • 10.0.0.30 — Database Server\n    • 10.0.0.50 — Domain Controller\n\n[*] Run 'nmap' to scan internal network${contractMsg}`;
+          return `[+] Connected to ${targetName}!\n[+] IP: 10.0.${nextSubnet}.187 | Gateway: 10.0.${nextSubnet}.1\n\n[!] New targets added to network map:\n    • 10.0.${nextSubnet}.20 — File Server\n    • 10.0.${nextSubnet}.30 — Database Server\n    • 10.0.${nextSubnet}.50 — Domain Controller\n\n[*] Run 'nmap' to scan internal network${contractMsg}`;
         }
 
         // ═══ FIELD MODE: Requires connect flag ═══
@@ -4731,12 +4740,12 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
           setIsProcessing(true);
           setTerminal(prev => [...prev, { type: 'out', text: `[*] Connecting to ${targetName}...`, isNew: true }]);
           await new Promise(r => setTimeout(r, 1500));
-          setWifiState(prev => ({ ...prev, connected: true }));
+          setWifiState(prev => ({ ...prev, connected: true, connectedBssid: currentTarget?.bssid, subnetIndex: nextSubnet }));
           spawnInternalNodes();
           setIsProcessing(false);
           playSuccess();
           const contractMsg = verifyContract(null, 'connect');
-          return `[+] Connected to ${targetName}!\n[+] IP: 10.0.0.187\n\n[!] New targets:\n    • 10.0.0.20 — File Server\n    • 10.0.0.30 — Database\n    • 10.0.0.50 — Domain Controller${contractMsg}`;
+          return `[+] Connected to ${targetName}!\n[+] IP: 10.0.${nextSubnet}.187\n\n[!] New targets:\n    • 10.0.${nextSubnet}.20 — File Server\n    • 10.0.${nextSubnet}.30 — Database\n    • 10.0.${nextSubnet}.50 — Domain Controller${contractMsg}`;
         }
 
         // ═══ OPERATOR MODE: Full syntax required ═══
@@ -4757,12 +4766,12 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
           setIsProcessing(true);
           setTerminal(prev => [...prev, { type: 'out', text: `[*] Connecting to OPEN network ${ssid}...`, isNew: true }]);
           await new Promise(r => setTimeout(r, 1500));
-          setWifiState(prev => ({ ...prev, connected: true, targetBssid: selectedNet?.bssid }));
+          setWifiState(prev => ({ ...prev, connected: true, connectedBssid: selectedNet?.bssid, targetBssid: selectedNet?.bssid, subnetIndex: nextSubnet }));
           spawnInternalNodes();
           setIsProcessing(false);
           playSuccess();
           const contractMsg = verifyContract(null, 'connect');
-          return `\n  [+] Associating with AP... ✓\n  [+] Obtaining IP via DHCP... ✓\n\n  ╔════════════════════════════════════════╗\n  ║     CONNECTED TO ${ssid.toUpperCase().substring(0,14).padEnd(14)}     ║\n  ╠════════════════════════════════════════╣\n  ║  IP Address : 10.0.0.187               ║\n  ║  Gateway    : 10.0.0.1                 ║\n  ║  Security   : OPEN (No encryption!)    ║\n  ╚════════════════════════════════════════╝\n\n  [!] WARNING: Traffic on this network is unencrypted!\n  [+] New targets added to network map${contractMsg}`;
+          return `\n  [+] Associating with AP... ✓\n  [+] Obtaining IP via DHCP... ✓\n\n  ╔════════════════════════════════════════╗\n  ║     CONNECTED TO ${ssid.toUpperCase().substring(0,14).padEnd(14)}     ║\n  ╠════════════════════════════════════════╣\n  ║  IP Address : 10.0.${nextSubnet}.187               ║\n  ║  Gateway    : 10.0.${nextSubnet}.1                 ║\n  ║  Security   : OPEN (No encryption!)    ║\n  ╚════════════════════════════════════════╝\n\n  [!] WARNING: Traffic on this network is unencrypted!\n  [+] New targets added to network map${contractMsg}`;
         }
         
         const password = passwordIdx !== -1 ? args[passwordIdx + 1] : null;
@@ -4771,12 +4780,12 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
         setIsProcessing(true);
         setTerminal(prev => [...prev, { type: 'out', text: `[*] Connecting to ${ssid}...\n[*] Security: WPA2-PSK\n[*] Password: ${password}`, isNew: true }]);
         await new Promise(r => setTimeout(r, 2000));
-        setWifiState(prev => ({ ...prev, connected: true }));
+        setWifiState(prev => ({ ...prev, connected: true, connectedBssid: currentTarget?.bssid, subnetIndex: nextSubnet }));
         spawnInternalNodes();
         setIsProcessing(false);
         playSuccess();
         const contractMsg = verifyContract(null, 'connect');
-        return `\n  [+] Authenticating... ✓\n  [+] Obtaining IP via DHCP... ✓\n\n  ╔════════════════════════════════════════╗\n  ║     CONNECTED TO ${ssid.toUpperCase().substring(0,14).padEnd(14)}     ║\n  ╠════════════════════════════════════════╣\n  ║  IP Address : 10.0.0.187               ║\n  ║  Gateway    : 10.0.0.1                 ║\n  ╚════════════════════════════════════════╝\n\n  [+] Inside ${ssid} network!\n  [!] New targets added to network map:\n      • 10.0.0.20 — File Server\n      • 10.0.0.30 — Database Server\n      • 10.0.0.50 — Domain Controller${contractMsg}`;
+        return `\n  [+] Authenticating... ✓\n  [+] Obtaining IP via DHCP... ✓\n\n  ╔════════════════════════════════════════╗\n  ║     CONNECTED TO ${ssid.toUpperCase().substring(0,14).padEnd(14)}     ║\n  ╠════════════════════════════════════════╣\n  ║  IP Address : 10.0.${nextSubnet}.187               ║\n  ║  Gateway    : 10.0.${nextSubnet}.1                 ║\n  ╚════════════════════════════════════════╝\n\n  [+] Inside ${ssid} network!\n  [!] New targets added to network map:\n      • 10.0.${nextSubnet}.20 — File Server\n      • 10.0.${nextSubnet}.30 — Database Server\n      • 10.0.${nextSubnet}.50 — Domain Controller${contractMsg}`;
       },
 
       wireshark: async () => {

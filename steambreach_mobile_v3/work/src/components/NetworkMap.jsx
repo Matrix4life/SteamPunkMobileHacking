@@ -449,6 +449,7 @@ export default function NetworkMap({
             else if (isProxy) nodeColor = COLORS.proxy;
             else if (botnet.includes(ip)) nodeColor = COLORS.infected;
             else if (looted.includes(ip)) nodeColor = COLORS.looted;
+            else if (node.wifiSpawned) nodeColor = COLORS.wifi;
             
             const isActive = targetIP === ip;
             const isHovered = hoveredNode === ip;

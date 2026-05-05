@@ -123,6 +123,11 @@ const COMMAND_REGISTRY = [
   { cmd: 'clear', desc: 'Clear terminal output', category: 'SYSTEM & NAV' },
   { cmd: 'save', desc: 'Save current progress', category: 'SYSTEM & NAV' },
   { cmd: 'menu', desc: 'Auto-save and return to main menu', category: 'SYSTEM & NAV' },
+  // RIVALS
+  { cmd: 'rivals', desc: 'List known underground hackers — handle, rep, type, IP', category: 'RIVALS' },
+  { cmd: 'dossier <handle>', desc: 'Pull intel on a rival — security, weakness, wallet, zero-days', category: 'RIVALS' },
+  { cmd: 'raid <handle>', desc: 'Attack a rival to steal BTC, stash, and zero-days (15min cooldown)', category: 'RIVALS' },
+  { cmd: 'taunt <handle>', desc: 'Provoke a rival into hostile status — triggers retaliation', category: 'RIVALS' },
 ];
 const DEV_COMMANDS = [
   { cmd: 'sudo devmode', desc: 'Toggle Developer Godmode' },

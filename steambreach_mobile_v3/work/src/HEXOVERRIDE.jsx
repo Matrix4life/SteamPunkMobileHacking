@@ -1,3 +1,4 @@
+import IntroCinematic from './components/IntroCinematic';
 import HelpMenu from './components/HelpMenu';
 import RadialMenu from './components/RadialMenu';
 import AiSettings from './components/AiSettings';
@@ -92,7 +93,10 @@ const WIFI_CLIENTS = [
 
 const HEXOVERRIDE = () => {
  const [operator, setOperator] = useState('');
-  const [screen, setScreen] = useState('intro');
+  const [screen, setScreen] = useState(
+  localStorage.getItem('hexoverride_intro_seen') ? 'intro' : 'cinematic'
+);
+
   const [gameMode, setGameMode] = useState('arcade');
   const [terminal, setTerminal] = useState([]);
   const [input, setInput] = useState('');
@@ -5452,6 +5456,17 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
       </div>
     );
   }
+if (screen === 'cinematic') {
+  return (
+    <IntroCinematic
+      portrait={isMobile}
+      onComplete={() => {
+        localStorage.setItem('hexoverride_intro_seen', '1');
+        setScreen('intro');
+      }}
+    />
+  );
+}
 
   if (screen === 'intro') {
     // ── IntroScreen inline (VariationA aesthetic) ─────────────

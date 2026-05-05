@@ -66,6 +66,14 @@ export const RIVAL_ARCHETYPES = {
   LEGEND: { name: 'Legend', repRange: [600, 1500], skillMod: 1.8, personality: 'Mythical status. Definitely exists.', btcRange: [200000, 2000000], zdSlots: [8, 15] },
 };
 
+export const DESTRUCTION_BOUNTY = {
+  SCRIPT_KIDDIE: 5000,
+  GREY_HAT: 25000,
+  BLACK_HAT: 80000,
+  APT_OPERATOR: 250000,
+  LEGEND: 1000000,
+};
+
 const HANDLE_PREFIXES = ['Zero', 'Null', 'Void', 'Ghost', 'Phantom', 'Shadow', 'Dark', 'Acid', 'Crash', 'Lord', 'Neo', 'Cyber', 'Razor', 'Viper', 'Toxic', 'Chaos', 'Flux', 'Glitch', 'Byte', 'Root', 'Sudo', 'Daemon', 'Kernel', 'Stack'];
 const HANDLE_SUFFIXES = ['Phr34k', 'H4x0r', 'C0de', 'Burn', 'Storm', 'Strike', 'Blade', 'Wolf', 'Hawk', 'Reaper', 'Wraith', 'Specter', 'Breaker', 'Slayer', 'Master', 'Ninja', 'Dragon', 'Phoenix', 'Daemon', 'Virus', 'X', '404'];
 
@@ -144,6 +152,99 @@ export function generateRival(playerRep = 100) {
   };
 }
 
+// ============================================================================
+// RIVAL NODE GENERATION — Creates a real world node from rival data
+// ============================================================================
+
+export function generateRivalNode(rival) {
+  const secTier = rival.security >= 81 ? 'high'
+    : rival.security >= 66 ? 'high' : 'mid';
+
+  const exploitMap = {
+    hydra:      { port: 22,   svc: 'ssh' },
+    sqlmap:     { port: 80,   svc: 'http' },
+    msfconsole: { port: 445,  svc: 'smb' },
+    curl:       { port: 8080, svc: 'http-alt' },
+  };
+  const vuln = exploitMap[rival.vulnerability] || exploitMap.hydra;
+
+  // --- Rival filesystem: stash as lootable files ---
+  const files = {
+    '/': ['stash/', 'wallet/', 'ops/', 'logs/'],
+    '/stash': [],
+    '/wallet': ['cold_storage.dat'],
+    '/ops': ['zero_day_vault.enc', 'botnet_config.json', 'target_list.txt'],
+    '/logs': ['auth.log', 'irc_history.log'],
+  };
+  const contents = {
+    '/wallet/cold_storage.dat': `[WALLET] ${rival.handle}'s cold storage. ₿${rival.btc.toLocaleString()} in BTC.`,
+    '/ops/zero_day_vault.enc': rival.zeroDays.length > 0
+      ? `[ENCRYPTED] ${rival.zeroDays.length} zero-day exploits detected. Exfil to extract.`
+      : `[ENCRYPTED] Vault is empty.`,
+    '/ops/botnet_config.json': `[CONFIG] Botnet C2 panel. ${Math.floor(rival.skillMod * 20)} active nodes.`,
+    '/ops/target_list.txt': `[PENDING_GENERATION]`,
+    '/logs/auth.log': `[PENDING_GENERATION]`,
+    '/logs/irc_history.log': `[PENDING_GENERATION]`,
+  };
+
+  // Map stash items to exfiltrable files
+  const stashFileMap = {
+    cc_dumps:  'cc_dumps.db',
+    ssn_fullz: 'fullz_archive.csv',
+    botnets:   'botnet_access_keys.pgp',
+    exploits:  'exploit_kits.tar.gz',
+    zerodays:  'weaponized_0days.bin',
+  };
+  Object.entries(rival.stash || {}).forEach(([key, qty]) => {
+    if (qty > 0 && stashFileMap[key]) {
+      const fileName = stashFileMap[key];
+      files['/stash'].push(fileName);
+      contents[`/stash/${fileName}`] = `[HASH] ${qty}x ${key}. Value: ₿${(qty * 500).toLocaleString()}`;
+    }
+  });
+  if (files['/stash'].length === 0) {
+    files['/stash'].push('.empty');
+    contents['/stash/.empty'] = 'Stash is clean. Nothing here.';
+  }
+
+  return {
+    name: `${rival.handle}'s C2 Server`,
+    sec: secTier,
+    port: vuln.port,
+    svc: vuln.svc,
+    exp: rival.vulnerability,
+    val: rival.btc,
+    isHoneypot: false,
+    x: `${Math.floor(Math.random() * 85 + 7)}%`,
+    y: `${Math.floor(Math.random() * 55 + 10)}%`,
+    files,
+    contents,
+    org: {
+      orgName: `${rival.handle}'s C2 Server`,
+      type: 'criminal',
+      industry: 'Underground',
+      employees: [
+        { name: rival.handle, email: `${rival.handle.toLowerCase()}@${rival.ip}`, role: rival.archetypeName },
+      ],
+    },
+    blueTeam: {
+      alertLevel: Math.floor(rival.security / 3),
+      patchedVulns: [],
+      changedPasswords: [],
+      activeHunting: rival.skillMod >= 1.3,
+      lastIncident: null,
+    },
+    commsGenerated: false,
+    slackChannelGenerated: false,
+    // --- RIVAL FLAGS ---
+    isRivalNode: true,
+    rivalHandle: rival.handle,
+    rivalId: rival.id,
+  };
+}
+
+// ============================================================================
+
 const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
 
 export function attemptRivalHack(rival, playerStats, playerZeroDays = [], options = {}) {
@@ -154,7 +255,9 @@ export function attemptRivalHack(rival, playerStats, playerZeroDays = [], option
   playerBonus += (playerStats.heat || 0) > 50 ? -10 : 0;
   playerZeroDays.forEach(zd => { playerBonus += (zd.successBonus || 0) / 3; });
   let rivalDefense = rival.security / 2 + rival.skillMod * 10;
-  const successChance = Math.min(95, Math.max(5, baseSuccess + playerBonus - rivalDefense));
+  // Tool matching: right exploit = +25%, wrong = -25%, unspecified = 0
+  const toolBonus = (options.toolMatch === true) ? 25 : (options.toolMatch === false) ? -25 : 0;
+  const successChance = Math.min(95, Math.max(5, baseSuccess + playerBonus - rivalDefense + toolBonus));
   const roll = Math.random() * 100;
   const success = roll < successChance;
   let loot = null;
@@ -177,7 +280,7 @@ export function attemptRivalHack(rival, playerStats, playerZeroDays = [], option
       stash,
     };
   }
-  return { success, successChance, roll, loot };
+  return { success, successChance, roll, loot, toolMatch: options.toolMatch ?? null };
 }
 
 export function rivalAttacksPlayer(rival, playerStats) {

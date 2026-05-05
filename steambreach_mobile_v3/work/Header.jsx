@@ -13,7 +13,10 @@ const Header = ({ operator, privilege, money, heat, reputation, isInside, target
   const traceColor = trace > 75 ? COLORS.danger : trace > 40 ? COLORS.warning : COLORS.primary;
   const heatColor = heat > 70 ? COLORS.danger : heat > 40 ? COLORS.warning : COLORS.textDim;
   const orgName = isInside && targetIP && world[targetIP]?.org?.orgName;
+  const isRivalNode = isInside && targetIP && world[targetIP]?.isRivalNode;
+  const rivalHandle = isRivalNode && world[targetIP]?.rivalHandle;
   const modeColor = gameMode === 'operator' ? COLORS.danger : gameMode === 'field' ? COLORS.warning : COLORS.secondary;
+  
 
   // API status light
   let aiConnected = false;
@@ -37,7 +40,8 @@ const Header = ({ operator, privilege, money, heat, reputation, isInside, target
   if (isMobile) {
     return (
       <div style={{
-        flexShrink: 0, borderBottom: `1px solid ${wantedTier === 'MANHUNT' ? COLORS.danger : (trace > 75 ? COLORS.danger + '60' : COLORS.border)}`,
+        flexShrink: 0, borderBottom: `1px solid ${isRivalNode ? '#ff2255' : (wantedTier === 'MANHUNT' ? COLORS.danger : (trace > 75 ? COLORS.danger + '60' : COLORS.border))}`,
+        background: isRivalNode ? '#ff225510' : (wantedTier === 'MANHUNT' ? `${COLORS.danger}08` : 'transparent'),
         paddingBottom: '6px', fontSize: '13px',
         background: wantedTier === 'MANHUNT' ? `${COLORS.danger}08` : 'transparent',
       }}>
@@ -49,6 +53,7 @@ const Header = ({ operator, privilege, money, heat, reputation, isInside, target
             </span>
             <span style={{ color: COLORS.textDim }}>@</span>
             {isInside ? <span style={{ color: COLORS.ip }}>{targetIP}</span> : <span style={{ color: COLORS.textDim }}>kali</span>}
+            {isRivalNode && <span style={{ color: '#ff2255', fontSize: '8px', border: '1px solid #ff225560', padding: '0px 4px', borderRadius: '2px', marginLeft: '4px', fontWeight: 'bold', animation: 'rivalPulse 2s ease-in-out infinite' }}>☠ RIVAL</span>}
           </span>
 
           <span style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
@@ -92,6 +97,7 @@ const Header = ({ operator, privilege, money, heat, reputation, isInside, target
           </span>
         </div>
         {trace > 20 && <style>{`@keyframes tracePulse { 0%,100%{opacity:1} 50%{opacity:0.5} }`}</style>}
+        {isRivalNode && <style>{`@keyframes rivalPulse { 0%,100%{opacity:1} 50%{opacity:0.6} }`}</style>}
       </div>
     );
   }
@@ -100,7 +106,7 @@ const Header = ({ operator, privilege, money, heat, reputation, isInside, target
   return (
     <div style={{
       flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-      borderBottom: `1px solid ${wantedTier === 'MANHUNT' ? COLORS.danger : (trace > 75 ? COLORS.danger + '60' : COLORS.border)}`,
+      borderBottom: `1px solid ${isRivalNode ? '#ff2255' : (wantedTier === 'MANHUNT' ? COLORS.danger : (trace > 75 ? COLORS.danger + '60' : COLORS.border))}`,
       paddingBottom: '8px', fontSize: '12px', gap: '12px', flexWrap: 'wrap',
       background: wantedTier === 'MANHUNT' ? `${COLORS.danger}08` : 'transparent',
     }}>
@@ -110,7 +116,8 @@ const Header = ({ operator, privilege, money, heat, reputation, isInside, target
         </span>
         <span style={{ color: COLORS.textDim }}>@</span>
         {isInside ? <span style={{ color: COLORS.ip }}>{targetIP}</span> : <span style={{ color: COLORS.textDim }}>kali</span>}
-        {orgName && <span style={{ color: COLORS.textDim }}> [{orgName}]</span>}
+       {orgName && <span style={{ color: isRivalNode ? '#ff2255' : COLORS.textDim }}> [{orgName}]</span>}
+{isRivalNode && <span style={{ color: '#ff2255', fontSize: '9px', border: '1px solid #ff225560', padding: '1px 5px', borderRadius: '2px', marginLeft: '6px', letterSpacing: '1px', fontWeight: 'bold', animation: 'rivalPulse 2s ease-in-out infinite' }}>☠ RIVAL</span>}}
       </span>
 
       <span style={{ color: walletFrozen ? COLORS.danger : COLORS.warning }}>
@@ -150,6 +157,7 @@ const Header = ({ operator, privilege, money, heat, reputation, isInside, target
         <button onClick={onSave} style={btnStyle}>SAVE</button>
         <button onClick={onMenu} disabled={isInside} style={{ ...btnStyle, opacity: isInside ? 0.3 : 1, cursor: isInside ? 'default' : 'pointer' }}>MENU</button>
       </span>
+      {isRivalNode && <style>{`@keyframes rivalPulse { 0%,100%{opacity:1} 50%{opacity:0.6} }`}</style>}
     </div>
   );
 };

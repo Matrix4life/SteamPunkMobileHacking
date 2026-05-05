@@ -73,6 +73,8 @@ import {
   rollForZeroDay,
   attemptRivalHack,
   rivalAttacksPlayer,
+  generateRivalNode,
+  DESTRUCTION_BOUNTY,
   checkRivalSpawn,
   checkZeroDayDrop,
 } from './rivals/rivalsSystem';
@@ -2889,9 +2891,11 @@ creds: async () => {
           // Rival spawn check after high-value exfil
           let rivalMsg = '';
           const newRival = checkRivalSpawn(reputation, rivals);
-          if (newRival) {
+         if (newRival) {
             setRivals(prev => [...prev, ensureRivalStash(newRival)]);
-            rivalMsg = `\n\n[!!!] NEW RIVAL DETECTED [!!!]\n[*] ${newRival.handle} (${newRival.archetypeName}) noticed your activity.\n[*] Node: ${newRival.ip}\n[*] Type "dossier ${newRival.handle}" for intel.`;
+            const rivalNodeData = generateRivalNode(newRival);
+            setWorld(prev => ({ ...prev, [newRival.ip]: rivalNodeData }));
+            rivalMsg = `\n\n[!!!] NEW RIVAL DETECTED [!!!]\n[*] ${newRival.handle} (${newRival.archetypeName}) noticed your activity.\n[*] Node: ${newRival.ip} — ☠ RIVAL NODE added to network map\n[*] Type "dossier ${newRival.handle}" for intel.`;
           }
           
           const bonusLine = drop.bonus ? `\n[+] BONUS: +${drop.bonus.qty}x ${COMMODITIES[drop.bonus.key]?.name}` : '';

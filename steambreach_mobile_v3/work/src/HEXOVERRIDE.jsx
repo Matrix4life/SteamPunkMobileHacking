@@ -1833,7 +1833,7 @@ const verifyContract = (ip, objectiveType) => {
   'zero_day_vault.enc':        { key: 'zerodays',        qty: [1, 3] },
   'botnet_config.json':        { key: 'exploits',        qty: [1, 2] },
 };
-};
+
   const secMult = { low: 1, mid: 1.5, high: 2.5, elite: 5 }[sec] || 1;
   const baseName = fileName.split('/').pop();
   const match = FILE_DROPS[baseName];

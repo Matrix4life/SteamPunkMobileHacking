@@ -3313,7 +3313,7 @@ return `[+] ${actionResult}\n[+] CHAOS +10`;
             }
             return msg;
           };
-          };
+          
 
           // --- RIVAL NODE DESTRUCTION ---
         if (isInside && world[targetIP]?.isRivalNode) {

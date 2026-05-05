@@ -5388,7 +5388,7 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
         // Tool matching: Field/Operator must specify the right exploit
         let toolMatch = undefined; // undefined = arcade, no bonus/penalty
         if (gameMode === 'field') {
-          const tool = args[1];
+          const tool = args[2];
           if (!tool) return `[-] Specify attack vector: raid ${handle} <tool>\n[*] Check "dossier ${handle}" for their weakness.`;
           toolMatch = tool === rival.vulnerability;
         }

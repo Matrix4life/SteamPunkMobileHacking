@@ -1529,7 +1529,11 @@ const completeContractAndRemove = (id) => {
     if (exp === 'sqlmap') out += `\n\n[!] VULN: SQL Injection → 'sqlmap ${ip}'`;
     if (exp === 'msfconsole') out += `\n\n[!] VULN: Unpatched SMB → 'msfconsole ${ip}'`;
     if (exp === 'curl') out += `\n\n[!] VULN: LFI via HTTP → 'curl ${ip}'`;
-    setTerminal(prev => [...prev.map(t => ({ ...t, isNew: false })), { type: 'in', text: `nmap ${ip}`, dir: currentDir, remote: isInside, isNew: false }, { type: 'out', text: out, isNew: true }]);
+    if (world[ip]?.isRivalNode) {
+  output += `\n[!!!] RIVAL NODE — Owned by ${world[ip].rivalHandle} (${rivals.find(r => r.id === world[ip].rivalId)?.archetypeName || 'Unknown'})`;
+  output += `\n[!!!] 2x TRACE SPEED inside this system`;
+}
+    setTerminal(prev => [...prev.map(t => ({ ...t, isNew: false })), { type: 'in', text: `nmap ${ip}`, dir: currentDir, remote: isInside, isRival: isInside && world[targetIP]?.isRivalNode, isNew: false }, { type: 'out', text: out, isNew: true }]);
     // On mobile: close map and show target detail in touch UI
     if (isMobile) {
       setMapExpanded(false);
@@ -1578,7 +1582,7 @@ const completeContractAndRemove = (id) => {
     let trimmed = directCmd || input.trim();
     if (!trimmed) return;
 
-    setTerminal(prev => [...prev.map(t => ({ ...t, isNew: false })), { type: 'in', text: trimmed, dir: isChatting ? `chat@${chatTarget}` : currentDir, remote: isInside || isChatting, isNew: false }]);
+    setTerminal(prev => [...prev.map(t => ({ ...t, isNew: false })), { type: 'in', text: trimmed, dir: isChatting ? `chat@${chatTarget}` : currentDir, remote: isInside || isChatting, isRival: isInside && world[targetIP]?.isRivalNode, isNew: false };
     setInput('');
 
     if (isChatting) {
@@ -1641,6 +1645,12 @@ if (isInside && trace > 70 && Math.random() < 0.4 && !BENIGN_CMDS.includes(cmd))
         return `[-] ${toolName}: Exploit failed. Wrong attack vector.`;
       }
       
+      if (world[targetIPArg]?.isRivalNode) {
+  const required = world[targetIPArg].exp;
+  if (toolName !== required) {
+    return `[-] ${toolName} ${targetIPArg}: Connection refused.\n[*] ${world[targetIPArg].rivalHandle}'s system is hardened against ${toolName}.\n[*] Check their dossier for the correct attack vector.`;
+  }
+}
       playSuccess();
       setIsInside(true); setTargetIP(targetIPArg); setCurrentDir('/'); setPrivilege('www-data');
       let startTrace = Math.floor(heat / 3);
@@ -1656,7 +1666,8 @@ if (isInside && trace > 70 && Math.random() < 0.4 && !BENIGN_CMDS.includes(cmd))
       }
 
       setTrace(Math.min(startTrace, 100));
-      return `[*] Exploiting ${toolName} against ${orgName}...\n[+] Payload delivered. Reverse shell caught.\n[+] LOW PRIVILEGE SHELL (www-data) on ${targetIPArg}`;
+      const rivalBanner = world[targetIPArg]?.isRivalNode ? `\n╔══════════════════════════════════════════════════════════╗\n║  ☠  RIVAL SYSTEM: ${(world[targetIPArg]?.rivalHandle || 'UNKNOWN').toUpperCase().padEnd(37)}║\n║  ⚠  HOSTILE COUNTERMEASURES ACTIVE — TRACE 2x SPEED     ║\n╚══════════════════════════════════════════════════════════╝\n` : '';
+return `[*] Exploiting ${toolName} against ${orgName}...\n[+] Payload delivered. Reverse shell caught.${rivalBanner}\n[+] LOW PRIVILEGE SHELL (www-data) on ${targetIPArg}`;
     };
     if (activeContract && activeContract.active) {
         if (activeContract.forbidden_tools && activeContract.forbidden_tools.includes(cmd)) {
@@ -5897,7 +5908,7 @@ if (screen === 'soundmanager') {
             <div key={i} style={{ marginBottom: '4px', wordBreak: 'break-all', whiteSpace: 'pre-wrap', background: t.isChat ? `${COLORS.chat}10` : 'transparent', padding: t.isChat ? '2px 6px' : '0', borderRadius: t.isChat ? '3px' : '0', lineHeight: '1.5' }}>
       {t.type === 'in' ? ( 
         <span style={{ color: inColor }}>
-          <span style={{ color: COLORS.textDim }}>{t.dir}</span> <span style={{ color: COLORS.secondary }}>$</span> {t.text}
+         <span style={{ color: t.isRival ? '#ff2255' : COLORS.textDim }}>{t.dir}</span> <span style={{ color: t.isRival ? '#ff225599' : COLORS.secondary }}>$</span> {t.text}
         </span> 
       ) : (
         t.isNew ? ( 
@@ -5974,12 +5985,12 @@ if (screen === 'soundmanager') {
 
       {(!isMobile || showMobileKeyboard) && (
       <div onClick={() => { if (inputRef.current) inputRef.current.focus(); }} style={{ flexShrink: 0, display: 'flex', alignItems: 'center', borderTop: `1px solid ${trace > 75 ? COLORS.danger + '60' : COLORS.border}`, paddingTop: '8px', background: trace > 75 ? `${COLORS.danger}08` : 'transparent', cursor: 'text' }}>
-        <span style={{ color: isChatting ? COLORS.chat : (isInside ? COLORS.primary : COLORS.textDim), opacity: isProcessing ? 0.4 : 1, whiteSpace: 'nowrap', fontSize: '12px' }}>
+        <span style={{ color: isChatting ? COLORS.chat : (isInside && world[targetIP]?.isRivalNode ? '#ff2255' : (isInside ? COLORS.primary : COLORS.textDim)), opacity: isProcessing ? 0.4 : 1, whiteSpace: 'nowrap', fontSize: '12px' }}>
           {isChatting ? `chat@${chatTarget} ` : `${currentDir} `} <span style={{ color: COLORS.secondary }}>$</span>
         </span>
         <input
           ref={inputRef} disabled={isProcessing}
-          style={{ background: 'transparent', border: 'none', color: isChatting ? COLORS.chat : (isInside ? COLORS.primary : COLORS.text), outline: 'none', flex: 1, fontFamily: 'inherit', paddingLeft: '8px', fontSize: '13px', opacity: isProcessing ? 0.4 : 1 }}
+          style={{ background: 'transparent', border: 'none', color: isChatting ? COLORS.chat : (isInside && world[targetIP]?.isRivalNode ? '#ff2255' : (isInside ? COLORS.primary : COLORS.text)), outline: 'none', flex: 1, fontFamily: 'inherit', paddingLeft: '8px', fontSize: '13px', opacity: isProcessing ? 0.4 : 1 }}
           value={isProcessing ? "PROCESSING..." : input} onChange={e => setInput(e.target.value)} onKeyDown={handleCommand} autoFocus={!isMobile} autoComplete="off" spellCheck="false"
         />
       </div>

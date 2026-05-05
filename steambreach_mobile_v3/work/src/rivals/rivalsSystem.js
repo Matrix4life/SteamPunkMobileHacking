@@ -74,6 +74,52 @@ export const DESTRUCTION_BOUNTY = {
   LEGEND: 1000000,
 };
 
+// ============================================================================
+// TRADE & RECRUIT SYSTEM
+// ============================================================================
+
+export const TRADE_PRICES = {
+  zeroday: {
+    COMMON: 5000, UNCOMMON: 20000, RARE: 80000,
+    EPIC: 200000, LEGENDARY: 500000, MYTHIC: 1500000,
+  },
+  intel: 25000,
+  backup: { SCRIPT_KIDDIE: 10000, GREY_HAT: 25000, BLACK_HAT: 50000, APT_OPERATOR: 100000, LEGEND: 200000 },
+};
+
+export const RECRUIT_COST = {
+  fear:    { SCRIPT_KIDDIE: 2000, GREY_HAT: 15000, BLACK_HAT: 50000, APT_OPERATOR: 200000, LEGEND: 500000 },
+  respect: { SCRIPT_KIDDIE: 5000, GREY_HAT: 30000, BLACK_HAT: 100000, APT_OPERATOR: 400000, LEGEND: 1000000 },
+};
+
+export function getTradeDiscount(relationship) {
+  const discount = Math.min(0.4, Math.max(0, (relationship - 20) / 200));
+  return 1 - discount;
+}
+
+export function attemptBuyZeroDay(rival, playerMoney, relationship) {
+  if (rival.zeroDays.length === 0) return { success: false, reason: 'Vault is empty.' };
+  const zd = rival.zeroDays[Math.floor(Math.random() * rival.zeroDays.length)];
+  const basePrice = TRADE_PRICES.zeroday[zd.rarity] || 20000;
+  const price = Math.floor(basePrice * getTradeDiscount(relationship));
+  if (playerMoney < price) return { success: false, reason: `Insufficient funds. Cost: ₿${price.toLocaleString()}` };
+  return { success: true, zeroDay: zd, price };
+}
+
+export function attemptBuyIntel(rival, playerMoney, relationship) {
+  const price = Math.floor(TRADE_PRICES.intel * getTradeDiscount(relationship));
+  if (playerMoney < price) return { success: false, reason: `Insufficient funds. Cost: ₿${price.toLocaleString()}` };
+  const quality = rival.archetype === 'GREY_HAT' ? 'high' : 'standard';
+  return { success: true, price, quality };
+}
+
+export function attemptRequestBackup(rival, playerMoney, relationship) {
+  const price = Math.floor((TRADE_PRICES.backup[rival.archetype] || 25000) * getTradeDiscount(relationship));
+  if (playerMoney < price) return { success: false, reason: `Insufficient funds. Cost: ₿${price.toLocaleString()}` };
+  const power = Math.floor(rival.skillMod * 15);
+  return { success: true, price, power, duration: 1800000 };
+}
+
 const HANDLE_PREFIXES = ['Zero', 'Null', 'Void', 'Ghost', 'Phantom', 'Shadow', 'Dark', 'Acid', 'Crash', 'Lord', 'Neo', 'Cyber', 'Razor', 'Viper', 'Toxic', 'Chaos', 'Flux', 'Glitch', 'Byte', 'Root', 'Sudo', 'Daemon', 'Kernel', 'Stack'];
 const HANDLE_SUFFIXES = ['Phr34k', 'H4x0r', 'C0de', 'Burn', 'Storm', 'Strike', 'Blade', 'Wolf', 'Hawk', 'Reaper', 'Wraith', 'Specter', 'Breaker', 'Slayer', 'Master', 'Ninja', 'Dragon', 'Phoenix', 'Daemon', 'Virus', 'X', '404'];
 

@@ -373,3 +373,44 @@ export function checkZeroDayDrop(nodeSecLevel, playerLuck = 1.0) {
   if (Math.random() > secMult) return null;
   return rollForZeroDay(playerLuck * (1 + (secMult * 2)));
 }
+// ============================================================================
+// RIVAL CONTRACTS
+// ============================================================================
+
+const RIVAL_CONTRACT_TYPES = {
+  TAKEDOWN:    { name: 'TAKEDOWN',    objectiveType: 'destroy_rival', rewardMult: 2.5, timeLimitSec: 900,  heatCap: 60, minRep: 50  },
+  HEIST:       { name: 'HEIST',       objectiveType: 'exfil',         rewardMult: 2.0, timeLimitSec: 600,  heatCap: 50, minRep: 30  },
+  FRAME_JOB:   { name: 'FRAME JOB',   objectiveType: 'frame_rival',  rewardMult: 1.8, timeLimitSec: 480,  heatCap: 70, minRep: 75  },
+  RECRUITMENT: { name: 'ASSET ACQUISITION', objectiveType: 'recruit_rival', rewardMult: 3.0, timeLimitSec: 1200, heatCap: 80, minRep: 100 },
+  RIVALRY:     { name: 'DOMINANCE',    objectiveType: 'raid_rival',   rewardMult: 1.5, timeLimitSec: 720,  heatCap: 55, minRep: 40  },
+};
+
+export function generateRivalContract(rivals, playerRep) {
+  const eligible = rivals.filter(r => r.status !== 'destroyed' && !r.recruited);
+  if (eligible.length === 0) return null;
+  if (playerRep < 30) return null;
+  const rival = eligible[Math.floor(Math.random() * eligible.length)];
+  const archMult = { SCRIPT_KIDDIE: 0.5, GREY_HAT: 1.0, BLACK_HAT: 1.5, APT_OPERATOR: 2.5, LEGEND: 4.0 }[rival.archetype] || 1;
+  const typeKeys = Object.keys(RIVAL_CONTRACT_TYPES).filter(k => playerRep >= RIVAL_CONTRACT_TYPES[k].minRep);
+  if (typeKeys.length === 0) return null;
+  const selectedKey = typeKeys[Math.floor(Math.random() * typeKeys.length)];
+  const cType = RIVAL_CONTRACT_TYPES[selectedKey];
+  const reward = Math.floor(15000 * cType.rewardMult * archMult);
+  const repReward = Math.floor((10 + Math.random() * 20) * cType.rewardMult);
+  let objectives;
+  if (selectedKey === 'RIVALRY') {
+    objectives = Array.from({ length: 3 }, () => ({ type: 'raid_rival', ip: rival.ip, rivalId: rival.id, completed: false }));
+  } else if (selectedKey === 'HEIST') {
+    objectives = [{ type: 'exfil', ip: rival.ip, rivalId: rival.id, completed: false }];
+  } else {
+    objectives = [{ type: cType.objectiveType, ip: rival.ip, rivalId: rival.id, completed: false }];
+  }
+  const briefingMap = {
+    TAKEDOWN:    `[CONTRACT] TAKEDOWN: ${rival.handle}\nDestroy ${rival.handle}'s infrastructure.\nReward: ₿${reward.toLocaleString()} + ${repReward} REP | Time: ${Math.floor(cType.timeLimitSec / 60)}min | Heat Cap: ${cType.heatCap}%`,
+    HEIST:       `[CONTRACT] HEIST: ${rival.handle}'s Vault\nExfil any file from ${rival.handle}'s node.\nReward: ₿${reward.toLocaleString()} + ${repReward} REP | Time: ${Math.floor(cType.timeLimitSec / 60)}min | Heat Cap: ${cType.heatCap}%`,
+    FRAME_JOB:   `[CONTRACT] FRAME JOB: ${rival.handle}\nSuccessfully frame ${rival.handle}.\nReward: ₿${reward.toLocaleString()} + ${repReward} REP | Time: ${Math.floor(cType.timeLimitSec / 60)}min | Heat Cap: ${cType.heatCap}%`,
+    RECRUITMENT: `[CONTRACT] ASSET ACQUISITION: ${rival.handle}\nRecruit ${rival.handle} (any method).\nReward: ₿${reward.toLocaleString()} + ${repReward} REP | Time: ${Math.floor(cType.timeLimitSec / 60)}min | Heat Cap: ${cType.heatCap}%`,
+    RIVALRY:     `[CONTRACT] DOMINANCE: ${rival.handle}\nRaid ${rival.handle} 3 times.\nReward: ₿${reward.toLocaleString()} + ${repReward} REP | Time: ${Math.floor(cType.timeLimitSec / 60)}min | Heat Cap: ${cType.heatCap}%`,
+  };
+  return { briefing: briefingMap[selectedKey], objectives, timeLimit: cType.timeLimitSec, heatCap: cType.heatCap, reward, repReward, isRivalContract: true, rivalTarget: rival.handle, rivalId: rival.id, rivalIP: rival.ip };
+}

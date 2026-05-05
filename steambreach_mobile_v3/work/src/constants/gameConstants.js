@@ -128,6 +128,9 @@ const COMMAND_REGISTRY = [
   { cmd: 'dossier <handle>', desc: 'Pull intel on a rival — security, weakness, wallet, zero-days', category: 'RIVALS' },
   { cmd: 'raid <handle>', desc: 'Attack a rival to steal BTC, stash, and zero-days (15min cooldown)', category: 'RIVALS' },
   { cmd: 'taunt <handle>', desc: 'Provoke a rival into hostile status — triggers retaliation', category: 'RIVALS' },
+  { cmd: 'negotiate <handle>', desc: 'Open trade channel — buy zero-days, sell stash, get intel', category: 'RIVALS' },
+  { cmd: 'recruit <handle>', desc: 'Convert a defeated rival into a passive asset', category: 'RIVALS' },
+  { cmd: 'dismiss <handle>', desc: 'Release a recruited rival back to the underground', category: 'RIVALS' },
 ];
 const DEV_COMMANDS = [
   { cmd: 'sudo devmode', desc: 'Toggle Developer Godmode' },

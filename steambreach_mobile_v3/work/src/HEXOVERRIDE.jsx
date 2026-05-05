@@ -75,6 +75,11 @@ import {
   rivalAttacksPlayer,
   generateRivalNode,
   DESTRUCTION_BOUNTY,
+  RECRUIT_COST,
+  getTradeDiscount,
+  attemptBuyZeroDay,
+  attemptBuyIntel,
+  attemptRequestBackup,
   checkRivalSpawn,
   checkZeroDayDrop,
 } from './rivals/rivalsSystem';
@@ -1111,6 +1116,46 @@ setVirusScans({});
     return () => clearInterval(retaliationTick);
   }, [screen, operator, rivals, reputation, money, proxies.length, stash]);
 
+  // ── RECRUIT BONUS TICK (intel tips + betrayal) ──────────────────────────
+  useEffect(() => {
+    if (screen !== 'game' || !operator) return;
+    const recruited = rivals.filter(r => r.recruited);
+    if (recruited.length === 0) return;
+
+    const bonusInterval = setInterval(() => {
+      recruited.forEach(r => {
+        // Grey Hat / Legend: reveal a node (~every 10 min, checked each 60s)
+        if ((r.archetype === 'GREY_HAT' || r.archetype === 'LEGEND') && Math.random() < 0.1) {
+          const unknownIPs = Object.keys(world).filter(ip => !looted.includes(ip) && !world[ip]?.isRivalNode);
+          if (unknownIPs.length > 0) {
+            const ip = unknownIPs[Math.floor(Math.random() * unknownIPs.length)];
+            const orgName = world[ip]?.org?.orgName || ip;
+            setTerminal(prev => [...prev, { type: 'out', text: `\n[INTEL — ${r.handle}] Tip: ${orgName} (${ip}) — Exploit: ${world[ip]?.exp || 'unknown'}`, isNew: true }]);
+          }
+        }
+        // Fear recruit betrayal: ~0.25% per check (every 60s)
+        if (r.recruitType === 'fear' && Math.random() < 0.0025) {
+          const stolenBtc = Math.floor(money * 0.15);
+          const stolenZDCount = Math.min(2, zeroDays.length);
+          if (stolenBtc > 0) setMoney(m => Math.max(0, m - stolenBtc));
+          if (stolenZDCount > 0) setZeroDays(prev => prev.slice(stolenZDCount));
+          setRivals(prev => prev.map(rv => rv.id !== r.id ? rv : {
+            ...rv, recruited: false, recruitType: null, recruitedAt: null,
+            status: 'hostile', relationship: -80,
+            security: Math.min(100, rv.security + 20),
+            btc: rv.btc + stolenBtc,
+          }));
+          const rivalNode = generateRivalNode({ ...r, security: Math.min(100, r.security + 20) });
+          setWorld(prev => ({ ...prev, [r.ip]: rivalNode }));
+          playHeatSpike();
+          setTerminal(prev => [...prev, { type: 'out', text: `\n[!!!] BETRAYAL — ${r.handle} HAS GONE ROGUE [!!!]\n[-] Wallet drained: ₿${stolenBtc.toLocaleString()}\n[-] Zero-days stolen: ${stolenZDCount}\n[!] ${r.handle} is now HOSTILE with +20% security.`, isNew: true }]);
+        }
+      });
+    }, 60000);
+
+    return () => clearInterval(bonusInterval);
+  }, [screen, operator, rivals, money, zeroDays, world, looted]);
+
   const trackCommand = useCallback((cmd, success) => {
     setDirector(prev => {
       const m = { ...prev.metrics };
@@ -1163,8 +1208,10 @@ setVirusScans({});
       const baseTick = inventory.includes('Overclock') ? 2000 : 1000;
       const proxyBonus = proxies.length * 400;
       const directorMult = directorRef.current?.modifiers?.traceSpeedMult || 1.0;
-      const rivalMult = world[targetIP]?.isRivalNode ? 0.5 : 1; // 2x speed inside rival nodes
-      const traceSpeed = Math.floor((baseTick + proxyBonus) / directorMult * rivalMult);
+      const rivalMult = world[targetIP]?.isRivalNode ? 0.5 : 1;
+      const recruitTraceBonus = rivals.some(r => r.recruited && r.archetype === 'APT_OPERATOR') ? 1.15
+        : rivals.some(r => r.recruited && r.archetype === 'LEGEND') ? 1.08 : 1;
+      const traceSpeed = Math.floor((baseTick + proxyBonus) / directorMult * rivalMult * recruitTraceBonus);
 
       timer = setInterval(() => {
         const { heat: curHeat, proxies: curProxies } = activeState.current;
@@ -1593,6 +1640,101 @@ const completeContractAndRemove = (id) => {
         return;
       }
       await sendChatToGemini(trimmed);
+     return;
+    }
+
+    // --- NEGOTIATE MENU INTERCEPT ---
+    if (pendingInteraction?.kind === 'negotiate' && /^[1-6]$/.test(trimmed)) {
+      const choice = parseInt(trimmed);
+      const rival = rivals.find(r => r.id === pendingInteraction.rivalId);
+      if (!rival) { clearPendingInteraction(); setTerminal(prev => [...prev, { type: 'out', text: '[-] Negotiation target lost.', isNew: true }]); return; }
+
+      if (choice === 6) {
+        clearPendingInteraction();
+        setTerminal(prev => [...prev, { type: 'out', text: '[*] Channel closed.', isNew: true }]);
+        return;
+      }
+
+      if (choice === 1) {
+        const result = attemptBuyZeroDay(rival, money, rival.relationship);
+        if (!result.success) { setTerminal(prev => [...prev, { type: 'out', text: `[-] ${result.reason}`, isNew: true }]); return; }
+        setMoney(m => m - result.price);
+        setZeroDays(prev => [...prev, { ...result.zeroDay, obtained: Date.now() }]);
+        setRivals(prev => prev.map(r => r.id !== rival.id ? r : {
+          ...r, zeroDays: r.zeroDays.filter(zd => zd.id !== result.zeroDay.id), relationship: Math.min(100, r.relationship + 5),
+        }));
+        playSuccess();
+        setTerminal(prev => [...prev, { type: 'out', text: `[+] Acquired: ${result.zeroDay.name} (${RARITY_TIERS[result.zeroDay.rarity]?.name})\n[+] Cost: ₿${result.price.toLocaleString()}\n[*] Type a number for another trade, or 6 to exit.`, isNew: true }]);
+        return;
+      }
+
+      if (choice === 2) {
+        const stashEntries = Object.entries(stash).filter(([, qty]) => qty > 0);
+        if (stashEntries.length === 0) { setTerminal(prev => [...prev, { type: 'out', text: '[-] Your stash is empty.', isNew: true }]); return; }
+        const sellMult = rival.archetype === 'BLACK_HAT' ? 0.80 : 0.70;
+        const [key, qty] = stashEntries[0];
+        const mktPrice = marketPrices[key] || 500;
+        const sellPrice = Math.floor(mktPrice * sellMult);
+        setStash(prev => ({ ...prev, [key]: prev[key] - 1 }));
+        setMoney(m => m + sellPrice);
+        setRivals(prev => prev.map(r => r.id !== rival.id ? r : {
+          ...r, stash: { ...r.stash, [key]: (r.stash[key] || 0) + 1 }, relationship: Math.min(100, r.relationship + 2),
+        }));
+        playSuccess();
+        setTerminal(prev => [...prev, { type: 'out', text: `[+] Sold 1x ${STASH_LABELS[key] || key} for ₿${sellPrice.toLocaleString()} (${Math.round(sellMult * 100)}% market)\n[*] Remaining: ${qty - 1}x. Type a number or 6 to exit.`, isNew: true }]);
+        return;
+      }
+
+      if (choice === 3) {
+        const result = attemptBuyIntel(rival, money, rival.relationship);
+        if (!result.success) { setTerminal(prev => [...prev, { type: 'out', text: `[-] ${result.reason}`, isNew: true }]); return; }
+        setMoney(m => m - result.price);
+        const unknownIPs = Object.keys(world).filter(ip => !looted.includes(ip) && !world[ip]?.isRivalNode);
+        if (unknownIPs.length > 0) {
+          const revealedIP = unknownIPs[Math.floor(Math.random() * unknownIPs.length)];
+          const revealedOrg = world[revealedIP]?.org?.orgName || revealedIP;
+          playSuccess();
+          setTerminal(prev => [...prev, { type: 'out', text: `[+] Intel acquired for ₿${result.price.toLocaleString()}\n[+] ${rival.handle} reveals: ${revealedOrg} (${revealedIP})\n[+] Security: ${world[revealedIP]?.sec || '?'} | Exploit: ${world[revealedIP]?.exp || '?'}\n[*] Type a number or 6 to exit.`, isNew: true }]);
+        } else {
+          const otherRival = rivals.find(r => r.id !== rival.id && r.status !== 'destroyed');
+          if (otherRival) {
+            playSuccess();
+            setTerminal(prev => [...prev, { type: 'out', text: `[+] Intel acquired for ₿${result.price.toLocaleString()}\n[+] ${rival.handle} says: "${otherRival.handle} is weak to ${otherRival.vulnerability}."\n[*] Type a number or 6 to exit.`, isNew: true }]);
+          } else {
+            setMoney(m => m + result.price);
+            setTerminal(prev => [...prev, { type: 'out', text: `[-] No useful intel available. Refunded.`, isNew: true }]);
+          }
+        }
+        setRivals(prev => prev.map(r => r.id !== rival.id ? r : { ...r, relationship: Math.min(100, r.relationship + 3) }));
+        return;
+      }
+
+      if (choice === 4) {
+        const result = attemptRequestBackup(rival, money, rival.relationship);
+        if (!result.success) { setTerminal(prev => [...prev, { type: 'out', text: `[-] ${result.reason}`, isNew: true }]); return; }
+        setMoney(m => m - result.price);
+        setBotnet(prev => [...prev, `ally_${rival.handle}`]);
+        playSuccess();
+        setTerminal(prev => [...prev, { type: 'out', text: `[+] Backup secured for ₿${result.price.toLocaleString()}\n[+] ${rival.handle}'s botnet added to your pool for 30 min.\n[*] Type a number or 6 to exit.`, isNew: true }]);
+        setTimeout(() => {
+          setBotnet(prev => prev.filter(ip => ip !== `ally_${rival.handle}`));
+          setTerminal(prev => [...prev, { type: 'out', text: `[*] ${rival.handle}'s backup expired. Ally disconnected.`, isNew: true }]);
+        }, result.duration);
+        setRivals(prev => prev.map(r => r.id !== rival.id ? r : { ...r, relationship: Math.min(100, r.relationship + 5) }));
+        return;
+      }
+
+      if (choice === 5) {
+        const giftAmount = Math.min(money, 5000);
+        if (giftAmount < 1000) { setTerminal(prev => [...prev, { type: 'out', text: '[-] Need at least ₿1,000 to gift.', isNew: true }]); return; }
+        const relGain = Math.floor(giftAmount / 1000);
+        setMoney(m => m - giftAmount);
+        const newRel = Math.min(80, rival.relationship + relGain);
+        setRivals(prev => prev.map(r => r.id !== rival.id ? r : { ...r, btc: r.btc + giftAmount, relationship: newRel }));
+        playSuccess();
+        setTerminal(prev => [...prev, { type: 'out', text: `[+] Sent ₿${giftAmount.toLocaleString()} to ${rival.handle}\n[+] Relationship: ${rival.relationship} → ${newRel}\n[*] Type a number or 6 to exit.`, isNew: true }]);
+        return;
+      }
       return;
     }
 
@@ -1606,7 +1748,7 @@ const completeContractAndRemove = (id) => {
     const contents = isInside ? world[targetIP]?.contents : world.local.contents;
 
     // Active Blue Team Check
-  const BENIGN_CMDS = ['ls','cd','pwd','cat','clear','status','help','exit','wipe','download','exfil','stash','exploits','viruses','sessions','rivals','dossier','creds'];
+  const BENIGN_CMDS = ['ls','cd','pwd','cat','clear','status','help','exit','wipe','download','exfil','stash','exploits','viruses','sessions','rivals','dossier','creds','negotiate','recruit','dismiss'];
 if (isInside && trace > 70 && Math.random() < 0.4 && !BENIGN_CMDS.includes(cmd)) {
       setIsProcessing(true);
       const nodeName = world[targetIP]?.org?.orgName || targetIP;
@@ -2213,7 +2355,9 @@ const COMMANDS = {// ← your existing command object starts here
         if (isNaN(qty) || qty <= 0) return `[-] Invalid quantity.`;
         if ((stash[itemKey] || 0) < qty) return `[-] Insufficient inventory. You only have ${stash[itemKey] || 0}.`;
         
-        const pricePerUnit = marketPrices[itemKey];
+        const recruitSellBonus = rivals.some(r => r.recruited && r.archetype === 'BLACK_HAT') ? 1.15
+          : rivals.some(r => r.recruited && r.archetype === 'LEGEND') ? 1.08 : 1;
+        const pricePerUnit = Math.floor(marketPrices[itemKey] * recruitSellBonus);
         const totalProfit = pricePerUnit * qty;
         
         setMoney(m => m + totalProfit);
@@ -4353,7 +4497,7 @@ SIGNAL: ${morality.signal} | CHAOS: ${morality.chaos}
 INVENTORY:
   DECOYS: ${consumables.decoy} | BURNER VPNS: ${consumables.burner} | ZERO-DAYS: ${consumables.zeroday + zeroDays.length}
 ────────────────────────────────────
-${wantedTier === 'MANHUNT' ? '[!!!] REDUCE HEAT IMMEDIATELY. Your entire network is being dismantled.' : ''}${wantedTier === 'CRITICAL' ? '[!] Wallet frozen. Use wipe on rooted nodes or Bribe SOC Insider to reduce heat.' : ''}${wantedTier === 'HOT' ? '[!] Botnet nodes are being raided. Consider wiping logs or bribing SOC.' : ''}${score >= 40 ? '[!] Blue Team response elevated due to your skill profile.' : ''}${score <= -15 ? '[*] Sector defenses weakened. Favorable conditions.' : ''}`;
+${wantedTier === 'MANHUNT' ? '[!!!] REDUCE HEAT IMMEDIATELY. Your entire network is being dismantled.' : ''}${wantedTier === 'CRITICAL' ? '[!] Wallet frozen. Use wipe on rooted nodes or Bribe SOC Insider to reduce heat.' : ''}${wantedTier === 'HOT' ? '[!] Botnet nodes are being raided. Consider wiping logs or bribing SOC.' : ''}${score >= 40 ? '[!] Blue Team response elevated due to your skill profile.' : ''}${score <= -15 ? '[*] Sector defenses weakened. Favorable conditions.' : ''}${rivals.filter(r => r.recruited).length > 0 ? '\n\nACTIVE RECRUITS:\n' + rivals.filter(r => r.recruited).map(r => `  🤝 ${r.handle.padEnd(18)} ${r.archetypeName.padEnd(14)} ${({SCRIPT_KIDDIE:'+1 botnet',GREY_HAT:'Intel tips',BLACK_HAT:'+15% sell',APT_OPERATOR:'-15% trace',LEGEND:'Multi-bonus'})[r.archetype] || ''}${r.recruitType === 'fear' ? ' [⚠ FEAR]' : ''}`).join('\n') : ''}`;
 },
 
       // ═══════════════════════════════════════════════════════
@@ -5312,10 +5456,10 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
           '  ─────────────────────────────────────────────────────────',
         ];
         rivals.forEach(r => {
-          const icon = { active: '🟢', compromised: '🔴', hostile: '⚠️', friendly: '🤝', destroyed: '💀' }[r.status] || '⚪';
+         const icon = { active: '🟢', compromised: '🔴', hostile: '⚠️', friendly: '🤝', destroyed: '💀', recruited: '🤝' }[r.status] || '⚪';
           lines.push(`  ${icon} ${r.handle.padEnd(18)} ${String(r.rep).padStart(4)}   ${r.archetypeName.padEnd(14)}  ${r.ip}`);
         });
-        lines.push('', `  Mode: ${gameMode.toUpperCase()} | dossier${gameMode === 'arcade' ? '' : ' <handle>'} | raid${gameMode === 'arcade' ? '' : ' <handle>'}`);
+        lines.push('', `  Mode: ${gameMode.toUpperCase()} | dossier | raid | negotiate | recruit`);
         lines.push('  NOTE: Repeated raids on the same rival have diminishing returns for 15 minutes.');
         return lines.join('\n');
       },
@@ -5362,7 +5506,7 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
   ├─ Attacks on you: ${rival.attackCount}
   └─ Your victories: ${rival.defeatCount}
 
-  [raid ${rival.handle}] to attack | [taunt ${rival.handle}] to provoke`;
+  ${rival.recruited ? `[RECRUITED — ${rival.recruitType.toUpperCase()}] Bonus active. Type "dismiss ${rival.handle}" to release.` : `[raid ${rival.handle}] to attack | [negotiate ${rival.handle}] to trade | [taunt ${rival.handle}] to provoke`}`;
       },
       
       raid: async () => {
@@ -5506,6 +5650,74 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
         const taunts = [`"Your firewall is a joke, ${rival.handle}."`, `"Script kiddies have better opsec than you."`, `"Nice botnet. Did your mom set it up?"`, `"I'm in your network right now. Check your six."`];
         setRivals(prev => prev.map((r, i) => i === rivalIdx ? { ...r, relationship: Math.max(-100, r.relationship - 20), status: 'hostile' } : r));
         return `[*] Broadcasting on underground channels...\n\n  ${taunts[Math.floor(Math.random() * taunts.length)]}\n\n[!] ${rival.handle} is now HOSTILE.\n[!] Expect retaliation.`;
+      },
+
+      negotiate: async () => {
+        let handle = arg1;
+        if (gameMode === 'arcade' && !handle) {
+          const auto = rivals.find(r => r.relationship >= 0 && r.status !== 'destroyed' && !r.recruited);
+          handle = auto?.handle;
+        }
+        if (gameMode === 'operator' && (!handle || handle.startsWith('-'))) {
+          const hIdx = args.indexOf('--target');
+          if (hIdx !== -1) handle = args[hIdx + 1];
+        }
+        if (!handle) return gameMode === 'operator' ? '[-] Usage: negotiate --target <handle>' : '[-] Usage: negotiate <handle>';
+        const rival = rivals.find(r => r.handle.toLowerCase() === handle.toLowerCase());
+        if (!rival) return `[-] Unknown handle: ${handle}. Type "rivals" to list.`;
+        if (rival.status === 'destroyed') return `[-] ${rival.handle} has been eliminated.`;
+        if (rival.recruited) return `[-] ${rival.handle} already works for you.`;
+        if (rival.relationship < 0) return `[-] ${rival.handle} refuses to negotiate. Relationship too hostile (${rival.relationship}).\n[*] Gift BTC or stop raiding to improve relations.`;
+        const discountPct = Math.round((1 - getTradeDiscount(rival.relationship)) * 100);
+        setPendingInteraction({ kind: 'negotiate', rivalId: rival.id, rivalHandle: rival.handle });
+        return `[*] Opening encrypted channel to ${rival.handle}...\n[+] SECURE CHANNEL ESTABLISHED${discountPct > 0 ? ` (${discountPct}% loyalty discount)` : ''}\n\n╔══════════════════════════════════════════════════════════╗\n║  TRADE MENU: ${rival.handle.toUpperCase().padEnd(42)}║\n╠══════════════════════════════════════════════════════════╣\n║  1. Buy Zero-Day    — Random exploit from their vault   ║\n║  2. Sell Stash      — Your commodities → their BTC      ║\n║  3. Buy Intel       — Reveal a node or rival weakness    ║\n║  4. Request Backup  — Botnet muscle for one operation    ║\n║  5. Gift BTC        — Send ₿ to improve relationship    ║\n║  6. Exit            — Close channel                      ║\n╚══════════════════════════════════════════════════════════╝\n\n[*] Type a number (1-6) to select.`;
+      },
+
+      recruit: async () => {
+        let handle = arg1;
+        if (gameMode === 'operator' && (!handle || handle.startsWith('-'))) {
+          const hIdx = args.indexOf('--target');
+          if (hIdx !== -1) handle = args[hIdx + 1];
+        }
+        if (!handle) return gameMode === 'operator' ? '[-] Usage: recruit --target <handle>' : '[-] Usage: recruit <handle>';
+        const rivalIdx = rivals.findIndex(r => r.handle.toLowerCase() === handle.toLowerCase());
+        if (rivalIdx === -1) return `[-] Unknown handle: ${handle}.`;
+        const rival = rivals[rivalIdx];
+        if (rival.status === 'destroyed') return `[-] ${rival.handle} has been eliminated.`;
+        if (rival.recruited) return `[-] ${rival.handle} already works for you.`;
+        const currentRecruits = rivals.filter(r => r.recruited);
+        if (currentRecruits.length >= 2) return `[-] Maximum 2 recruits. Dismiss one first with "dismiss <handle>".`;
+        if (rival.defeatCount < 3) return `[-] ${rival.handle} won't submit. Need ${3 - rival.defeatCount} more raid victories.\n[*] Defeat count: ${rival.defeatCount}/3`;
+        let recruitPath = null;
+        if (rival.relationship <= -60) recruitPath = 'fear';
+        else if (rival.relationship >= 40) recruitPath = 'respect';
+        else return `[-] ${rival.handle} isn't ready.\n[*] Either crush them (relationship ≤ -60, currently ${rival.relationship})\n[*] Or earn trust (relationship ≥ 40, currently ${rival.relationship})`;
+        const cost = RECRUIT_COST[recruitPath][rival.archetype] || 50000;
+        if (money < cost) return `[-] Recruitment costs ₿${cost.toLocaleString()} (${recruitPath} path). You have ₿${money.toLocaleString()}.`;
+        setMoney(m => m - cost);
+        setRivals(prev => prev.map((r, i) => i !== rivalIdx ? r : {
+          ...r, recruited: true, recruitType: recruitPath, recruitedAt: Date.now(), status: 'recruited',
+        }));
+        if (world[rival.ip]?.isRivalNode) {
+          setWorld(prev => { const nw = { ...prev }; delete nw[rival.ip]; return nw; });
+        }
+        playSuccess();
+        const bonusMap = { SCRIPT_KIDDIE: '+1 passive botnet node', GREY_HAT: 'Hidden node revealed every 10 min', BLACK_HAT: '+15% commodity sell price', APT_OPERATOR: 'Trace ticks 15% slower', LEGEND: 'All bonuses at half power' };
+        const betrayalNote = recruitPath === 'fear' ? '\n[!] WARNING: Fear recruits may betray you.' : '';
+        return `╔══════════════════════════════════════════════════════════╗\n║  🤝 RECRUITMENT: ${rival.handle.toUpperCase().padEnd(38)}║\n╠══════════════════════════════════════════════════════════╣\n║  Path:     ${recruitPath.toUpperCase().padEnd(46)}║\n║  Cost:     ₿${cost.toLocaleString().padEnd(45)}║\n║  Bonus:    ${(bonusMap[rival.archetype] || 'Unknown').padEnd(46)}║\n╚══════════════════════════════════════════════════════════╝\n\n[+] ${rival.handle} now works for you.\n[*] Their bonus is active immediately.${betrayalNote}`;
+      },
+
+      dismiss: async () => {
+        const handle = arg1;
+        if (!handle) return '[-] Usage: dismiss <handle>';
+        const rivalIdx = rivals.findIndex(r => r.handle.toLowerCase() === handle.toLowerCase());
+        if (rivalIdx === -1) return `[-] Unknown handle: ${handle}.`;
+        const rival = rivals[rivalIdx];
+        if (!rival.recruited) return `[-] ${rival.handle} is not a recruit.`;
+        setRivals(prev => prev.map((r, i) => i !== rivalIdx ? r : {
+          ...r, recruited: false, recruitType: null, recruitedAt: null, status: 'active', relationship: 0,
+        }));
+        return `[*] ${rival.handle} dismissed. They return to the underground as a neutral party.`;
       },
 
       help: async () => {

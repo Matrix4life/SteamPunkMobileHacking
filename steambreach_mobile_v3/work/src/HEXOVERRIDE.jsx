@@ -3316,54 +3316,58 @@ return `[+] ${actionResult}\n[+] CHAOS +10`;
           };
 
           // --- RIVAL NODE DESTRUCTION ---
-          if (isInside && world[targetIP]?.isRivalNode) {
-            if (privilege !== 'root') return '[-] shred: Permission denied. Need root.';
-            const rivalIdx = rivals.findIndex(r => r.id === world[targetIP].rivalId);
-            if (rivalIdx === -1) return '[-] Rival data corrupted.';
-            const rival = rivals[rivalIdx];
-            const bounty = DESTRUCTION_BOUNTY[rival.archetype] || 10000;
+        if (isInside && world[targetIP]?.isRivalNode) {
+  const rivalIdx = rivals.findIndex(r => r.id === world[targetIP].rivalId);
+  if (rivalIdx === -1) return '[-] Rival data corrupted.';
+  const rival = rivals[rivalIdx];
+  if (privilege !== 'root') return '[-] shred: Permission denied. Need root.';
 
-            setIsProcessing(true);
-            setTerminal(prev => [...prev, { type: 'out', text: `[*] Overwriting ${rival.handle}'s disk...`, isNew: false }]);
-            await new Promise(r => setTimeout(r, 1000));
-            setTerminal(prev => [...prev, { type: 'out', text: `[*] Pass 1/7 (random)...`, isNew: false }]);
-            await new Promise(r => setTimeout(r, 800));
-            setTerminal(prev => [...prev, { type: 'out', text: `[*] Pass 4/7 (zero)...`, isNew: false }]);
-            await new Promise(r => setTimeout(r, 800));
-            setTerminal(prev => [...prev, { type: 'out', text: `[*] Pass 7/7 (verify)...`, isNew: false }]);
-            await new Promise(r => setTimeout(r, 600));
+  const DESTRUCTION_BOUNTY = {
+    SCRIPT_KIDDIE: 5000, GREY_HAT: 25000, BLACK_HAT: 80000,
+    APT_OPERATOR: 250000, LEGEND: 1000000,
+  };
+  const bounty = DESTRUCTION_BOUNTY[rival.archetype] || 10000;
 
-            // Absorb everything
-            setMoney(m => m + bounty + rival.btc);
-            if (rival.zeroDays.length > 0) {
-              setZeroDays(prev => [...prev, ...rival.zeroDays.map(zd => ({ ...zd, obtained: Date.now() }))]);
-            }
-            Object.entries(rival.stash || {}).forEach(([key, qty]) => {
-              if (qty > 0) setStash(prev => ({ ...prev, [key]: (prev[key] || 0) + qty }));
-            });
+  // Absorb everything
+  setMoney(m => m + bounty + rival.btc);
+  if (rival.zeroDays.length > 0) {
+    setZeroDays(prev => [...prev, ...rival.zeroDays.map(zd => ({ ...zd, obtained: Date.now() }))]);
+  }
+  Object.entries(rival.stash || {}).forEach(([key, qty]) => {
+    if (qty > 0) setStash(prev => ({ ...prev, [key]: (prev[key] || 0) + qty }));
+  });
 
-            // Destroy rival + ripple relationships
-            setRivals(prev => prev.map((r, i) => i === rivalIdx
-              ? { ...r, status: 'destroyed', btc: 0, stash: {}, zeroDays: [] }
-              : {
-                  ...r,
-                  relationship: r.relationship > 20
-                    ? Math.max(-100, r.relationship - 10)
-                    : Math.min(100, r.relationship + 5),
-                }
-            ));
+  // Destroy rival
+  setRivals(prev => prev.map((r, i) => i === rivalIdx
+    ? { ...r, status: 'destroyed', btc: 0, stash: {}, zeroDays: [] }
+    : {
+        ...r,
+        relationship: r.relationship > 20
+          ? Math.max(-100, r.relationship - 10)
+          : Math.min(100, r.relationship + 5),
+      }
+  ));
 
-            // Remove node from world and exit
-            setWorld(prev => { const nw = { ...prev }; delete nw[targetIP]; return nw; });
-            setIsInside(false); setTargetIP(null); setCurrentDir('~'); setPrivilege('local');
-            setReputation(r => r + 50);
-            setIsProcessing(false);
+  // Remove node from world and exit
+  setWorld(prev => { const nw = { ...prev }; delete nw[targetIP]; return nw; });
+  setIsInside(false); setTargetIP(null); setCurrentDir('~'); setPrivilege('local');
+  setReputation(r => r + 50);
 
-            const contractMsg = processContractDestruction();
+  return `[*] Overwriting ${rival.handle}'s disk...
+[*] Pass 1/7... Pass 2/7... Pass 3/7...
+[+] SYSTEM DESTROYED.
 
-            return `[+] SYSTEM DESTROYED.\n\n╔══════════════════════════════════════════════════════════╗\n║  ☠  ${rival.handle.toUpperCase()} HAS BEEN ELIMINATED${' '.repeat(Math.max(0, 35 - rival.handle.length))}║\n╠══════════════════════════════════════════════════════════╣\n║  Bounty:     +₿${bounty.toLocaleString().padEnd(42)}║\n║  Wallet:     +₿${rival.btc.toLocaleString().padEnd(42)}║\n║  Zero-Days:  +${String(rival.zeroDays.length).padEnd(43)}║\n║  Rep:        +50${' '.repeat(41)}║\n╚══════════════════════════════════════════════════════════╝\n\n[SIGINT] Underground forums buzzing: ${rival.handle} has gone dark.${contractMsg}`;
-          }
+╔══════════════════════════════════════════════════════════╗
+║  ☠  ${rival.handle.toUpperCase()} HAS BEEN ELIMINATED${' '.repeat(Math.max(0, 35 - rival.handle.length))}║
+╠══════════════════════════════════════════════════════════╣
+║  Bounty:     +₿${bounty.toLocaleString().padEnd(42)}║
+║  Wallet:     +₿${rival.btc.toLocaleString().padEnd(42)}║
+║  Zero-Days:  +${String(rival.zeroDays.length).padEnd(43)}║
+║  Rep:        +50${' '.repeat(41)}║
+╚══════════════════════════════════════════════════════════╝
 
+[SIGINT] Underground forums buzzing: ${rival.handle} has gone dark.`;
+}
          
           if (gameMode === 'operator') {
             const hasFlags = args.includes('-vfz') || (args.includes('-v') && args.includes('-f') && args.includes('-z'));

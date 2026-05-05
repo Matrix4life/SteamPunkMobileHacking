@@ -1163,7 +1163,8 @@ setVirusScans({});
       const baseTick = inventory.includes('Overclock') ? 2000 : 1000;
       const proxyBonus = proxies.length * 400;
       const directorMult = directorRef.current?.modifiers?.traceSpeedMult || 1.0;
-      const traceSpeed = Math.floor((baseTick + proxyBonus) / directorMult);
+      const rivalMult = world[targetIP]?.isRivalNode ? 0.5 : 1; // 2x speed inside rival nodes
+      const traceSpeed = Math.floor((baseTick + proxyBonus) / directorMult * rivalMult);
 
       timer = setInterval(() => {
         const { heat: curHeat, proxies: curProxies } = activeState.current;
@@ -1822,6 +1823,16 @@ const verifyContract = (ip, objectiveType) => {
   'crypto_wallet_backup.dat':  { key: 'bank_records',    qty: [1, 2] },
   // Transaction logs
   'transaction_log.csv':       { key: 'bank_records',    qty: [2, 5] },
+  // Rival node stash files
+  'cc_dumps.db':               { key: 'cc_dumps',        qty: [2, 6] },
+  'fullz_archive.csv':         { key: 'ssn_fullz',       qty: [2, 5] },
+  'botnet_access_keys.pgp':    { key: 'exploits',        qty: [1, 3] },
+  'exploit_kits.tar.gz':       { key: 'exploits',        qty: [2, 4] },
+  'weaponized_0days.bin':      { key: 'zerodays',        qty: [1, 2] },
+  'cold_storage.dat':          { key: 'bank_records',    qty: [2, 5] },
+  'zero_day_vault.enc':        { key: 'zerodays',        qty: [1, 3] },
+  'botnet_config.json':        { key: 'exploits',        qty: [1, 2] },
+};
 };
   const secMult = { low: 1, mid: 1.5, high: 2.5, elite: 5 }[sec] || 1;
   const baseName = fileName.split('/').pop();
@@ -2871,6 +2882,46 @@ creds: async () => {
           trackLoot(primaryValue);
           playExfil();
 
+          // --- RIVAL NODE: deduct from rival's stash/wallet/zeroDays ---
+          if (world[targetIP]?.isRivalNode) {
+            const rivalIdx = rivals.findIndex(r => r.id === world[targetIP].rivalId);
+            if (rivalIdx !== -1) {
+              const rivalRef = rivals[rivalIdx];
+              const baseName = arg1.split('/').pop();
+              const fileToStash = {
+                'cc_dumps.db': 'cc_dumps',
+                'fullz_archive.csv': 'ssn_fullz',
+                'botnet_access_keys.pgp': 'botnets',
+                'exploit_kits.tar.gz': 'exploits',
+                'weaponized_0days.bin': 'zerodays',
+              };
+              const stashKey = fileToStash[baseName];
+              if (stashKey) {
+                setRivals(prev => prev.map((r, i) => i !== rivalIdx ? r : {
+                  ...r,
+                  stash: { ...r.stash, [stashKey]: Math.max(0, (r.stash[stashKey] || 0) - 1) },
+                  relationship: Math.max(-100, r.relationship - 10),
+                }));
+              }
+              if (baseName === 'cold_storage.dat') {
+                const stolen = Math.floor(rivalRef.btc * 0.25);
+                setMoney(m => m + stolen);
+                setRivals(prev => prev.map((r, i) => i !== rivalIdx ? r : {
+                  ...r, btc: Math.max(0, r.btc - stolen), relationship: Math.max(-100, r.relationship - 20),
+                }));
+              }
+              if (baseName === 'zero_day_vault.enc' && rivalRef.zeroDays.length > 0) {
+                const stolenZD = rivalRef.zeroDays[Math.floor(Math.random() * rivalRef.zeroDays.length)];
+                setZeroDays(prev => [...prev, { ...stolenZD, obtained: Date.now() }]);
+                setRivals(prev => prev.map((r, i) => i !== rivalIdx ? r : {
+                  ...r,
+                  zeroDays: r.zeroDays.filter(zd => zd.id !== stolenZD.id),
+                  relationship: Math.max(-100, r.relationship - 15),
+                }));
+              }
+            }
+          }
+
           // --- BULLETPROOF CONTRACT CHECK (MOVED TO END) ---
           let contractMsg = '';
           const currentContract = contracts.find(c => c.active && !c.completed);
@@ -3262,7 +3313,58 @@ return `[+] ${actionResult}\n[+] CHAOS +10`;
             }
             return msg;
           };
-          
+          };
+
+          // --- RIVAL NODE DESTRUCTION ---
+          if (isInside && world[targetIP]?.isRivalNode) {
+            if (privilege !== 'root') return '[-] shred: Permission denied. Need root.';
+            const rivalIdx = rivals.findIndex(r => r.id === world[targetIP].rivalId);
+            if (rivalIdx === -1) return '[-] Rival data corrupted.';
+            const rival = rivals[rivalIdx];
+            const bounty = DESTRUCTION_BOUNTY[rival.archetype] || 10000;
+
+            setIsProcessing(true);
+            setTerminal(prev => [...prev, { type: 'out', text: `[*] Overwriting ${rival.handle}'s disk...`, isNew: false }]);
+            await new Promise(r => setTimeout(r, 1000));
+            setTerminal(prev => [...prev, { type: 'out', text: `[*] Pass 1/7 (random)...`, isNew: false }]);
+            await new Promise(r => setTimeout(r, 800));
+            setTerminal(prev => [...prev, { type: 'out', text: `[*] Pass 4/7 (zero)...`, isNew: false }]);
+            await new Promise(r => setTimeout(r, 800));
+            setTerminal(prev => [...prev, { type: 'out', text: `[*] Pass 7/7 (verify)...`, isNew: false }]);
+            await new Promise(r => setTimeout(r, 600));
+
+            // Absorb everything
+            setMoney(m => m + bounty + rival.btc);
+            if (rival.zeroDays.length > 0) {
+              setZeroDays(prev => [...prev, ...rival.zeroDays.map(zd => ({ ...zd, obtained: Date.now() }))]);
+            }
+            Object.entries(rival.stash || {}).forEach(([key, qty]) => {
+              if (qty > 0) setStash(prev => ({ ...prev, [key]: (prev[key] || 0) + qty }));
+            });
+
+            // Destroy rival + ripple relationships
+            setRivals(prev => prev.map((r, i) => i === rivalIdx
+              ? { ...r, status: 'destroyed', btc: 0, stash: {}, zeroDays: [] }
+              : {
+                  ...r,
+                  relationship: r.relationship > 20
+                    ? Math.max(-100, r.relationship - 10)
+                    : Math.min(100, r.relationship + 5),
+                }
+            ));
+
+            // Remove node from world and exit
+            setWorld(prev => { const nw = { ...prev }; delete nw[targetIP]; return nw; });
+            setIsInside(false); setTargetIP(null); setCurrentDir('~'); setPrivilege('local');
+            setReputation(r => r + 50);
+            setIsProcessing(false);
+
+            const contractMsg = processContractDestruction();
+
+            return `[+] SYSTEM DESTROYED.\n\n╔══════════════════════════════════════════════════════════╗\n║  ☠  ${rival.handle.toUpperCase()} HAS BEEN ELIMINATED${' '.repeat(Math.max(0, 35 - rival.handle.length))}║\n╠══════════════════════════════════════════════════════════╣\n║  Bounty:     +₿${bounty.toLocaleString().padEnd(42)}║\n║  Wallet:     +₿${rival.btc.toLocaleString().padEnd(42)}║\n║  Zero-Days:  +${String(rival.zeroDays.length).padEnd(43)}║\n║  Rep:        +50${' '.repeat(41)}║\n╚══════════════════════════════════════════════════════════╝\n\n[SIGINT] Underground forums buzzing: ${rival.handle} has gone dark.${contractMsg}`;
+          }
+
+         
           if (gameMode === 'operator') {
             const hasFlags = args.includes('-vfz') || (args.includes('-v') && args.includes('-f') && args.includes('-z'));
             const hasTarget = args.some(a => a.startsWith('/dev/'));
@@ -5278,11 +5380,26 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
         const lastRaid = rivalRaidCooldowns[rival.id] || 0;
         const elapsed = now - lastRaid;
         const raidFactor = elapsed >= cooldownMs ? 1 : clamp(elapsed / cooldownMs, 0.25, 1);
+        
+        // Tool matching: Field/Operator must specify the right exploit
+        let toolMatch = undefined; // undefined = arcade, no bonus/penalty
+        if (gameMode === 'field') {
+          const tool = args[1];
+          if (!tool) return `[-] Specify attack vector: raid ${handle} <tool>\n[*] Check "dossier ${handle}" for their weakness.`;
+          toolMatch = tool === rival.vulnerability;
+        }
+        if (gameMode === 'operator') {
+          const eIdx = args.indexOf('--exploit');
+          const tool = eIdx !== -1 ? args[eIdx + 1] : null;
+          if (!tool) return `[-] Usage: raid --target ${handle} --exploit <tool>`;
+          toolMatch = tool === rival.vulnerability;
+        }
+        
         const result = attemptRivalHack(
           rival,
           { rep: reputation, heat, btc: money },
           zeroDays,
-          { raidFactor, rivalStash: rival.stash }
+          { raidFactor, rivalStash: rival.stash, toolMatch }
         );
         setRivalRaidCooldowns(prev => ({ ...prev, [rival.id]: now }));
         playBlip(); setIsProcessing(true);
@@ -5294,7 +5411,8 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
           '╚══════════════════════════════════════════════════════════╝',
           '', `  Target: ${rival.ip} | Security: ${rival.security}%`,
           `  Your odds: ${result.successChance.toFixed(1)}% | Roll: ${result.roll.toFixed(1)}`,
-          `  Raid efficiency: ${Math.round(raidFactor * 100)}%${raidFactor < 1 ? ' (cooldown penalty active)' : ''}`,
+        `  Raid efficiency: ${Math.round(raidFactor * 100)}%${raidFactor < 1 ? ' (cooldown penalty active)' : ''}`,
+          result.toolMatch === true ? '  Exploit match: ✓ CORRECT VECTOR (+25%)' : (result.toolMatch === false ? '  Exploit match: ✗ WRONG VECTOR (-25%)' : ''),
           '',
         ];
         if (result.success) {

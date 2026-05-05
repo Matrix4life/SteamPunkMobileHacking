@@ -1583,7 +1583,7 @@ const completeContractAndRemove = (id) => {
     let trimmed = directCmd || input.trim();
     if (!trimmed) return;
 
-    setTerminal(prev => [...prev.map(t => ({ ...t, isNew: false })), { type: 'in', text: trimmed, dir: isChatting ? `chat@${chatTarget}` : currentDir, remote: isInside || isChatting, , isRival: isInside && world[targetIP]?.isRivalNode, isNew: false }]);
+    setTerminal(prev => [...prev.map(t => ({ ...t, isNew: false })), { type: 'in', text: trimmed, dir: isChatting ? `chat@${chatTarget}` : currentDir, remote: isInside || isChatting, isRival: isInside && world[targetIP]?.isRivalNode, isNew: false }]);
     setInput('');
 
     if (isChatting) {

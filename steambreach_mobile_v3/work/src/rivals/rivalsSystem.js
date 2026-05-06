@@ -286,9 +286,77 @@ export function generateRivalNode(rival) {
     isRivalNode: true,
     rivalHandle: rival.handle,
     rivalId: rival.id,
+    owner: rival.id,
+    defense: Math.floor(30 + rival.skillMod * 30),
+    fortified: rival.skillMod >= 1.0,
+    isCore: true,
   };
 }
+// ============================================================================
+// RIVAL CLUSTER — Spawns 3-5 perimeter nodes around a rival's core
+// ============================================================================
 
+export function generateRivalCluster(rival, coreNodeData) {
+  const clusterSize = {
+    SCRIPT_KIDDIE: 2, GREY_HAT: 3, BLACK_HAT: 4, APT_OPERATOR: 5, LEGEND: 6,
+  }[rival.archetype] || 3;
+
+  const coreX = parseFloat(coreNodeData.x);
+  const coreY = parseFloat(coreNodeData.y);
+  const nodes = {};
+
+  for (let i = 0; i < clusterSize; i++) {
+    const octet = () => Math.floor(Math.random() * 255);
+    const ip = `${octet()}.${octet()}.${octet()}.${octet()}`;
+    const nx = Math.max(5, Math.min(95, coreX + (Math.random() * 20 - 10)));
+    const ny = Math.max(5, Math.min(85, coreY + (Math.random() * 20 - 10)));
+    const defense = Math.floor(15 + rival.skillMod * 15 + Math.random() * 10);
+
+    const exploitMap = {
+      hydra: { port: 22, svc: 'ssh' },
+      sqlmap: { port: 80, svc: 'http' },
+      msfconsole: { port: 445, svc: 'smb' },
+      curl: { port: 8080, svc: 'http-alt' },
+    };
+    const vulnKey = ['hydra', 'sqlmap', 'msfconsole', 'curl'][Math.floor(Math.random() * 4)];
+    const vuln = exploitMap[vulnKey];
+
+    nodes[ip] = {
+      name: `${rival.handle}'s Outpost ${i + 1}`,
+      sec: defense > 40 ? 'high' : 'mid',
+      port: vuln.port,
+      svc: vuln.svc,
+      exp: vulnKey,
+      val: Math.floor(rival.btc * 0.05),
+      isHoneypot: false,
+      x: `${nx.toFixed(1)}%`,
+      y: `${ny.toFixed(1)}%`,
+      files: { '/': ['ops/', 'logs/'], '/ops': ['config.json'], '/logs': ['access.log'] },
+      contents: {
+        '/ops/config.json': `[PENDING_GENERATION]`,
+        '/logs/access.log': `[PENDING_GENERATION]`,
+      },
+      org: {
+        orgName: `${rival.handle}'s Outpost`,
+        type: 'criminal',
+        industry: 'Underground',
+        employees: [],
+      },
+      blueTeam: { alertLevel: Math.floor(defense / 5), patchedVulns: [], changedPasswords: [], activeHunting: false, lastIncident: null },
+      commsGenerated: false,
+      slackChannelGenerated: false,
+      isRivalNode: true,
+      rivalHandle: rival.handle,
+      rivalId: rival.id,
+      owner: rival.id,
+      defense,
+      fortified: false,
+      isCore: false,
+    };
+  }
+
+  return nodes;
+}
 // ============================================================================
 
 const clamp = (v, min, max) => Math.max(min, Math.min(max, v));

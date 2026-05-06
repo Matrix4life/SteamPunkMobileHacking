@@ -74,6 +74,7 @@ import {
   attemptRivalHack,
   rivalAttacksPlayer,
   generateRivalNode,
+  generateRivalCluster,
   DESTRUCTION_BOUNTY,
   RECRUIT_COST,
   getTradeDiscount,
@@ -2788,11 +2789,13 @@ if (!hasEntry || !hasHit) {
         if (!isInside) return "[-] Must be on a remote host.";
         if (privilege !== 'root') return "[-] Root required for C2 payload.";
         if (botnet.includes(targetIP)) return "[-] Beacon already active.";
-        setBotnet(prev => [...prev, targetIP]);
+       setBotnet(prev => [...prev, targetIP]);
         setWorld(prev => ({
   ...prev,
   [targetIP]: {
     ...prev[targetIP],
+    owner: 'player',
+    defense: Math.max(prev[targetIP]?.defense || 0, 20),
     infection: {
       ...(prev[targetIP]?.infection || {}),
       state: 'infected',
@@ -2813,6 +2816,10 @@ if (!hasEntry || !hasHit) {
         const maxSlots = getMaxProxySlots(inventory, director.modifiers);
         if (proxies.length >= maxSlots) return `[-] Proxy chain at capacity (${maxSlots}/${maxSlots} hops). Use 'disconnect <ip>' to free a slot.`;
         setProxies(prev => [...prev, targetIP]);
+        setWorld(prev => ({
+          ...prev,
+          [targetIP]: { ...prev[targetIP], defense: Math.min(100, (prev[targetIP]?.defense || 0) + 15) }
+        }));
         playSuccess();
         escalateBlueTeam(targetIP, 10);
         return `[*] Chisel reverse tunnel...\n[+] SOCKS5 proxy active. Hop ${proxies.length + 1}/${maxSlots}. Trace slowed. Pivoting enabled.`;
@@ -3100,8 +3107,10 @@ creds: async () => {
          if (newRival) {
             setRivals(prev => [...prev, ensureRivalStash(newRival)]);
             const rivalNodeData = generateRivalNode(newRival);
-            setWorld(prev => ({ ...prev, [newRival.ip]: rivalNodeData }));
-            rivalMsg = `\n\n[!!!] NEW RIVAL DETECTED [!!!]\n[*] ${newRival.handle} (${newRival.archetypeName}) noticed your activity.\n[*] Node: ${newRival.ip} — ☠ RIVAL NODE added to network map\n[*] Type "dossier ${newRival.handle}" for intel.`;
+            const clusterNodes = generateRivalCluster(newRival, rivalNodeData);
+            const clusterIPs = Object.keys(clusterNodes);
+            setWorld(prev => ({ ...prev, [newRival.ip]: rivalNodeData, ...clusterNodes }));
+            rivalMsg = `\n\n[!!!] NEW RIVAL DETECTED [!!!]\n[*] ${newRival.handle} (${newRival.archetypeName}) is establishing a presence.\n[*] Core: ${newRival.ip} ☠ + ${clusterIPs.length} outpost nodes detected\n[*] Their territory is spreading across the network map.\n[*] Type "dossier ${newRival.handle}" for intel. Type "territory" for control overview.`;
           }
           
           const bonusLine = drop.bonus ? `\n[+] BONUS: +${drop.bonus.qty}x ${COMMODITIES[drop.bonus.key]?.name}` : '';
@@ -4146,15 +4155,15 @@ return `[+] ${actionResult}\n[+] CHAOS +10`;
           setTerminal(prev => [...prev, { type: 'out', text: `[*] Compiling reptile module for kernel ${Math.floor(Math.random()*3)+4}.${Math.floor(Math.random()*15)}.0-generic...\n  CC [M]  reptile.o\n  CC [M]  reptile_module.o\n  LD [M]  reptile.ko\n[*] insmod reptile.ko\n[*] Verifying installation...`, isNew: false }]);
           await new Promise(r => setTimeout(r, 2000));
 
-          setLooted(prev => [...prev, reptileKey]);
-          setWorld(prev => {
-            const nw = { ...prev };
-            if (nw[targetIP]) nw[targetIP] = { ...nw[targetIP], blueTeam: { ...nw[targetIP].blueTeam, alertLevel: 0, activeHunting: false } };
-            return nw;
-          });
-          playSuccess();
-          setIsProcessing(false);
-          return `# lsmod | grep reptile\n# (no output — rootkit is hidden)\n\n[+] Reptile kernel rootkit installed.\n[+] C2 beacon is now invisible to host-based detection.\n[+] Blue Team alert level reset to 0. Node is permanently stealth.`;
+          ssetLooted(prev => [...prev, reptileKey]);
+        setWorld(prev => {
+          const nw = { ...prev };
+          if (nw[targetIP]) nw[targetIP] = { ...nw[targetIP], blueTeam: { ...nw[targetIP].blueTeam, alertLevel: 0, activeHunting: false }, defense: Math.min(100, (nw[targetIP].defense || 0) + 30), fortified: true };
+          return nw;
+        });
+        playSuccess();
+        setIsProcessing(false);
+        return `[+] REPTILE ROOTKIT INSTALLED.\n[+] Your presence on ${world[targetIP]?.org?.orgName || targetIP} is now invisible.\n[+] Blue Team can no longer detect or remove your C2 beacon.\n[+] Defense: +30 (fortified). Node is hidden from rival scans.`;
         }
 
         if (gameMode === 'field') {

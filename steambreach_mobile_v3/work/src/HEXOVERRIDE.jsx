@@ -2973,7 +2973,7 @@ if (!hasEntry || !hasHit) {
 creds: async () => {
         if (!arg1) {
           const nodes = Object.entries(world)
-            .filter(([, n]) => n.crackedCreds?.length > 0 || n.johnCracked?.length > 0))
+            .filter(([, n]) => n.crackedCreds?.length > 0 || n.johnCracked?.length > 0)
             .map(([ip, n]) => `  ${ip.padEnd(18)} ${(n.org?.orgName || 'Unknown').padEnd(24)} ${n.crackedCreds.length} account${n.crackedCreds.length > 1 ? 's' : ''}`)
             .join('\n');
           return nodes.length > 0

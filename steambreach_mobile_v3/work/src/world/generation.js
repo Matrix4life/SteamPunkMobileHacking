@@ -78,6 +78,7 @@ const generateNewTarget = (forcedTier = null, parentIP = null, directorMods = nu
       isHoneypot: Math.random() < (directorMods?.honeypotChance || 0.15),
       val, x: `${Math.floor(Math.random() * 85 + 7)}%`, y: `${Math.floor(Math.random() * 55 + 10)}%`,
       parentIP, files, contents, org, blueTeam, commsGenerated: false, slackChannelGenerated: false,
+      owner: null, defense: 0, fortified: false, isCore: false,
     }
   };
 };

@@ -26,7 +26,6 @@ const COLORS = {
   rivalTerritory: '#ff2255',
   contested: '#ffaa22',
   fortified: '#00ff88',
-};
   wifi: '#4ecdc4',
 };
 

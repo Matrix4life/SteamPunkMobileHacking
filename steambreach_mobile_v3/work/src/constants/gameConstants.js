@@ -22,6 +22,11 @@ const COLORS = {
   elite: '#ff6188',
   border: '#2d2a2e',
   borderActive: '#403e41',
+  territory: '#22C55E',
+  rivalTerritory: '#ff2255',
+  contested: '#ffaa22',
+  fortified: '#00ff88',
+};
   wifi: '#4ecdc4',
 };
 
@@ -131,6 +136,11 @@ const COMMAND_REGISTRY = [
   { cmd: 'negotiate <handle>', desc: 'Open trade channel — buy zero-days, sell stash, get intel', category: 'RIVALS' },
   { cmd: 'recruit <handle>', desc: 'Convert a defeated rival into a passive asset', category: 'RIVALS' },
   { cmd: 'dismiss <handle>', desc: 'Release a recruited rival back to the underground', category: 'RIVALS' },
+  // TERRITORY
+  { cmd: 'territory', desc: 'View territory control — your nodes, rival nodes, influence %', category: 'TERRITORY' },
+  { cmd: 'purge', desc: 'Remove rival presence from a breached node (required before sliver)', category: 'TERRITORY' },
+  { cmd: 'reinforce <ip>', desc: 'Boost node defense temporarily (+25 for 3 min, costs 1 botnet)', category: 'TERRITORY' },
+  { cmd: 'fortify', desc: 'Permanently increase current node defense +10 (costs ₿5,000)', category: 'TERRITORY' },
 ];
 const DEV_COMMANDS = [
   { cmd: 'sudo devmode', desc: 'Toggle Developer Godmode' },

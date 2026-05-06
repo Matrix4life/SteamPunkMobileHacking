@@ -4191,12 +4191,14 @@ return `[+] ${actionResult}\n[+] CHAOS +10`;
         setWorld(prev => {
           const nw = { ...prev };
           if (nw[targetIP]) nw[targetIP] = { ...nw[targetIP], blueTeam: { ...nw[targetIP].blueTeam, alertLevel: 0, activeHunting: false }, defense: Math.min(100, (nw[targetIP].defense || 0) + 30), fortified: true };
+         
           return nw;
         });
         playSuccess();
         setIsProcessing(false);
         return `[+] REPTILE ROOTKIT INSTALLED.\n[+] Your presence on ${world[targetIP]?.org?.orgName || targetIP} is now invisible.\n[+] Blue Team can no longer detect or remove your C2 beacon.\n[+] Defense: +30 (fortified). Node is hidden from rival scans.`;
-            return nw;
+           
+          return nw;
           });
           playSuccess();
           setIsProcessing(false);

@@ -2973,7 +2973,7 @@ if (!hasEntry || !hasHit) {
 creds: async () => {
         if (!arg1) {
           const nodes = Object.entries(world)
-            .filter(([, n]) => n.crackedCreds?.length > 0)
+            .filter(([, n]) => n.crackedCreds?.length > 0 || n.johnCracked?.length > 0))
             .map(([ip, n]) => `  ${ip.padEnd(18)} ${(n.org?.orgName || 'Unknown').padEnd(24)} ${n.crackedCreds.length} account${n.crackedCreds.length > 1 ? 's' : ''}`)
             .join('\n');
           return nodes.length > 0
@@ -3159,7 +3159,7 @@ creds: async () => {
         setWorld(prev => {
           const nw = { ...prev };
           if (!nw.local.files['/home/operator'].includes(arg1)) nw.local.files['/home/operator'] = [...nw.local.files['/home/operator'], arg1];
-          nw.local.contents = { ...nw.local.contents, [`/home/operator/${arg1}`]: rawData };
+          nw.local.contents = { ...nw.local.contents, [`/home/operator/${arg1}`]: `ORIGIN_IP:${targetIP}\n${rawData}` };
           return nw;
         });
         playSuccess();
@@ -3168,7 +3168,21 @@ creds: async () => {
 
       john: async () => {
         if (isInside) return "[-] john: Must be run locally from KALI-GATEWAY.";
-        if (!arg1) return "[-] Usage: john <filename>\n[*] Example: john sys.hashes --wordlist=rockyou.txt";
+        
+        // john --show: display all john-cracked creds
+        if (arg1 === '--show') {
+          const johnNodes = Object.entries(world)
+            .filter(([, n]) => n.johnCracked?.length > 0)
+            .map(([ip, n]) => {
+              const lines = n.johnCracked.map(c => `    ${c.user.padEnd(30)} ${c.password.padEnd(20)} ${c.role}`);
+              return `  ${ip} (${n.org?.orgName || 'Unknown'}):\n${lines.join('\n')}`;
+            });
+          return johnNodes.length > 0
+            ? `[+] JOHN — CRACKED CREDENTIALS\n${'─'.repeat(60)}\n${johnNodes.join('\n\n')}\n${'─'.repeat(60)}\n[*] Use: ssh <email>@<ip> <password>`
+            : '[-] No credentials cracked with john yet. Download hash files and crack them.';
+        }
+
+        if (!arg1) return "[-] Usage: john <filename>\n[*] Example: john sys.hashes\n[*] View cracked: john --show";
 
         const targetFile = resolvePath(arg1, currentDir);
         let rawData = world.local.contents[targetFile];
@@ -3176,40 +3190,135 @@ creds: async () => {
         if (!rawData.includes('[HASH]')) return "[-] john: No recognizable hashes in file.";
         
         const hashKey = `john_${arg1}`;
-        if (looted.includes(hashKey)) return "[-] john: Hashes already cracked in previous session.";
+        if (looted.includes(hashKey)) return "[-] john: Hashes already cracked in previous session.\n[*] Type 'john --show' to view results.";
 
         const ipMatch = rawData.match(/ORIGIN_IP:(\d+\.\d+\.\d+\.\d+)/);
         const sourceIP = ipMatch ? ipMatch[1] : null;
         const orgData = sourceIP ? world[sourceIP]?.org : null;
 
+        // --- MODE DIFFERENTIATION ---
         const hasCPU = inventory.includes('CPU');
-        const crackTime = Math.max(900, Math.floor((hasCPU ? 2400 : 3600) / getHashRigMult()));
+        let wordlist = 'rockyou';
+        let formatFlag = null;
+        let crackTimeMult = 1;
+
+        if (gameMode === 'field') {
+          // Field: must specify --wordlist
+          const wIdx = args.indexOf('--wordlist') !== -1 ? args.indexOf('--wordlist') : args.findIndex(a => a.startsWith('--wordlist='));
+          if (wIdx === -1) return "[-] john: Must specify wordlist in Field mode.\n[*] Usage: john sys.hashes --wordlist=rockyou\n[*] Wordlists: rockyou (fast/weak), darkweb-10k (medium), hashkiller (slow/strong)";
+          const wArg = args[wIdx].includes('=') ? args[wIdx].split('=')[1] : args[wIdx + 1];
+          const WORDLISTS = { rockyou: { speed: 1, power: 0.7 }, 'darkweb-10k': { speed: 1.5, power: 1.0 }, hashkiller: { speed: 2.5, power: 1.3 } };
+          if (!WORDLISTS[wArg]) return `[-] Unknown wordlist: ${wArg}\n[*] Available: rockyou, darkweb-10k, hashkiller`;
+          wordlist = wArg;
+          crackTimeMult = WORDLISTS[wArg].speed;
+        }
+
+        if (gameMode === 'operator') {
+          // Operator: must specify --format AND --wordlist
+          const fIdx = args.indexOf('--format') !== -1 ? args.indexOf('--format') : args.findIndex(a => a.startsWith('--format='));
+          const wIdx = args.indexOf('--wordlist') !== -1 ? args.indexOf('--wordlist') : args.findIndex(a => a.startsWith('--wordlist='));
+          if (fIdx === -1 || wIdx === -1) return "[-] john: Operator mode requires --format and --wordlist.\n[*] Usage: john --format=sha512crypt --wordlist=/usr/share/wordlists/rockyou.txt sys.hashes\n[*] Formats: sha512crypt, ntlm, bcrypt, md5crypt\n[*] Bonus: add --rules=best64 for extra cracking power";
+          const fArg = args[fIdx].includes('=') ? args[fIdx].split('=')[1] : args[fIdx + 1];
+          const wArg = args[wIdx].includes('=') ? args[wIdx].split('=')[1] : (args[wIdx + 1] || '');
+          const wName = wArg.split('/').pop().replace('.txt', '');
+          const FORMATS = ['sha512crypt', 'ntlm', 'bcrypt', 'md5crypt'];
+          if (!FORMATS.includes(fArg)) return `[-] Unknown format: ${fArg}\n[*] Formats: ${FORMATS.join(', ')}`;
+          formatFlag = fArg;
+          const WORDLISTS = { rockyou: { speed: 1, power: 0.7 }, 'darkweb-10k': { speed: 1.5, power: 1.0 }, hashkiller: { speed: 2.5, power: 1.3 } };
+          wordlist = WORDLISTS[wName] ? wName : 'rockyou';
+          crackTimeMult = (WORDLISTS[wName]?.speed || 1) * (fArg === 'bcrypt' ? 2 : 1);
+          if (args.includes('--rules=best64')) crackTimeMult *= 0.7; // faster with rules
+        }
+
+        const baseCrackTime = Math.max(900, Math.floor((hasCPU ? 2400 : 3600) / getHashRigMult()));
+        const crackTime = Math.floor(baseCrackTime * crackTimeMult);
         const baseReward = getEconomyPayout({ ip: sourceIP || targetIP, action: 'john' });
+        // Better wordlist = better payout
+        const wordlistBonus = { rockyou: 1.0, 'darkweb-10k': 1.3, hashkiller: 1.6 }[wordlist] || 1;
+        const reward = Math.floor(baseReward * wordlistBonus);
 
         setIsProcessing(true);
         setTerminal(prev => [...prev, { 
           type: 'out', 
-          text: `[*] John the Ripper 1.9.0-jumbo-1 (CPU Optimized)\n[*] Loaded 14 password hashes with 14 different salts\n[*] Hardware detected: ${hasCPU ? 'Quantum Thread Ripper [ACCELERATED]' : 'Standard CPU'}\n[*] Press 'q' or Ctrl-C to abort, almost any other key for status\n[*] Initiating Wordlist + Mangling Rules attack...`, 
+          text: `[*] John the Ripper 1.9.0-jumbo-1 (CPU Optimized)${formatFlag ? `\n[*] Forcing format: ${formatFlag}` : ''}\n[*] Wordlist: ${wordlist}${args.includes('--rules=best64') ? ' + best64 rules' : ''}\n[*] Loaded 14 password hashes with 14 different salts\n[*] Hardware: ${hasCPU ? 'Quantum Thread Ripper [ACCELERATED]' : 'Standard CPU'}\n[*] Cracking...`, 
           isNew: false 
         }]);
         
         await new Promise(r => setTimeout(r, crackTime));
 
-        setMoney(m => m + baseReward);
+        setMoney(m => m + reward);
         setLooted(prev => [...prev, hashKey]);
         playSuccess();
         setIsProcessing(false);
 
-        let out = `[+] Session complete. 14 hashes cracked.`;
+        let out = `[+] Session complete. 14 hashes cracked.\n[+] Hashes fenced for ₿${reward.toLocaleString()}.`;
+
+        // --- STORE CRACKED CREDS (like mimikatz) ---
         if (orgData && orgData.employees) {
-          out += `\n[+] Decrypted core credentials for ${orgData.orgName}:`;
+          const crackedCreds = orgData.employees.map(e => ({
+            user: e.email, password: e.password, role: e.role, source: 'john',
+          }));
+          
+          // Store on source node
+          setWorld(prev => ({
+            ...prev,
+            [sourceIP]: { ...prev[sourceIP], crackedCreds, johnCracked: crackedCreds }
+          }));
+
+          out += `\n\n[+] Decrypted credentials for ${orgData.orgName}:`;
+          out += `\n${'─'.repeat(60)}`;
           orgData.employees.forEach(emp => {
-            out += `\n    ${emp.email}@${sourceIP} : ${emp.password}`;
+            out += `\n    ${emp.email.padEnd(28)} ${emp.password.padEnd(20)} ${emp.role}`;
           });
-          out += `\n\n[+] Additional off-book hashes fenced for ₿${baseReward.toLocaleString()}.`;
-          out += `\n[*] TIP: Use these credentials with the 'ssh' command to bypass intrusion detection.`;
-        } else {
-           out += `\n[+] Credentials fenced on the black market for ₿${baseReward.toLocaleString()}.`;
+          out += `\n${'─'.repeat(60)}`;
+          out += `\n[*] Credentials saved — type 'creds ${sourceIP}' or 'john --show' anytime.`;
+          out += `\n[*] Use: ssh ${orgData.employees[0]?.email}@${sourceIP} ${orgData.employees[0]?.password}`;
+
+          // --- CREDENTIAL REUSE SCAN ---
+          // Find nodes in the same org/subnet that share employee email domains
+          const emailDomain = orgData.employees[0]?.email?.split('@')[1] || '';
+          const orgPrefix = orgData.orgName?.split(' ')[0]?.toLowerCase() || '';
+          const reuseTargets = [];
+
+          Object.entries(world).forEach(([ip, node]) => {
+            if (ip === sourceIP || ip === 'local' || !node?.org?.employees) return;
+            const nodeOrgPrefix = node.org.orgName?.split(' ')[0]?.toLowerCase() || '';
+            const sameOrg = orgPrefix && nodeOrgPrefix === orgPrefix;
+            const sameSubnet = sourceIP && ip.split('.').slice(0, 3).join('.') === sourceIP.split('.').slice(0, 3).join('.');
+            
+            if (sameOrg || sameSubnet) {
+              // Check for reused credentials (same email domain or same passwords)
+              const matches = node.org.employees.filter(remoteEmp => 
+                orgData.employees.some(localEmp => 
+                  localEmp.password === remoteEmp.password || 
+                  localEmp.email.split('@')[0] === remoteEmp.email.split('@')[0]
+                )
+              );
+              if (matches.length > 0) {
+                reuseTargets.push({ ip, orgName: node.org.orgName, matches });
+                // Store reused creds on the target node too
+                const reusedCreds = matches.map(m => ({
+                  user: m.email, password: m.password, role: m.role, source: 'john-reuse',
+                }));
+                setWorld(prev => ({
+                  ...prev,
+                  [ip]: { ...prev[ip], crackedCreds: [...(prev[ip]?.crackedCreds || []), ...reusedCreds], johnCracked: [...(prev[ip]?.johnCracked || []), ...reusedCreds] }
+                }));
+              }
+            }
+          });
+
+          if (reuseTargets.length > 0) {
+            out += `\n\n[!!!] CREDENTIAL REUSE DETECTED:`;
+            reuseTargets.forEach(t => {
+              out += `\n  → ${t.ip} (${t.orgName}) — ${t.matches.length} reused account${t.matches.length > 1 ? 's' : ''}`;
+              t.matches.forEach(m => {
+                out += `\n      ssh ${m.email}@${t.ip} ${m.password}`;
+              });
+            });
+            out += `\n\n[*] These credentials work on sibling systems WITHOUT triggering exploit detection.`;
+            out += `\n[*] SSH access = zero trace on entry + no VULN match needed.`;
+          }
         }
         return out;
       },

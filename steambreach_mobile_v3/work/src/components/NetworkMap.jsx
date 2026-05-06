@@ -443,11 +443,13 @@ export default function NetworkMap({
             const infectionVisual = getInfectionVisual(node);
             let nodeColor = node.sec === 'high' ? COLORS.danger : COLORS.mapNode;
             
-            // Color override logic
+            // Color override logic — territory first, then state
             if (infectionVisual.color) nodeColor = infectionVisual.color;
-            else if (isTarget) nodeColor = COLORS.warning; // Highlight target in yellow
+            else if (isTarget) nodeColor = COLORS.warning;
             else if (isProxy) nodeColor = COLORS.proxy;
-            else if (botnet.includes(ip)) nodeColor = COLORS.infected;
+            else if (botnet.includes(ip)) nodeColor = COLORS.territory || '#22C55E';
+            else if (node.owner === 'player') nodeColor = (COLORS.territory || '#22C55E') + 'aa';
+            else if (node.owner && node.owner !== 'player') nodeColor = COLORS.rivalTerritory || '#ff2255';
             else if (looted.includes(ip)) nodeColor = COLORS.looted;
             else if (node.wifiSpawned) nodeColor = COLORS.wifi;
             
@@ -481,6 +483,12 @@ export default function NetworkMap({
                     
                     {/* Extra target ring */}
                     {isTarget && !isProxy && !infectionVisual.ring && <circle cx="0" cy="0" r={r + 3} fill="none" stroke={COLORS.warning} strokeWidth="1" opacity="0.6" strokeDasharray="2 2" />}
+
+                    {/* Territory defense ring */}
+                    {node.owner && node.owner !== 'player' && expanded && <circle cx="0" cy="0" r={r + 3} fill="none" stroke={COLORS.rivalTerritory || '#ff2255'} strokeWidth={node.fortified ? 2 : 1} opacity="0.5" strokeDasharray={node.fortified ? 'none' : '3 3'} />}
+                    {node.owner === 'player' && expanded && <circle cx="0" cy="0" r={r + 3} fill="none" stroke={COLORS.territory || '#22C55E'} strokeWidth={node.fortified ? 2 : 1} opacity="0.4" />}
+                    {/* Core skull icon */}
+                    {node.isCore && expanded && <text x="0" y={isMobile ? -20 : -14} fill={COLORS.rivalTerritory || '#ff2255'} fontSize={isMobile ? '10px' : '7px'} textAnchor="middle" fontFamily="inherit" style={{ fontWeight: 'bold', filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.9))' }}>☠ CORE</text>}
                     
                     <circle cx="0" cy="0" r={r} fill={nodeColor} opacity={node?.infection?.state === 'dead' ? 0.35 : 1} />
                     

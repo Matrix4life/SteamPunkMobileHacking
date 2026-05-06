@@ -3158,12 +3158,12 @@ creds: async () => {
         }
         setWorld(prev => {
           const nw = { ...prev };
-          if (!nw.local.files['/home/operator'].includes(arg1)) nw.local.files['/home/operator'] = [...nw.local.files['/home/operator'], arg1];
-          nw.local.contents = { ...nw.local.contents, [`/home/operator/${arg1}`]: `ORIGIN_IP:${targetIP}\n${rawData}` };
-          return nw;
+         const savedName = `${arg1}.${targetIP}`;
+          if (!nw.local.files['/home/operator'].includes(savedName)) nw.local.files['/home/operator'] = [...nw.local.files['/home/operator'], savedName];
+          nw.local.contents = { ...nw.local.contents, [`/home/operator/${savedName}`]: `ORIGIN_IP:${targetIP}\n${rawData}` };
         });
         playSuccess();
-        return `[+] ${arg1} saved to /home/operator/`;
+        return `[+] ${arg1} saved to /home/operator/${arg1}.${targetIP}`;
       },
 
       john: async () => {

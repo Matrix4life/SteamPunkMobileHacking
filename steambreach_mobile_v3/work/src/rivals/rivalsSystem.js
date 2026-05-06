@@ -270,7 +270,11 @@ export function generateRivalNode(rival) {
       type: 'criminal',
       industry: 'Underground',
       employees: [
-        { name: rival.handle, email: `${rival.handle.toLowerCase()}@${rival.ip}`, role: rival.archetypeName },
+        employees: [
+        { name: rival.handle, email: `${rival.handle.toLowerCase()}@${rival.ip}`, role: rival.archetypeName, password: `${rival.handle.replace(/[^a-zA-Z]/g, '')}${Math.floor(Math.random() * 900 + 100)}!` },
+        { name: 'sysop', email: `sysop@${rival.ip}`, role: 'System Operator', password: `Sys${Math.floor(Math.random() * 9000 + 1000)}Op` },
+        { name: 'backup_admin', email: `backup@${rival.ip}`, role: 'Backup Admin', password: `Bkup_${Math.floor(Math.random() * 99999)}` },
+      
       ],
     },
     blueTeam: {
@@ -298,7 +302,7 @@ export function generateRivalNode(rival) {
 
 export function generateRivalCluster(rival, coreNodeData) {
   const clusterSize = {
-    SCRIPT_KIDDIE: 2, GREY_HAT: 3, BLACK_HAT: 4, APT_OPERATOR: 5, LEGEND: 6,
+    Skiddie: 2, GREY_HAT: 3, BLACK_HAT: 4, APT_OPERATOR: 5, LEGEND: 6,
   }[rival.archetype] || 3;
 
   const coreX = parseFloat(coreNodeData.x);
@@ -336,11 +340,7 @@ export function generateRivalCluster(rival, coreNodeData) {
         '/ops/config.json': `[PENDING_GENERATION]`,
         '/logs/access.log': `[PENDING_GENERATION]`,
       },
-      org: {
-        orgName: `${rival.handle}'s Outpost`,
-        type: 'criminal',
-        industry: 'Underground',
-        employees: [],
+      org: { orgName: `${rival.handle}'s Outpost`, type: 'criminal', industry: 'Underground', employees: [{ name: 'node_admin', email: `admin@${ip}`, role: 'Outpost Admin', password: `N0de${Math.floor(Math.random() * 9000 + 1000)}` }, { name: 'relay_op', email: `relay@${ip}`, role: 'Relay Operator', password: `R3lay_${Math.floor(Math.random() * 99999)}` }] },
       },
       blueTeam: { alertLevel: Math.floor(defense / 5), patchedVulns: [], changedPasswords: [], activeHunting: false, lastIncident: null },
       commsGenerated: false,

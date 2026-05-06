@@ -1584,10 +1584,10 @@ const completeContractAndRemove = (id) => {
     if (exp === 'msfconsole') out += `\n\n[!] VULN: Unpatched SMB → 'msfconsole ${ip}'`;
     if (exp === 'curl') out += `\n\n[!] VULN: LFI via HTTP → 'curl ${ip}'`;
     if (world[ip]?.isRivalNode) {
-  output += `\n[!!!] RIVAL NODE — Owned by ${world[ip].rivalHandle} (${rivals.find(r => r.id === world[ip].rivalId)?.archetypeName || 'Unknown'})`;
-  output += `\n[!!!] Defense: ${world[ip].defense || 0}/100${world[ip].fortified ? ' [FORTIFIED]' : ''}${world[ip].isCore ? ' [★ CORE]' : ''}`;
-  output += `\n[!!!] 2x TRACE SPEED inside this system`;
-}
+      out += `\n[!!!] RIVAL NODE — Owned by ${world[ip].rivalHandle} (${rivals.find(r => r.id === world[ip].rivalId)?.archetypeName || 'Unknown'})`;
+      out += `\n[!!!] Defense: ${world[ip].defense || 0}/100${world[ip].fortified ? ' [FORTIFIED]' : ''}${world[ip].isCore ? ' [★ CORE]' : ''}`;
+      out += `\n[!!!] 2x TRACE SPEED inside this system`;
+    }
     setTerminal(prev => [...prev.map(t => ({ ...t, isNew: false })), { type: 'in', text: `nmap ${ip}`, dir: currentDir, remote: isInside, isRival: isInside && world[targetIP]?.isRivalNode, isNew: false }, { type: 'out', text: out, isNew: true }]);
     // On mobile: close map and show target detail in touch UI
     if (isMobile) {

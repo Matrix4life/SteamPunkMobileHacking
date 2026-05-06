@@ -4395,9 +4395,10 @@ return `[+] ${actionResult}\n[+] CHAOS +10`;
       cd: async () => {
         const dest = arg1 === '..' ? (currentDir.split('/').slice(0, -1).join('/') || '/') : resolvePath(arg1, currentDir);
 const parentListing = fs[currentDir] || [];
-const appearsInParent = parentListing.some(f => f === arg1 + '/' || f === arg1);
+const appearsInParent = parentListing.some(f => f === arg1 + '/');
 if (fs[dest] || dest === '/' || appearsInParent) { setCurrentDir(dest); return ''; }
-return `bash: cd: ${arg1}: No such file or directory`;
+const isFile = parentListing.some(f => f === arg1);
+return isFile ? `bash: cd: ${arg1}: Not a directory` : `bash: cd: ${arg1}: No such file or directory`;
       },
       cat: async () => {
   try {

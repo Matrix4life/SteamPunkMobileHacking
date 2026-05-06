@@ -4162,14 +4162,14 @@ return `[+] ${actionResult}\n[+] CHAOS +10`;
           await new Promise(r => setTimeout(r, 2000));
 
           setLooted(prev => [...prev, reptileKey]);
-        setWorld(prev => {
-          const nw = { ...prev };
-          if (nw[targetIP]) nw[targetIP] = { ...nw[targetIP], blueTeam: { ...nw[targetIP].blueTeam, alertLevel: 0, activeHunting: false }, defense: Math.min(100, (nw[targetIP].defense || 0) + 30), fortified: true };
-          return nw;
-        });
-        playSuccess();
-        setIsProcessing(false);
-        return `[+] REPTILE ROOTKIT INSTALLED.\n[+] Your presence on ${world[targetIP]?.org?.orgName || targetIP} is now invisible.\n[+] Blue Team can no longer detect or remove your C2 beacon.\n[+] Defense: +30 (fortified). Node is hidden from rival scans.`;
+          setWorld(prev => {
+            const nw = { ...prev };
+            if (nw[targetIP]) nw[targetIP] = { ...nw[targetIP], blueTeam: { ...nw[targetIP].blueTeam, alertLevel: 0, activeHunting: false }, defense: Math.min(100, (nw[targetIP].defense || 0) + 30), fortified: true };
+            return nw;
+          });
+          playSuccess();
+          setIsProcessing(false);
+          return `[+] REPTILE ROOTKIT INSTALLED.\n[+] Your presence on ${world[targetIP]?.org?.orgName || targetIP} is now invisible.\n[+] Blue Team can no longer detect or remove your C2 beacon.\n[+] Defense: +30 (fortified). Node is hidden from rival scans.`;
         }
 
         if (gameMode === 'field') {
@@ -4188,21 +4188,14 @@ return `[+] ${actionResult}\n[+] CHAOS +10`;
           await new Promise(r => setTimeout(r, method.time));
 
           setLooted(prev => [...prev, reptileKey]);
-        setWorld(prev => {
-          const nw = { ...prev };
-          if (nw[targetIP]) nw[targetIP] = { ...nw[targetIP], blueTeam: { ...nw[targetIP].blueTeam, alertLevel: 0, activeHunting: false }, defense: Math.min(100, (nw[targetIP].defense || 0) + 30), fortified: true };
-         
-          return nw;
-        });
-        playSuccess();
-        setIsProcessing(false);
-        return `[+] REPTILE ROOTKIT INSTALLED.\n[+] Your presence on ${world[targetIP]?.org?.orgName || targetIP} is now invisible.\n[+] Blue Team can no longer detect or remove your C2 beacon.\n[+] Defense: +30 (fortified). Node is hidden from rival scans.`;
-           
-          return nw;
+          setWorld(prev => {
+            const nw = { ...prev };
+            if (nw[targetIP]) nw[targetIP] = { ...nw[targetIP], blueTeam: { ...nw[targetIP].blueTeam, alertLevel: 0, activeHunting: false }, defense: Math.min(100, (nw[targetIP].defense || 0) + 30), fortified: true };
+            return nw;
           });
           playSuccess();
           setIsProcessing(false);
-          return `[+] Reptile rootkit installed (${arg1} method, stealth: ${method.stealth}).\n[+] Node is now invisible to Blue Team. Alert level zeroed.`;
+          return `[+] Reptile rootkit installed (${arg1} method, stealth: ${method.stealth}).\n[+] Node is now invisible to Blue Team. Alert level zeroed.\n[+] Defense: +30 (fortified). Node is hidden from rival scans.`;
         }
 
         setIsProcessing(true);
@@ -4212,12 +4205,12 @@ return `[+] ${actionResult}\n[+] CHAOS +10`;
         setLooted(prev => [...prev, reptileKey]);
         setWorld(prev => {
           const nw = { ...prev };
-          if (nw[targetIP]) nw[targetIP] = { ...nw[targetIP], blueTeam: { ...nw[targetIP].blueTeam, alertLevel: 0, activeHunting: false } };
+          if (nw[targetIP]) nw[targetIP] = { ...nw[targetIP], blueTeam: { ...nw[targetIP].blueTeam, alertLevel: 0, activeHunting: false }, defense: Math.min(100, (nw[targetIP].defense || 0) + 30), fortified: true };
           return nw;
         });
         playSuccess();
         setIsProcessing(false);
-        return `[+] REPTILE ROOTKIT INSTALLED.\n[+] Your presence on ${world[targetIP]?.org?.orgName || targetIP} is now invisible.\n[+] Blue Team can no longer detect or remove your C2 beacon.`;
+        return `[+] REPTILE ROOTKIT INSTALLED.\n[+] Your presence on ${world[targetIP]?.org?.orgName || targetIP} is now invisible.\n[+] Blue Team can no longer detect or remove your C2 beacon.\n[+] Defense: +30 (fortified). Node is hidden from rival scans.`;
       },
 
       xmrig: async () => {

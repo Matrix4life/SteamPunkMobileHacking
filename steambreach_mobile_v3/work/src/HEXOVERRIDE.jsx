@@ -3591,7 +3591,7 @@ return `[+] ${actionResult}\n[+] CHAOS +10`;
   if (privilege !== 'root') return '[-] shred: Permission denied. Need root.';
 
   const DESTRUCTION_BOUNTY = {
-    SCRIPT_KIDDIE: 5000, GREY_HAT: 25000, BLACK_HAT: 80000,
+    SKIDDIE: 5000, GREY_HAT: 25000, BLACK_HAT: 80000,
     APT_OPERATOR: 250000, LEGEND: 1000000,
   };
   const bounty = DESTRUCTION_BOUNTY[rival.archetype] || 10000;
@@ -4622,7 +4622,7 @@ SIGNAL: ${morality.signal} | CHAOS: ${morality.chaos}
 INVENTORY:
   DECOYS: ${consumables.decoy} | BURNER VPNS: ${consumables.burner} | ZERO-DAYS: ${consumables.zeroday + zeroDays.length}
 ────────────────────────────────────
-${wantedTier === 'MANHUNT' ? '[!!!] REDUCE HEAT IMMEDIATELY. Your entire network is being dismantled.' : ''}${wantedTier === 'CRITICAL' ? '[!] Wallet frozen. Use wipe on rooted nodes or Bribe SOC Insider to reduce heat.' : ''}${wantedTier === 'HOT' ? '[!] Botnet nodes are being raided. Consider wiping logs or bribing SOC.' : ''}${score >= 40 ? '[!] Blue Team response elevated due to your skill profile.' : ''}${score <= -15 ? '[*] Sector defenses weakened. Favorable conditions.' : ''}${rivals.filter(r => r.recruited).length > 0 ? '\n\nACTIVE RECRUITS:\n' + rivals.filter(r => r.recruited).map(r => `  🤝 ${r.handle.padEnd(18)} ${r.archetypeName.padEnd(14)} ${({SCRIPT_KIDDIE:'+1 botnet',GREY_HAT:'Intel tips',BLACK_HAT:'+15% sell',APT_OPERATOR:'-15% trace',LEGEND:'Multi-bonus'})[r.archetype] || ''}${r.recruitType === 'fear' ? ' [⚠ FEAR]' : ''}`).join('\n') : ''}`;
+${wantedTier === 'MANHUNT' ? '[!!!] REDUCE HEAT IMMEDIATELY. Your entire network is being dismantled.' : ''}${wantedTier === 'CRITICAL' ? '[!] Wallet frozen. Use wipe on rooted nodes or Bribe SOC Insider to reduce heat.' : ''}${wantedTier === 'HOT' ? '[!] Botnet nodes are being raided. Consider wiping logs or bribing SOC.' : ''}${score >= 40 ? '[!] Blue Team response elevated due to your skill profile.' : ''}${score <= -15 ? '[*] Sector defenses weakened. Favorable conditions.' : ''}${rivals.filter(r => r.recruited).length > 0 ? '\n\nACTIVE RECRUITS:\n' + rivals.filter(r => r.recruited).map(r => `  🤝 ${r.handle.padEnd(18)} ${r.archetypeName.padEnd(14)} ${({SKIDDIE:'+1 botnet',GREY_HAT:'Intel tips',BLACK_HAT:'+15% sell',APT_OPERATOR:'-15% trace',LEGEND:'Multi-bonus'})[r.archetype] || ''}${r.recruitType === 'fear' ? ' [⚠ FEAR]' : ''}`).join('\n') : ''}`;
 },
 
       // ═══════════════════════════════════════════════════════
@@ -5827,7 +5827,7 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
           setWorld(prev => { const nw = { ...prev }; delete nw[rival.ip]; return nw; });
         }
         playSuccess();
-        const bonusMap = { SCRIPT_KIDDIE: '+1 passive botnet node', GREY_HAT: 'Hidden node revealed every 10 min', BLACK_HAT: '+15% commodity sell price', APT_OPERATOR: 'Trace ticks 15% slower', LEGEND: 'All bonuses at half power' };
+        const bonusMap = { SKIDDIE: '+1 passive botnet node', GREY_HAT: 'Hidden node revealed every 10 min', BLACK_HAT: '+15% commodity sell price', APT_OPERATOR: 'Trace ticks 15% slower', LEGEND: 'All bonuses at half power' };
         const betrayalNote = recruitPath === 'fear' ? '\n[!] WARNING: Fear recruits may betray you.' : '';
         return `╔══════════════════════════════════════════════════════════╗\n║  🤝 RECRUITMENT: ${rival.handle.toUpperCase().padEnd(38)}║\n╠══════════════════════════════════════════════════════════╣\n║  Path:     ${recruitPath.toUpperCase().padEnd(46)}║\n║  Cost:     ₿${cost.toLocaleString().padEnd(45)}║\n║  Bonus:    ${(bonusMap[rival.archetype] || 'Unknown').padEnd(46)}║\n╚══════════════════════════════════════════════════════════╝\n\n[+] ${rival.handle} now works for you.\n[*] Their bonus is active immediately.${betrayalNote}`;
       },

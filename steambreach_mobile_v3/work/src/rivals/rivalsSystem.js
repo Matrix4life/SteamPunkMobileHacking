@@ -21,7 +21,7 @@ export const EXPLOIT_CATEGORIES = {
 };
 
 export const ZERO_DAY_DATABASE = [
-  { id: 'zd_001', name: 'Buffer Overflow Basic', rarity: 'COMMON', category: 'KERNEL', power: 5, stealth: 0, successBonus: 5, lore: 'Script kiddie starter pack.' },
+  { id: 'zd_001', name: 'Buffer Overflow Basic', rarity: 'COMMON', category: 'KERNEL', power: 5, stealth: 0, successBonus: 5, lore: 'Skiddie starter pack.' },
   { id: 'zd_002', name: 'SQL Injection Kit', rarity: 'COMMON', category: 'WEB', power: 5, stealth: 5, successBonus: 5, lore: 'Classic injection vectors.' },
   { id: 'zd_003', name: 'Credential Harvester', rarity: 'COMMON', category: 'WEB', power: 3, stealth: 10, successBonus: 3, lore: 'Phishing page generator.' },
   { id: 'zd_004', name: 'Port Scanner Plus', rarity: 'COMMON', category: 'NETWORK', power: 2, stealth: 15, successBonus: 8, lore: 'Enhanced nmap scripts.' },
@@ -59,7 +59,7 @@ export const ZERO_DAY_DATABASE = [
 ];
 
 export const RIVAL_ARCHETYPES = {
-  SCRIPT_KIDDIE: { name: 'Script Kiddie', repRange: [0, 50], skillMod: 0.5, personality: 'Overconfident but inexperienced.', btcRange: [500, 5000], zdSlots: [1, 3] },
+  SKIDDIE: { name: 'Skiddie', repRange: [0, 50], skillMod: 0.5, personality: 'Overconfident but inexperienced.', btcRange: [500, 5000], zdSlots: [1, 3] },
   GREY_HAT: { name: 'Grey Hat', repRange: [30, 150], skillMod: 0.8, personality: 'Flexible morals. Will trade info.', btcRange: [3000, 25000], zdSlots: [2, 5] },
   BLACK_HAT: { name: 'Black Hat', repRange: [100, 400], skillMod: 1.0, personality: 'Pure profit motive. Aggressive.', btcRange: [10000, 100000], zdSlots: [3, 7] },
   APT_OPERATOR: { name: 'APT Operator', repRange: [300, 800], skillMod: 1.3, personality: 'State-sponsored discipline.', btcRange: [50000, 500000], zdSlots: [5, 10] },
@@ -67,7 +67,7 @@ export const RIVAL_ARCHETYPES = {
 };
 
 export const DESTRUCTION_BOUNTY = {
-  SCRIPT_KIDDIE: 5000,
+  SKIDDIE: 5000,
   GREY_HAT: 25000,
   BLACK_HAT: 80000,
   APT_OPERATOR: 250000,
@@ -84,12 +84,12 @@ export const TRADE_PRICES = {
     EPIC: 200000, LEGENDARY: 500000, MYTHIC: 1500000,
   },
   intel: 25000,
-  backup: { SCRIPT_KIDDIE: 10000, GREY_HAT: 25000, BLACK_HAT: 50000, APT_OPERATOR: 100000, LEGEND: 200000 },
+  backup: { SKIDDIE: 10000, GREY_HAT: 25000, BLACK_HAT: 50000, APT_OPERATOR: 100000, LEGEND: 200000 },
 };
 
 export const RECRUIT_COST = {
-  fear:    { SCRIPT_KIDDIE: 2000, GREY_HAT: 15000, BLACK_HAT: 50000, APT_OPERATOR: 200000, LEGEND: 500000 },
-  respect: { SCRIPT_KIDDIE: 5000, GREY_HAT: 30000, BLACK_HAT: 100000, APT_OPERATOR: 400000, LEGEND: 1000000 },
+  fear:    { SKIDDIE: 2000, GREY_HAT: 15000, BLACK_HAT: 50000, APT_OPERATOR: 200000, LEGEND: 500000 },
+  respect: { SKIDDIE: 5000, GREY_HAT: 30000, BLACK_HAT: 100000, APT_OPERATOR: 400000, LEGEND: 1000000 },
 };
 
 export function getTradeDiscount(relationship) {
@@ -173,7 +173,7 @@ export function generateRival(playerRep = 100) {
     const [minRep, maxRep] = RIVAL_ARCHETYPES[key].repRange;
     return playerRep >= minRep * 0.5 && playerRep <= maxRep * 1.5;
   });
-  const selectedKey = eligible.length > 0 ? eligible[Math.floor(Math.random() * eligible.length)] : 'SCRIPT_KIDDIE';
+  const selectedKey = eligible.length > 0 ? eligible[Math.floor(Math.random() * eligible.length)] : 'SKIDDIE';
   const archetype = RIVAL_ARCHETYPES[selectedKey];
   const [minBtc, maxBtc] = archetype.btcRange;
   const [minRep, maxRep] = archetype.repRange;
@@ -270,11 +270,9 @@ export function generateRivalNode(rival) {
       type: 'criminal',
       industry: 'Underground',
       employees: [
-        employees: [
         { name: rival.handle, email: `${rival.handle.toLowerCase()}@${rival.ip}`, role: rival.archetypeName, password: `${rival.handle.replace(/[^a-zA-Z]/g, '')}${Math.floor(Math.random() * 900 + 100)}!` },
         { name: 'sysop', email: `sysop@${rival.ip}`, role: 'System Operator', password: `Sys${Math.floor(Math.random() * 9000 + 1000)}Op` },
         { name: 'backup_admin', email: `backup@${rival.ip}`, role: 'Backup Admin', password: `Bkup_${Math.floor(Math.random() * 99999)}` },
-      
       ],
     },
     blueTeam: {
@@ -296,13 +294,14 @@ export function generateRivalNode(rival) {
     isCore: true,
   };
 }
+
 // ============================================================================
-// RIVAL CLUSTER — Spawns 3-5 perimeter nodes around a rival's core
+// RIVAL CLUSTER — Spawns perimeter nodes around a rival's core
 // ============================================================================
 
 export function generateRivalCluster(rival, coreNodeData) {
   const clusterSize = {
-    Skiddie: 2, GREY_HAT: 3, BLACK_HAT: 4, APT_OPERATOR: 5, LEGEND: 6,
+    SKIDDIE: 2, GREY_HAT: 3, BLACK_HAT: 4, APT_OPERATOR: 5, LEGEND: 6,
   }[rival.archetype] || 3;
 
   const coreX = parseFloat(coreNodeData.x);
@@ -315,48 +314,32 @@ export function generateRivalCluster(rival, coreNodeData) {
     const nx = Math.max(5, Math.min(95, coreX + (Math.random() * 20 - 10)));
     const ny = Math.max(5, Math.min(85, coreY + (Math.random() * 20 - 10)));
     const defense = Math.floor(15 + rival.skillMod * 15 + Math.random() * 10);
-
-    const exploitMap = {
-      hydra: { port: 22, svc: 'ssh' },
-      sqlmap: { port: 80, svc: 'http' },
-      msfconsole: { port: 445, svc: 'smb' },
-      curl: { port: 8080, svc: 'http-alt' },
-    };
     const vulnKey = ['hydra', 'sqlmap', 'msfconsole', 'curl'][Math.floor(Math.random() * 4)];
+    const exploitMap = { hydra: { port: 22, svc: 'ssh' }, sqlmap: { port: 80, svc: 'http' }, msfconsole: { port: 445, svc: 'smb' }, curl: { port: 8080, svc: 'http-alt' } };
     const vuln = exploitMap[vulnKey];
 
     nodes[ip] = {
       name: `${rival.handle}'s Outpost ${i + 1}`,
       sec: defense > 40 ? 'high' : 'mid',
-      port: vuln.port,
-      svc: vuln.svc,
-      exp: vulnKey,
+      port: vuln.port, svc: vuln.svc, exp: vulnKey,
       val: Math.floor(rival.btc * 0.05),
       isHoneypot: false,
-      x: `${nx.toFixed(1)}%`,
-      y: `${ny.toFixed(1)}%`,
+      x: `${nx.toFixed(1)}%`, y: `${ny.toFixed(1)}%`,
       files: { '/': ['ops/', 'logs/'], '/ops': ['config.json'], '/logs': ['access.log'] },
-      contents: {
-        '/ops/config.json': `[PENDING_GENERATION]`,
-        '/logs/access.log': `[PENDING_GENERATION]`,
-      },
-      org: { orgName: `${rival.handle}'s Outpost`, type: 'criminal', industry: 'Underground', employees: [{ name: 'node_admin', email: `admin@${ip}`, role: 'Outpost Admin', password: `N0de${Math.floor(Math.random() * 9000 + 1000)}` }, { name: 'relay_op', email: `relay@${ip}`, role: 'Relay Operator', password: `R3lay_${Math.floor(Math.random() * 99999)}` }] },
-      },
+      contents: { '/ops/config.json': '[PENDING_GENERATION]', '/logs/access.log': '[PENDING_GENERATION]' },
+      org: { orgName: `${rival.handle}'s Outpost`, type: 'criminal', industry: 'Underground', employees: [
+        { name: 'node_admin', email: `admin@${ip}`, role: 'Outpost Admin', password: `N0de${Math.floor(Math.random() * 9000 + 1000)}` },
+        { name: 'relay_op', email: `relay@${ip}`, role: 'Relay Operator', password: `R3lay_${Math.floor(Math.random() * 99999)}` },
+      ] },
       blueTeam: { alertLevel: Math.floor(defense / 5), patchedVulns: [], changedPasswords: [], activeHunting: false, lastIncident: null },
-      commsGenerated: false,
-      slackChannelGenerated: false,
-      isRivalNode: true,
-      rivalHandle: rival.handle,
-      rivalId: rival.id,
-      owner: rival.id,
-      defense,
-      fortified: false,
-      isCore: false,
+      commsGenerated: false, slackChannelGenerated: false,
+      isRivalNode: true, rivalHandle: rival.handle, rivalId: rival.id,
+      owner: rival.id, defense, fortified: false, isCore: false,
     };
   }
-
   return nodes;
 }
+
 // ============================================================================
 
 const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
@@ -441,8 +424,9 @@ export function checkZeroDayDrop(nodeSecLevel, playerLuck = 1.0) {
   if (Math.random() > secMult) return null;
   return rollForZeroDay(playerLuck * (1 + (secMult * 2)));
 }
+
 // ============================================================================
-// RIVAL CONTRACTS
+// RIVAL CONTRACTS — Fixer contracts targeting rival hackers
 // ============================================================================
 
 const RIVAL_CONTRACT_TYPES = {
@@ -457,28 +441,54 @@ export function generateRivalContract(rivals, playerRep) {
   const eligible = rivals.filter(r => r.status !== 'destroyed' && !r.recruited);
   if (eligible.length === 0) return null;
   if (playerRep < 30) return null;
+
   const rival = eligible[Math.floor(Math.random() * eligible.length)];
-  const archMult = { SCRIPT_KIDDIE: 0.5, GREY_HAT: 1.0, BLACK_HAT: 1.5, APT_OPERATOR: 2.5, LEGEND: 4.0 }[rival.archetype] || 1;
+  const archMult = { SKIDDIE: 0.5, GREY_HAT: 1.0, BLACK_HAT: 1.5, APT_OPERATOR: 2.5, LEGEND: 4.0 }[rival.archetype] || 1;
+
+  // Pick a contract type the player can handle
   const typeKeys = Object.keys(RIVAL_CONTRACT_TYPES).filter(k => playerRep >= RIVAL_CONTRACT_TYPES[k].minRep);
   if (typeKeys.length === 0) return null;
   const selectedKey = typeKeys[Math.floor(Math.random() * typeKeys.length)];
   const cType = RIVAL_CONTRACT_TYPES[selectedKey];
-  const reward = Math.floor(15000 * cType.rewardMult * archMult);
+
+  const baseReward = 15000;
+  const reward = Math.floor(baseReward * cType.rewardMult * archMult);
   const repReward = Math.floor((10 + Math.random() * 20) * cType.rewardMult);
+
+  // Build objectives
   let objectives;
   if (selectedKey === 'RIVALRY') {
-    objectives = Array.from({ length: 3 }, () => ({ type: 'raid_rival', ip: rival.ip, rivalId: rival.id, completed: false }));
+    // 3 sequential raid objectives
+    objectives = [
+      { type: 'raid_rival', ip: rival.ip, rivalId: rival.id, completed: false },
+      { type: 'raid_rival', ip: rival.ip, rivalId: rival.id, completed: false },
+      { type: 'raid_rival', ip: rival.ip, rivalId: rival.id, completed: false },
+    ];
   } else if (selectedKey === 'HEIST') {
+    // Must exfil a specific file from rival node
     objectives = [{ type: 'exfil', ip: rival.ip, rivalId: rival.id, completed: false }];
   } else {
     objectives = [{ type: cType.objectiveType, ip: rival.ip, rivalId: rival.id, completed: false }];
   }
+
   const briefingMap = {
-    TAKEDOWN:    `[CONTRACT] TAKEDOWN: ${rival.handle}\nDestroy ${rival.handle}'s infrastructure.\nReward: ₿${reward.toLocaleString()} + ${repReward} REP | Time: ${Math.floor(cType.timeLimitSec / 60)}min | Heat Cap: ${cType.heatCap}%`,
-    HEIST:       `[CONTRACT] HEIST: ${rival.handle}'s Vault\nExfil any file from ${rival.handle}'s node.\nReward: ₿${reward.toLocaleString()} + ${repReward} REP | Time: ${Math.floor(cType.timeLimitSec / 60)}min | Heat Cap: ${cType.heatCap}%`,
-    FRAME_JOB:   `[CONTRACT] FRAME JOB: ${rival.handle}\nSuccessfully frame ${rival.handle}.\nReward: ₿${reward.toLocaleString()} + ${repReward} REP | Time: ${Math.floor(cType.timeLimitSec / 60)}min | Heat Cap: ${cType.heatCap}%`,
-    RECRUITMENT: `[CONTRACT] ASSET ACQUISITION: ${rival.handle}\nRecruit ${rival.handle} (any method).\nReward: ₿${reward.toLocaleString()} + ${repReward} REP | Time: ${Math.floor(cType.timeLimitSec / 60)}min | Heat Cap: ${cType.heatCap}%`,
-    RIVALRY:     `[CONTRACT] DOMINANCE: ${rival.handle}\nRaid ${rival.handle} 3 times.\nReward: ₿${reward.toLocaleString()} + ${repReward} REP | Time: ${Math.floor(cType.timeLimitSec / 60)}min | Heat Cap: ${cType.heatCap}%`,
+    TAKEDOWN:    `[CONTRACT] TAKEDOWN: ${rival.handle}\nClient wants this operator eliminated permanently.\nObjective: Destroy ${rival.handle}'s infrastructure.\nReward: ₿${reward.toLocaleString()} + ${repReward} REP\nTime: ${Math.floor(cType.timeLimitSec / 60)} min | Heat Cap: ${cType.heatCap}%`,
+    HEIST:       `[CONTRACT] HEIST: ${rival.handle}'s Vault\nAnonymous buyer wants intel from ${rival.handle}'s node.\nObjective: Exfil any file from ${rival.handle}'s system.\nReward: ₿${reward.toLocaleString()} + ${repReward} REP\nTime: ${Math.floor(cType.timeLimitSec / 60)} min | Heat Cap: ${cType.heatCap}%`,
+    FRAME_JOB:   `[CONTRACT] FRAME JOB: ${rival.handle}\nLEA wants someone to take the fall for a recent breach.\nObjective: Successfully frame ${rival.handle}.\nReward: ₿${reward.toLocaleString()} + ${repReward} REP\nTime: ${Math.floor(cType.timeLimitSec / 60)} min | Heat Cap: ${cType.heatCap}%`,
+    RECRUITMENT: `[CONTRACT] ASSET ACQUISITION: ${rival.handle}\nAgency wants ${rival.handle} working for them. Make it happen.\nObjective: Recruit ${rival.handle} (any method).\nReward: ₿${reward.toLocaleString()} + ${repReward} REP\nTime: ${Math.floor(cType.timeLimitSec / 60)} min | Heat Cap: ${cType.heatCap}%`,
+    RIVALRY:     `[CONTRACT] DOMINANCE: ${rival.handle}\nProve superiority. Raid ${rival.handle} 3 times.\nObjective: 3 successful raids against ${rival.handle}.\nReward: ₿${reward.toLocaleString()} + ${repReward} REP\nTime: ${Math.floor(cType.timeLimitSec / 60)} min | Heat Cap: ${cType.heatCap}%`,
   };
-  return { briefing: briefingMap[selectedKey], objectives, timeLimit: cType.timeLimitSec, heatCap: cType.heatCap, reward, repReward, isRivalContract: true, rivalTarget: rival.handle, rivalId: rival.id, rivalIP: rival.ip };
+
+  return {
+    briefing: briefingMap[selectedKey],
+    objectives,
+    timeLimit: cType.timeLimitSec,
+    heatCap: cType.heatCap,
+    reward,
+    repReward,
+    isRivalContract: true,
+    rivalTarget: rival.handle,
+    rivalId: rival.id,
+    rivalIP: rival.ip,
+  };
 }

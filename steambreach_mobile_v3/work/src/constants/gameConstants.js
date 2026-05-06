@@ -89,7 +89,7 @@ const COMMAND_REGISTRY = [
   { cmd: 'rclone', desc: 'Mass exfiltration of corporate data (HIGH/ELITE nodes, root required)', category: 'DATA & CRACKING' },
   { cmd: 'download <file>', desc: 'Save remote file locally for offline use', category: 'DATA & CRACKING' },
   { cmd: 'hashcat <file>', desc: 'Crack hashes (-d for distributed botnet pool)', category: 'DATA & CRACKING' },
-  { cmd: 'john <file>', desc: 'CPU-optimized local password cracker. Download hash file first', category: 'DATA & CRACKING' },
+  { cmd: 'john <file>', desc: 'Crack password hashes locally. Field: --wordlist required. Operator: --format + --wordlist. --show to view cracked.', category: 'DATA' },
   { cmd: 'fence intel', desc: 'Sell exfiltrated Corporate Intel on the Darknet', category: 'DATA & CRACKING' },
 
   // --- ECONOMY & ITEMS ---

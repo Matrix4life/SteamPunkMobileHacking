@@ -529,7 +529,12 @@ const generateStory = async (ip, orgData) => {
   const getPassiveIncomeRate = (lootList = looted) => {
     const minerNodes = getMinerNodes(lootList);
     if (minerNodes <= 0) return 0;
-    return Math.floor(minerNodes * HOURLY_RATE * getMineRigMult() * getEconomyMarketMult());
+   // Territory income multiplier
+    const allNodes = Object.keys(world).filter(k => k !== 'local');
+    const playerNodeCount = allNodes.filter(k => world[k]?.owner === 'player').length;
+    const territoryPct = allNodes.length > 0 ? playerNodeCount / allNodes.length * 100 : 0;
+    const territoryMult = territoryPct >= 80 ? 1.5 : territoryPct >= 60 ? 1.35 : territoryPct >= 40 ? 1.2 : territoryPct >= 20 ? 1.1 : 1.0;
+    return Math.floor(minerNodes * HOURLY_RATE * getMineRigMult() * getEconomyMarketMult() * territoryMult);
   };
 
   const [director, setDirector] = useState(DEFAULT_DIRECTOR);
@@ -1580,6 +1585,7 @@ const completeContractAndRemove = (id) => {
     if (exp === 'curl') out += `\n\n[!] VULN: LFI via HTTP → 'curl ${ip}'`;
     if (world[ip]?.isRivalNode) {
   output += `\n[!!!] RIVAL NODE — Owned by ${world[ip].rivalHandle} (${rivals.find(r => r.id === world[ip].rivalId)?.archetypeName || 'Unknown'})`;
+  output += `\n[!!!] Defense: ${world[ip].defense || 0}/100${world[ip].fortified ? ' [FORTIFIED]' : ''}${world[ip].isCore ? ' [★ CORE]' : ''}`;
   output += `\n[!!!] 2x TRACE SPEED inside this system`;
 }
     setTerminal(prev => [...prev.map(t => ({ ...t, isNew: false })), { type: 'in', text: `nmap ${ip}`, dir: currentDir, remote: isInside, isRival: isInside && world[targetIP]?.isRivalNode, isNew: false }, { type: 'out', text: out, isNew: true }]);
@@ -1749,7 +1755,7 @@ const completeContractAndRemove = (id) => {
     const contents = isInside ? world[targetIP]?.contents : world.local.contents;
 
     // Active Blue Team Check
-  const BENIGN_CMDS = ['ls','cd','pwd','cat','clear','status','help','exit','wipe','download','exfil','stash','exploits','viruses','sessions','rivals','dossier','creds','negotiate','recruit','dismiss'];
+  const BENIGN_CMDS = ['ls','cd','pwd','cat','clear','status','help','exit','wipe','download','exfil','stash','exploits','viruses','sessions','rivals','dossier','creds','negotiate','recruit','dismiss','frame','territory','purge','reinforce','fortify'];
 if (isInside && trace > 70 && Math.random() < 0.4 && !BENIGN_CMDS.includes(cmd)) {
       setIsProcessing(true);
       const nodeName = world[targetIP]?.org?.orgName || targetIP;
@@ -4155,7 +4161,7 @@ return `[+] ${actionResult}\n[+] CHAOS +10`;
           setTerminal(prev => [...prev, { type: 'out', text: `[*] Compiling reptile module for kernel ${Math.floor(Math.random()*3)+4}.${Math.floor(Math.random()*15)}.0-generic...\n  CC [M]  reptile.o\n  CC [M]  reptile_module.o\n  LD [M]  reptile.ko\n[*] insmod reptile.ko\n[*] Verifying installation...`, isNew: false }]);
           await new Promise(r => setTimeout(r, 2000));
 
-          ssetLooted(prev => [...prev, reptileKey]);
+          setLooted(prev => [...prev, reptileKey]);
         setWorld(prev => {
           const nw = { ...prev };
           if (nw[targetIP]) nw[targetIP] = { ...nw[targetIP], blueTeam: { ...nw[targetIP].blueTeam, alertLevel: 0, activeHunting: false }, defense: Math.min(100, (nw[targetIP].defense || 0) + 30), fortified: true };
@@ -4182,9 +4188,14 @@ return `[+] ${actionResult}\n[+] CHAOS +10`;
           await new Promise(r => setTimeout(r, method.time));
 
           setLooted(prev => [...prev, reptileKey]);
-          setWorld(prev => {
-            const nw = { ...prev };
-            if (nw[targetIP]) nw[targetIP] = { ...nw[targetIP], blueTeam: { ...nw[targetIP].blueTeam, alertLevel: 0, activeHunting: false } };
+        setWorld(prev => {
+          const nw = { ...prev };
+          if (nw[targetIP]) nw[targetIP] = { ...nw[targetIP], blueTeam: { ...nw[targetIP].blueTeam, alertLevel: 0, activeHunting: false }, defense: Math.min(100, (nw[targetIP].defense || 0) + 30), fortified: true };
+          return nw;
+        });
+        playSuccess();
+        setIsProcessing(false);
+        return `[+] REPTILE ROOTKIT INSTALLED.\n[+] Your presence on ${world[targetIP]?.org?.orgName || targetIP} is now invisible.\n[+] Blue Team can no longer detect or remove your C2 beacon.\n[+] Defense: +30 (fortified). Node is hidden from rival scans.`;
             return nw;
           });
           playSuccess();
@@ -5838,7 +5849,169 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
         }));
         return `[*] ${rival.handle} dismissed. They return to the underground as a neutral party.`;
       },
+territory: async () => {
+        const allNodes = Object.entries(world).filter(([k]) => k !== 'local');
+        const total = allNodes.length;
+        if (total === 0) return '[-] No nodes discovered. Run nmap to scan the network.';
 
+        const playerNodes = allNodes.filter(([, n]) => n.owner === 'player');
+        const playerPct = total > 0 ? Math.round(playerNodes.length / total * 100) : 0;
+
+        // Per-rival breakdown
+        const rivalTerritories = {};
+        allNodes.forEach(([ip, n]) => {
+          if (n.owner && n.owner !== 'player') {
+            const rival = rivals.find(r => r.id === n.owner);
+            const handle = rival?.handle || n.rivalHandle || 'Unknown';
+            if (!rivalTerritories[handle]) rivalTerritories[handle] = { nodes: [], coreIP: null };
+            rivalTerritories[handle].nodes.push(ip);
+            if (n.isCore) rivalTerritories[handle].coreIP = ip;
+          }
+        });
+        const rivalEntries = Object.entries(rivalTerritories);
+        const totalRivalNodes = rivalEntries.reduce((sum, [, v]) => sum + v.nodes.length, 0);
+        const rivalPct = total > 0 ? Math.round(totalRivalNodes / total * 100) : 0;
+        const unclaimedPct = 100 - playerPct - rivalPct;
+
+        // Income multiplier based on control
+        const incomeMult = playerPct >= 80 ? 1.5 : playerPct >= 60 ? 1.35 : playerPct >= 40 ? 1.2 : playerPct >= 20 ? 1.1 : 1.0;
+        const shopDiscount = playerPct >= 80 ? 30 : playerPct >= 60 ? 20 : playerPct >= 40 ? 10 : 0;
+
+        let out = `╔══════════════════════════════════════════════════════════╗\n║  TERRITORY CONTROL${' '.repeat(38)}║\n╠══════════════════════════════════════════════════════════╣`;
+        out += `\n║  YOUR NODES:   ${String(playerNodes.length).padEnd(4)} (${String(playerPct).padEnd(3)}%)${' '.repeat(32)}║`;
+        out += `\n║  RIVAL NODES:  ${String(totalRivalNodes).padEnd(4)} (${String(rivalPct).padEnd(3)}%)${' '.repeat(32)}║`;
+        out += `\n║  UNCLAIMED:    ${String(total - playerNodes.length - totalRivalNodes).padEnd(4)} (${String(unclaimedPct).padEnd(3)}%)${' '.repeat(32)}║`;
+        out += `\n║  TOTAL:        ${String(total).padEnd(4)}${' '.repeat(39)}║`;
+        out += `\n╠══════════════════════════════════════════════════════════╣`;
+        out += `\n║  INCOME BONUS: ${incomeMult > 1 ? `+${Math.round((incomeMult - 1) * 100)}%` : 'None'}${' '.repeat(incomeMult > 1 ? 38 : 40)}║`;
+        out += `\n║  SHOP DISCOUNT: ${shopDiscount > 0 ? `-${shopDiscount}%` : 'None'}${' '.repeat(shopDiscount > 0 ? 38 : 39)}║`;
+        out += `\n╚══════════════════════════════════════════════════════════╝`;
+
+        if (rivalEntries.length > 0) {
+          out += `\n\n  RIVAL TERRITORIES:`;
+          rivalEntries.forEach(([handle, data]) => {
+            out += `\n  ☠ ${handle.padEnd(18)} ${String(data.nodes.length).padEnd(3)} nodes  Core: ${data.coreIP || '???'}`;
+          });
+        }
+
+        if (playerNodes.length > 0) {
+          out += `\n\n  YOUR STRONGEST NODES:`;
+          playerNodes
+            .sort(([, a], [, b]) => (b.defense || 0) - (a.defense || 0))
+            .slice(0, 5)
+            .forEach(([ip, n]) => {
+              const flags = [
+                botnet.includes(ip) ? 'BOT' : null,
+                proxies.includes(ip) ? 'PROXY' : null,
+                n.fortified ? 'FORT' : null,
+              ].filter(Boolean).join(' ');
+              out += `\n  ● ${ip.padEnd(18)} DEF:${String(n.defense || 0).padEnd(4)} ${flags}`;
+            });
+        }
+
+        if (playerPct >= 80) out += `\n\n[!!!] DOMINATION THRESHOLD REACHED. You control this region.`;
+        else if (playerPct >= 60) out += `\n\n[!] Controlling majority. Push to 80% for domination victory.`;
+
+        return out;
+      },
+
+      purge: async () => {
+        if (!isInside) return '[-] Must be inside a node.';
+        if (privilege !== 'root') return '[-] Root required to purge rival presence.';
+        const node = world[targetIP];
+        if (!node) return '[-] Target not found.';
+        if (!node.owner || node.owner === 'player') return '[-] No rival presence to purge. This node is clear.';
+
+        const rivalId = node.owner;
+        const rival = rivals.find(r => r.id === rivalId);
+        const wasCore = node.isCore;
+
+        setIsProcessing(true);
+        setTerminal(prev => [...prev, { type: 'out', text: `[*] Locating rival C2 beacon...`, isNew: false }]);
+        await new Promise(r => setTimeout(r, 1200));
+        setTerminal(prev => [...prev, { type: 'out', text: `[*] Killing rival processes... PID 1337, 1338, 1339`, isNew: false }]);
+        await new Promise(r => setTimeout(r, 800));
+
+        setWorld(prev => ({
+          ...prev,
+          [targetIP]: {
+            ...prev[targetIP],
+            owner: null,
+            isCore: false,
+            defense: Math.max(0, (prev[targetIP]?.defense || 0) - 20),
+            isRivalNode: false,
+            rivalHandle: null,
+            rivalId: null,
+          }
+        }));
+        setIsProcessing(false);
+        playSuccess();
+
+        let out = `[+] RIVAL PRESENCE PURGED from ${targetIP}\n[+] ${rival?.handle || 'Unknown'}'s beacon destroyed. Defense reduced.\n[*] Node is now unclaimed. Run 'sliver' to claim it for your network.`;
+
+        if (wasCore) {
+          out += `\n\n[!!!] CORE NODE DESTROYED — ${rival?.handle || 'Unknown'}'s command center is down!`;
+          // All their other nodes lose defense
+          setWorld(prev => {
+            const nw = { ...prev };
+            Object.keys(nw).forEach(ip => {
+              if (nw[ip]?.owner === rivalId && ip !== targetIP) {
+                nw[ip] = { ...nw[ip], defense: Math.max(0, (nw[ip].defense || 0) - 15) };
+              }
+            });
+            return nw;
+          });
+          out += `\n[!] All ${rival?.handle || 'Unknown'}'s nodes weakened. Defense -15 across their network.`;
+        }
+
+        return out;
+      },
+
+      reinforce: async () => {
+        const ip = arg1;
+        if (!ip) return '[-] Usage: reinforce <ip>';
+        if (!world[ip] || world[ip].owner !== 'player') return `[-] ${ip} is not your node.`;
+        if (botnet.length < 2) return '[-] Need at least 2 botnet nodes to divert resources.';
+
+        setWorld(prev => ({
+          ...prev,
+          [ip]: { ...prev[ip], defense: Math.min(100, (prev[ip]?.defense || 0) + 25) }
+        }));
+        playSuccess();
+
+        // Decay after 3 minutes
+        setTimeout(() => {
+          setWorld(prev => {
+            if (prev[ip]?.owner === 'player') {
+              return { ...prev, [ip]: { ...prev[ip], defense: Math.max(0, (prev[ip]?.defense || 0) - 25) } };
+            }
+            return prev;
+          });
+          setTerminal(prev => [...prev, { type: 'out', text: `[*] Reinforcement expired on ${ip}. Defense returned to normal.`, isNew: true }]);
+        }, 180000);
+
+        return `[+] Reinforcing ${ip} — Defense +25 for 3 minutes.\n[*] Botnet resources diverted to defensive posture.`;
+      },
+
+      fortify: async () => {
+        if (!isInside) return '[-] Must be inside a node.';
+        if (privilege !== 'root') return '[-] Root required.';
+        if (world[targetIP]?.owner !== 'player') return '[-] You must own this node (sliver first).';
+        const currentDef = world[targetIP]?.defense || 0;
+        if (currentDef >= 90) return `[-] Defense already at ${currentDef}. Diminishing returns past 80.`;
+        const cost = currentDef >= 80 ? 15000 : currentDef >= 60 ? 10000 : 5000;
+        if (money < cost) return `[-] Fortification costs ₿${cost.toLocaleString()}. You have ₿${money.toLocaleString()}.`;
+
+        setMoney(m => m - cost);
+        const gain = currentDef >= 80 ? 5 : 10;
+        setWorld(prev => ({
+          ...prev,
+          [targetIP]: { ...prev[targetIP], defense: Math.min(100, currentDef + gain) }
+        }));
+        playSuccess();
+        return `[+] Node fortified. Defense: ${currentDef} → ${Math.min(100, currentDef + gain)}\n[-] Cost: ₿${cost.toLocaleString()}${currentDef >= 70 ? '\n[*] Diminishing returns — consider fortifying other nodes instead.' : ''}`;
+      },
+    
       help: async () => {
         setShowHelpMenu(true);
         return `[*] Opening Command Reference Manual...`;

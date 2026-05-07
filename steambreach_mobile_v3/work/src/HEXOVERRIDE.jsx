@@ -2927,6 +2927,7 @@ if (!hasEntry || !hasHit) {
           // --- PERSISTENCE FIX: TAG HIDDEN NODE WITH CURRENT REGION ---
           newNode.data.region = currentRegion;
 
+          newNode.data.isHidden = false;
           setWorld(prev => ({ ...prev, [newNode.ip]: newNode.data }));
           out += `\n[+] HIDDEN NODE: ${newNode.data.port}/tcp on ${newNode.ip}\n[+] ORG: ${newNode.data.org.orgName}`;
           return out;

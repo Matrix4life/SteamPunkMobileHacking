@@ -1090,7 +1090,41 @@ setVirusScans({});
       if (candidates.length === 0) return;
 
       const attacker = candidates[Math.floor(Math.random() * candidates.length)];
-      const attack = rivalAttacksPlayer(attacker, { rep: reputation, btc: money, proxyCount: proxies.length, stash });
+      const attack = rivalAttacksPlayer(attacker, { rep: reputation, btc: money, proxyCount: proxies.length, stash 
+                                                  // --- RIVAL CHATTER: periodic messages based on relationship ---
+      rivals.filter(r => r.status === 'active' || r.status === 'hostile').forEach(rival => {
+        if (Math.random() > 0.15) return; // 15% chance per tick per rival
+        const rivalNodeCount = Object.values(world).filter(n => n.owner === rival.id).length;
+        const playerNodeCount = Object.values(world).filter(n => n.owner === 'player').length;
+        
+        let messages;
+        if (rival.status === 'hostile' && rival.relationship < -50) {
+          messages = [
+            `[${rival.handle}] "You've made a powerful enemy. Sleep with one eye open."`,
+            `[${rival.handle}] "I'm coming for everything you've built."`,
+            `[${rival.handle}] "Your nodes. Your wallet. Your reputation. All mine soon."`,
+          ];
+        } else if (rivalNodeCount > playerNodeCount) {
+          messages = [
+            `[${rival.handle}] "I control more of this network than you do. Accept it."`,
+            `[${rival.handle}] "Your territory is pathetic compared to mine."`,
+            `[${rival.handle}] "Maybe you should stick to scanning WiFi networks."`,
+          ];
+        } else if (playerNodeCount > rivalNodeCount * 2) {
+          messages = [
+            `[${rival.handle}] "You think you've won? I'm just getting started."`,
+            `[${rival.handle}] "Enjoy your little empire while it lasts."`,
+            `[${rival.handle}] "I've been watching your moves. I know your weaknesses."`,
+          ];
+        } else {
+          messages = [
+            `[${rival.handle}] "Interesting operation you're running. Be a shame if something happened to it."`,
+            `[${rival.handle}] "I know you're out there. I can see your traffic."`,
+            `[${rival.handle}] "The underground is watching both of us. Don't disappoint."`,
+          ];
+        }
+        setTerminal(prev => [...prev, { type: 'out', text: `\n${messages[Math.floor(Math.random() * messages.length)]}`, isNew: true }]);
+      });
       if (!attack) return;
 
       setRivals(prev => prev.map(r => (
@@ -1206,8 +1240,17 @@ setVirusScans({});
                 rivalId: rival.id,
               }
             }));
+            // Rival announces expansion
+            const taunts = [
+              `[${rival.handle}] Claimed ${target[1].org?.orgName || target[0]}. This sector belongs to me.`,
+              `[${rival.handle}] Another node added to my network. You're falling behind.`,
+              `[${rival.handle}] ${target[1].org?.orgName || target[0]} is mine now. Try and take it.`,
+              `[${rival.handle}] Expanding operations. Your move.`,
+            ];
+            setTerminal(prev => [...prev, { type: 'out', text: `\n[RIVAL OPS] ${taunts[Math.floor(Math.random() * taunts.length)]}`, isNew: true }]);
           }
         }
+        
 // --- CORE REGEN: core nodes regenerate defense over time ---
         const coreNode = rivalNodes.find(([, n]) => n.isCore);
         if (coreNode) {
@@ -1259,12 +1302,25 @@ setVirusScans({});
             }));
             setBotnet(prev => prev.filter(ip => ip !== targetIP));
             setProxies(prev => prev.filter(ip => ip !== targetIP));
-            setTerminal(prev => [...prev, { type: 'out', text: `\n[!!!] NODE CAPTURED: ${targetIP} taken by ${rival.handle}!\n[-] Botnet: -1 | Your territory is shrinking.\n[*] Counter-attack with: hping3 ${targetIP}`, isNew: true }]);
+           const attackTaunts = [
+                `"Your defenses are a joke. ${targetIP} didn't even put up a fight."`,
+                `"Took ${targetIP} while you weren't looking. Pay attention."`,
+                `"That's another one of yours. How many more before you give up?"`,
+                `"I own ${targetIP} now. Come take it back — if you can."`,
+                `"Your botnet is shrinking. Mine is growing. See the pattern?"`,
+              ];
+              setTerminal(prev => [...prev, { type: 'out', text: `\n[!!!] NODE CAPTURED: ${targetIP} taken by ${rival.handle}!\n[-] Botnet: -1 | Your territory is shrinking.\n\n  ${rival.handle}: ${attackTaunts[Math.floor(Math.random() * attackTaunts.length)]}\n\n[*] Counter-attack with: hping3 ${targetIP}`, isNew: true }]);
             playHeatSpike();
           } else {
             // Attack fails — just alert
             if (Math.random() < 0.5) {
-              setTerminal(prev => [...prev, { type: 'out', text: `\n[!] ${rival.handle} probed your node ${targetIP} (DEF: ${targetDef}). Attack deflected.`, isNew: true }]);
+              const probeTaunts = [
+                `"Probing your perimeter. Interesting defenses... or lack thereof."`,
+                `"I see your node at ${targetIP}. It won't last."`,
+                `"Testing your walls. Found a few cracks."`,
+                `"Scouting your network. You should be worried."`,
+              ];
+              setTerminal(prev => [...prev, { type: 'out', text: `\n[!] ${rival.handle} probed your node ${targetIP} (DEF: ${targetDef}). Attack deflected.\n  ${rival.handle}: ${probeTaunts[Math.floor(Math.random() * probeTaunts.length)]}`, isNew: true }]);
             }
           }
         }
@@ -1982,7 +2038,19 @@ if (isInside && trace > 70 && Math.random() < 0.4 && !BENIGN_CMDS.includes(cmd))
             return nw;
           });
         }, 180000);
-
+// Rival reacts to the intrusion
+        const rivalObj = rivals.find(r => r.id === rivalId);
+        if (rivalObj) {
+          const breachReactions = [
+            `"You're in my network? Bold. Stupid, but bold."`,
+            `"Intrusion detected. You just made my list."`,
+            `"I see you, hacker. You have no idea what you've walked into."`,
+            `"Enjoy your stay. It won't last long."`,
+            `"My IDS lit up like a christmas tree. You're not subtle."`,
+            `"So you found my node. Finding your way out will be harder."`,
+          ];
+          setTerminal(prev => [...prev, { type: 'out', text: `\n[${rivalObj.handle}] ${breachReactions[Math.floor(Math.random() * breachReactions.length)]}`, isNew: true }]);
+        }
         // Counter-attack: rival hits your weakest node
         const playerNodes = Object.entries(world).filter(([k, n]) => k !== 'local' && n.owner === 'player');
         if (playerNodes.length > 0) {
@@ -6308,7 +6376,13 @@ territory: async () => {
         playSuccess();
 
         let out = `[+] RIVAL PRESENCE PURGED from ${targetIP}\n[+] ${rival?.handle || 'Unknown'}'s beacon destroyed. Defense reduced.\n[*] Node is now unclaimed. Run 'sliver' to claim it for your network.`;
-
+// Rival reacts
+        if (rival) {
+          const purgeReactions = wasCore
+            ? [`"You destroyed my core?! This isn't over."`, `"My command center... you'll PAY for this."`, `"Impressive. Enjoy it. I'm rebuilding already."`]
+            : [`"One outpost means nothing. I have more."`, `"You think taking one node matters? Cute."`, `"That was bait anyway. Check YOUR network."`];
+          setTerminal(prev => [...prev, { type: 'out', text: `\n[${rival.handle}] ${purgeReactions[Math.floor(Math.random() * purgeReactions.length)]}`, isNew: true }]);
+        }
         if (wasCore) {
           // Eliminate the rival
           if (rivalObj) {

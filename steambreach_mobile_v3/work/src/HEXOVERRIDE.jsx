@@ -1168,6 +1168,48 @@ setVirusScans({});
           isNew: true
         }]);
       }
+      // --- RIVAL RESPAWN: destroyed rivals can return ---
+      rivals.filter(r => r.status === 'destroyed').forEach(rival => {
+        const timeSinceDeath = Date.now() - (rival.lastSeen || 0);
+        if (timeSinceDeath < 120000) return; // Minimum 2 min before respawn possible
+        if (Math.random() > 0.05) return; // 5% chance per tick
+
+        // Respawn with reduced resources
+        const newIP = `${Math.floor(Math.random() * 200 + 50)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`;
+        const respawnedRival = {
+          ...rival,
+          status: 'hostile',
+          ip: newIP,
+          btc: Math.floor(rival.btc * 0.3) + 1000,
+          relationship: -80,
+          security: Math.max(40, rival.security - 10),
+          lastSeen: Date.now(),
+          defeatCount: rival.defeatCount,
+        };
+
+        // Create a smaller base (1-2 nodes less than original)
+        const coreNode = generateRivalNode(respawnedRival);
+        const cluster = generateRivalCluster(respawnedRival, coreNode);
+        
+        // Remove 1-2 outposts to make them weaker than before
+        const clusterIPs = Object.keys(cluster);
+        const removeCount = Math.min(clusterIPs.length, Math.floor(Math.random() * 2) + 1);
+        for (let i = 0; i < removeCount; i++) {
+          delete cluster[clusterIPs[clusterIPs.length - 1 - i]];
+        }
+
+        setRivals(prev => prev.map(r => r.id === rival.id ? respawnedRival : r));
+        setWorld(prev => ({ ...prev, [newIP]: coreNode, ...cluster }));
+
+        const respawnMessages = [
+          `"You thought you killed me? I'm back, and I'm coming for MY nodes."`,
+          `"Rebuilt. Rearmed. Remember what you took from me? I'm taking it all back."`,
+          `"Miss me? I've been watching you from a burner. Now I'm operational again."`,
+          `"You destroyed my network. I destroyed my old identity. New name, same grudge."`,
+        ];
+
+        setTerminal(prev => [...prev, { type: 'out', text: `\n[!!!] RIVAL RESPAWN [!!!]\n[*] ${rival.handle} has returned!\n[*] New core: ${newIP} ☠ + ${Object.keys(cluster).length} outpost nodes\n[*] Status: HOSTILE | They want revenge.\n\n  ${rival.handle}: ${respawnMessages[Math.floor(Math.random() * respawnMessages.length)]}`, isNew: true }]);
+      });
     }, 45000);
 
     return () => clearInterval(retaliationTick);
@@ -3118,6 +3160,11 @@ if (!hasEntry || !hasHit) {
     ...prev[targetIP],
     owner: 'player',
     defense: Math.max(prev[targetIP]?.defense || 0, 20),
+    // Rebrand captured rival nodes
+    ...(prev[targetIP]?.isRivalNode ? {
+      org: { ...prev[targetIP].org, orgName: `${prev[targetIP].org?.orgName?.replace(/.*'s /, operator + "'s ") || operator + "'s Node"}` },
+      name: prev[targetIP]?.name?.replace(/.*'s /, operator + "'s ") || `${operator}'s Node`,
+    } : {}),
     infection: {
       ...(prev[targetIP]?.infection || {}),
       state: 'infected',

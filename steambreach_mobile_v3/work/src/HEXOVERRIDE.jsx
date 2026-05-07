@@ -6168,6 +6168,7 @@ territory: async () => {
         const rivalId = node.owner;
         const rival = rivals.find(r => r.id === rivalId);
         const wasCore = node.isCore;
+        const rivalObj = rival;
 
         setIsProcessing(true);
         setTerminal(prev => [...prev, { type: 'out', text: `[*] Locating rival C2 beacon...`, isNew: false }]);
@@ -6193,7 +6194,27 @@ territory: async () => {
         let out = `[+] RIVAL PRESENCE PURGED from ${targetIP}\n[+] ${rival?.handle || 'Unknown'}'s beacon destroyed. Defense reduced.\n[*] Node is now unclaimed. Run 'sliver' to claim it for your network.`;
 
         if (wasCore) {
-          out += `\n\n[!!!] CORE NODE DESTROYED — ${rival?.handle || 'Unknown'}'s command center is down!`;
+          // Eliminate the rival
+          if (rivalObj) {
+            const bounty = ({ SKIDDIE: 5000, GREY_HAT: 25000, BLACK_HAT: 80000, APT_OPERATOR: 250000, LEGEND: 1000000 })[rivalObj.archetype] || 10000;
+            setMoney(m => m + bounty + rivalObj.btc);
+            setReputation(r => r + 50);
+            if (rivalObj.zeroDays?.length > 0) setZeroDays(prev => [...prev, ...rivalObj.zeroDays.map(zd => ({ ...zd, obtained: Date.now() }))]);
+            Object.entries(rivalObj.stash || {}).forEach(([key, qty]) => {
+              if (qty > 0) setStash(prev => ({ ...prev, [key]: (prev[key] || 0) + qty }));
+            });
+            setRivals(prev => prev.map(r => r.id === rivalId
+              ? { ...r, status: 'destroyed', btc: 0, stash: {}, zeroDays: [] }
+              : r
+            ));
+          }
+          out += `\n\n[!!!] CORE NODE DESTROYED — ${rival?.handle || 'Unknown'} ELIMINATED!`;
+          out += `\n╔══════════════════════════════════════════════════════════╗`;
+          out += `\n║  ☠  ${(rivalObj?.handle || 'UNKNOWN').toUpperCase()} HAS BEEN ELIMINATED${' '.repeat(Math.max(0, 35 - (rivalObj?.handle?.length || 7)))}║`;
+          out += `\n╠══════════════════════════════════════════════════════════╣`;
+          out += `\n║  Bounty + Wallet absorbed. Zero-days + stash seized.    ║`;
+          out += `\n║  Rep: +50${' '.repeat(48)}║`;
+          out += `\n╚══════════════════════════════════════════════════════════╝`;
           // All their other nodes lose defense
           setWorld(prev => {
             const nw = { ...prev };

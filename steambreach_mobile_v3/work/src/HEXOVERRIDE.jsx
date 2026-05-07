@@ -76,6 +76,7 @@ import {
   generateRivalNode,
   generateRivalCluster,
   DESTRUCTION_BOUNTY,
+  TRADE_PRICES,
   RECRUIT_COST,
   getTradeDiscount,
   attemptBuyZeroDay,

@@ -78,14 +78,7 @@ export const DESTRUCTION_BOUNTY = {
 // TRADE & RECRUIT SYSTEM
 // ============================================================================
 
-export const TRADE_PRICES = {
-  zeroday: {
-    COMMON: 5000, UNCOMMON: 20000, RARE: 80000,
-    EPIC: 200000, LEGENDARY: 500000, MYTHIC: 1500000,
-  },
-  intel: 25000,
-  backup: { SKIDDIE: 10000, GREY_HAT: 25000, BLACK_HAT: 50000, APT_OPERATOR: 100000, LEGEND: 200000 },
-};
+
 
 export const RECRUIT_COST = {
   fear:    { SKIDDIE: 2000, GREY_HAT: 15000, BLACK_HAT: 50000, APT_OPERATOR: 200000, LEGEND: 500000 },

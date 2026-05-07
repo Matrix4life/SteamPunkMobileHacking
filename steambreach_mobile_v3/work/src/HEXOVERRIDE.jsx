@@ -3383,8 +3383,10 @@ creds: async () => {
       },
 
       download: async () => {
+        if (!world[targetIP]) return '[-] download: Connection lost. Node no longer accessible.';
         if (!isInside) return "[-] Must be on a remote host.";
         if (!arg1) return "[-] Usage: download <filename>";
+        
         
         const isConsumable = ['decoy.bin', 'burner.ovpn', '0day_poc.sh', 'wallet.dat'].includes(arg1);
         if (isConsumable) {
@@ -4776,6 +4778,10 @@ if (typeof rawData === 'string' && rawData.includes('[STORY_TRIGGER]')) {
     return '[*] Transmission already decrypted. Nothing new here.';
   }
   
+  if (!world[targetIP]) {
+  setIsInside(false); setTargetIP(null); setCurrentDir('~'); setPrivilege('local');
+  return '[-] Connection lost. Node was seized or destroyed. Returning to kali.';
+}
   if (activeStory && activeStory.ip === targetIP) {
     const msg = `[INTERCEPTED TRANSMISSION — ${fileName}]\n\n${activeStory.story}\n\n[1] ${activeStory.good_action}\n[2] ${activeStory.evil_action}\n\n[*] Type 'resolve 1' or 'resolve 2' to choose.`;
     setTerminal(prev => [...prev, { type: 'out', text: msg, isNew: true }]);

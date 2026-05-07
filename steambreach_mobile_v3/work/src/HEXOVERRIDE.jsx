@@ -1208,7 +1208,18 @@ setVirusScans({});
             }));
           }
         }
-
+// --- CORE REGEN: core nodes regenerate defense over time ---
+        const coreNode = rivalNodes.find(([, n]) => n.isCore);
+        if (coreNode) {
+          const [coreIP, coreData] = coreNode;
+          const maxDef = Math.floor(30 + rival.skillMod * 40);
+          if ((coreData.defense || 0) < maxDef) {
+            setWorld(prev => ({
+              ...prev,
+              [coreIP]: { ...prev[coreIP], defense: Math.min(maxDef, (prev[coreIP]?.defense || 0) + 3) }
+            }));
+          }
+        }
         // --- FORTIFICATION: increase defense on existing nodes ---
         if (Math.random() < 0.3) {
           const weakest = rivalNodes.sort(([, a], [, b]) => (a.defense || 0) - (b.defense || 0))[0];
@@ -1220,8 +1231,12 @@ setVirusScans({});
           }
         }
 
-        // --- ATTACK: probe player's weakest border node ---
-        if (rival.status === 'hostile' || (rival.relationship < -20 && Math.random() < 0.3)) {
+       // --- ATTACK: probe player's weakest border node ---
+        // Aggression scales with how many nodes they've lost
+        const originalNodeCount = { 0.5: 3, 0.8: 4, 1.0: 5, 1.3: 6, 1.8: 7 }[rival.skillMod] || 4;
+        const lostNodes = Math.max(0, originalNodeCount - rivalNodes.length);
+        const aggressionBoost = lostNodes * 0.15; // Each lost node increases attack chance by 15%
+        if (rival.status === 'hostile' || (rival.relationship < -20 && Math.random() < (0.3 + aggressionBoost))) {
           const playerNodes = Object.entries(world).filter(([k, n]) => k !== 'local' && n.owner === 'player');
           if (playerNodes.length === 0) return;
           const weakest = playerNodes.sort(([, a], [, b]) => (a.defense || 0) - (b.defense || 0))[0];
@@ -1310,7 +1325,10 @@ setVirusScans({});
       const baseTick = inventory.includes('Overclock') ? 2000 : 1000;
       const proxyBonus = proxies.length * 400;
       const directorMult = directorRef.current?.modifiers?.traceSpeedMult || 1.0;
-      const rivalMult = world[targetIP]?.isRivalNode ? 0.5 : 1;
+      const rivalDef = world[targetIP]?.defense || 0;
+      const rivalMult = world[targetIP]?.isRivalNode 
+        ? (world[targetIP]?.isCore ? 0.33 : Math.max(0.3, 0.8 - rivalDef / 200))  // Core = 3x, outpost scales: DEF 0 = 1.25x, DEF 50 = 1.5x, DEF 100 = 2x
+        : 1;
       const recruitTraceBonus = rivals.some(r => r.recruited && r.archetype === 'APT_OPERATOR') ? 1.15
         : rivals.some(r => r.recruited && r.archetype === 'LEGEND') ? 1.08 : 1;
       const traceSpeed = Math.floor((baseTick + proxyBonus) / directorMult * rivalMult * recruitTraceBonus);
@@ -1897,6 +1915,35 @@ if (isInside && trace > 70 && Math.random() < 0.4 && !BENIGN_CMDS.includes(cmd))
     return `[-] ${toolName} ${targetIPArg}: Connection refused.\n[*] ${world[targetIPArg].rivalHandle}'s system is hardened against ${toolName}.\n[*] Check their dossier for the correct attack vector.`;
   }
 }
+      // --- DEFENSE GATE: rival nodes resist exploitation based on defense ---
+      if (node.owner && node.owner !== 'player' && node.defense > 30) {
+        const failChance = Math.min(80, node.defense - 20); // DEF 50 = 30% fail, DEF 80 = 60%, DEF 100 = 80%
+        if (Math.random() * 100 < failChance) {
+          playFailure();
+          setHeat(h => Math.min(h + 3, 100));
+          trackExploit(false);
+          const hint = node.defense > 70 
+            ? `[*] Defense is ${node.defense}/100. Use 'hping3 ${targetIPArg}' to soften, or crack credentials with john for ssh access.`
+            : `[*] Defense is ${node.defense}/100. A few more hping3 attacks should weaken it enough.`;
+          return `[-] ${toolName}: Exploit BLOCKED by rival countermeasures.\n[!] ${node.rivalHandle || 'Rival'}'s IDS intercepted the payload.\n${hint}`;
+        }
+      }
+
+      // --- CORE SHIELD: core nodes are harder if outposts still active ---
+      if (node.isCore && node.owner && node.owner !== 'player') {
+        const outpostCount = Object.values(world).filter(n => n.owner === node.owner && !n.isCore).length;
+        if (outpostCount > 0) {
+          // Core has active shield — extra defense from outposts
+          const shieldBonus = outpostCount * 15;
+          const totalDef = (node.defense || 0) + shieldBonus;
+          const shieldFailChance = Math.min(90, totalDef - 10);
+          if (Math.random() * 100 < shieldFailChance) {
+            playFailure();
+            trackExploit(false);
+            return `[-] ${toolName}: CORE SHIELD ACTIVE.\n[!] ${node.rivalHandle || 'Rival'}'s core is protected by ${outpostCount} outpost node${outpostCount > 1 ? 's' : ''}.\n[!] Effective defense: ${totalDef} (base ${node.defense} + ${shieldBonus} shield)\n[*] Destroy or purge outpost nodes first to lower the shield.\n[*] Or use 'hping3 ${targetIPArg}' with a large botnet to brute through.`;
+          }
+        }
+      }
       playSuccess();
       setIsInside(true); setTargetIP(targetIPArg); setCurrentDir('/'); setPrivilege('www-data');
       let startTrace = Math.floor(heat / 3);
@@ -1910,7 +1957,56 @@ if (isInside && trace > 70 && Math.random() < 0.4 && !BENIGN_CMDS.includes(cmd))
         setTrace(Math.min(startTrace + 25, 100));
         return `[!!!] CONTRACT COMPROMISED. BLUE TEAM AMBUSH [!!!]\n[-] The fixer sold you out. IDS signatures instantly matched your payload.\n[-] Trace timer accelerating. Heat +30%.\n[*] Exploiting ${toolName} against ${orgName}...\n[+] LOW PRIVILEGE SHELL (www-data) ESTABLISHED. Get out alive.`;
       }
+// --- RIVAL ALERT: breaching triggers network-wide alarm ---
+      if (node.owner && node.owner !== 'player') {
+        const rivalId = node.owner;
+        // Harden all other rival nodes temporarily
+        setWorld(prev => {
+          const nw = { ...prev };
+          Object.keys(nw).forEach(ip => {
+            if (ip !== targetIPArg && nw[ip]?.owner === rivalId) {
+              nw[ip] = { ...nw[ip], defense: Math.min(100, (nw[ip].defense || 0) + 15) };
+            }
+          });
+          return nw;
+        });
+        // Decay the alarm after 3 minutes
+        setTimeout(() => {
+          setWorld(prev => {
+            const nw = { ...prev };
+            Object.keys(nw).forEach(ip => {
+              if (nw[ip]?.owner === rivalId) {
+                nw[ip] = { ...nw[ip], defense: Math.max(0, (nw[ip].defense || 0) - 15) };
+              }
+            });
+            return nw;
+          });
+        }, 180000);
 
+        // Counter-attack: rival hits your weakest node
+        const playerNodes = Object.entries(world).filter(([k, n]) => k !== 'local' && n.owner === 'player');
+        if (playerNodes.length > 0) {
+          const weakest = playerNodes.sort(([, a], [, b]) => (a.defense || 0) - (b.defense || 0))[0];
+          const rivalAttackPower = Math.floor((node.defense || 30) * 0.5);
+          if (rivalAttackPower > (weakest[1].defense || 0)) {
+            // Counter-attack succeeds — flip node
+            setTimeout(() => {
+              setWorld(prev => {
+                if (prev[weakest[0]]?.owner === 'player') {
+                  return { ...prev, [weakest[0]]: { ...prev[weakest[0]], owner: rivalId, defense: 10, isRivalNode: true, rivalHandle: node.rivalHandle, rivalId } };
+                }
+                return prev;
+              });
+              setBotnet(prev => prev.filter(ip => ip !== weakest[0]));
+              setTerminal(prev => [...prev, { type: 'out', text: `\n[!!!] COUNTER-ATTACK: ${node.rivalHandle} seized your node ${weakest[0]} while you were distracted!\n[-] Your weakest node was undefended. Fortify your territory.`, isNew: true }]);
+            }, 5000); // 5 second delay
+          } else {
+            setTimeout(() => {
+              setTerminal(prev => [...prev, { type: 'out', text: `\n[!] ${node.rivalHandle} counter-attacked ${weakest[0]} but your defenses held (DEF: ${weakest[1].defense || 0}).`, isNew: true }]);
+            }, 5000);
+          }
+        }
+      }
       setTrace(Math.min(startTrace, 100));
       const rivalBanner = world[targetIPArg]?.isRivalNode ? `\n╔══════════════════════════════════════════════════════════╗\n║  ☠  RIVAL SYSTEM: ${(world[targetIPArg]?.rivalHandle || 'UNKNOWN').toUpperCase().padEnd(37)}║\n║  ⚠  HOSTILE COUNTERMEASURES ACTIVE — TRACE 2x SPEED     ║\n╚══════════════════════════════════════════════════════════╝\n` : '';
 return `[*] Exploiting ${toolName} against ${orgName}...\n[+] Payload delivered. Reverse shell caught.${rivalBanner}\n[+] LOW PRIVILEGE SHELL (www-data) on ${targetIPArg}`;
@@ -2239,6 +2335,19 @@ const COMMANDS = {// ← your existing command object starts here
       pwnkit: async () => {
         if (!isInside) return '[-] Must be on a remote host.';
         if (privilege === 'root') return '[-] Already root.';
+        
+        // --- DEFENSE GATE: rival nodes can block pwnkit ---
+        const targetNode = world[targetIP];
+        if (targetNode?.owner && targetNode.owner !== 'player' && targetNode.defense > 60) {
+          const blockChance = Math.min(70, targetNode.defense - 40); // DEF 70 = 30%, DEF 90 = 50%, DEF 100 = 60%
+          if (Math.random() * 100 < blockChance) {
+            playFailure();
+            setTrace(t => Math.min(t + 10, 100));
+            const hasZeroDay = zeroDays.length > 0;
+            return `[-] pwnkit: CVE-2021-4034 PATCHED on this system.\n[!] ${targetNode.rivalHandle || 'Rival'} has hardened kernel defenses (DEF: ${targetNode.defense}).\n[!] Trace +10% from failed escalation attempt.${hasZeroDay ? `\n[*] Try 'use 0day' to bypass with a zero-day exploit.` : `\n[*] Lower defense with hping3 or find a zero-day.`}`;
+          }
+        }
+
         playRootShell();
         setPrivilege('root'); setTrace(t => Math.min(t + 15, 100));
         escalateBlueTeam(targetIP, 15); trackRoot();

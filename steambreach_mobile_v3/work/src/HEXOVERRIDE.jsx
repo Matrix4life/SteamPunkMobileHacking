@@ -536,6 +536,22 @@ const generateStory = async (ip, orgData) => {
     const territoryMult = territoryPct >= 80 ? 1.5 : territoryPct >= 60 ? 1.35 : territoryPct >= 40 ? 1.2 : territoryPct >= 20 ? 1.1 : 1.0;
     return Math.floor(minerNodes * HOURLY_RATE * getMineRigMult() * getEconomyMarketMult() * territoryMult);
   };
+  // ── VICTORY CHECK ──────────────────────────────────────────────────
+  const checkVictoryConditions = useCallback(() => {
+    const allNodes = Object.keys(world).filter(k => k !== 'local');
+    if (allNodes.length < 5) return null; // Too early
+
+    const playerNodes = allNodes.filter(k => world[k]?.owner === 'player');
+    const playerPct = allNodes.length > 0 ? playerNodes.length / allNodes.length * 100 : 0;
+    const activeRivals = rivals.filter(r => r.status !== 'destroyed' && !r.recruited);
+    const allCoresDestroyed = activeRivals.length === 0 && rivals.length > 0;
+    const allRecruited = rivals.length > 0 && rivals.every(r => r.recruited || r.status === 'destroyed');
+
+    if (playerPct >= 80) return { type: 'DOMINATION', pct: Math.round(playerPct) };
+    if (allCoresDestroyed) return { type: 'ELIMINATION', destroyed: rivals.filter(r => r.status === 'destroyed').length };
+    if (allRecruited) return { type: 'SUBJUGATION', recruited: rivals.filter(r => r.recruited).length };
+    return null;
+  }, [world, rivals]);
 
   const [director, setDirector] = useState(DEFAULT_DIRECTOR);
   const directorRef = useRef(DEFAULT_DIRECTOR);
@@ -2304,7 +2320,8 @@ const COMMANDS = {// ← your existing command object starts here
   setTrace(0); // Zero trace for valid credentials
   setIsProcessing(false);
   
-  return `[+] Authentication successful.\n[+] Established secure shell as '${emp.name}' (${emp.role}).\n[*] WARNING: Valid credentials bypass initial trace, but actions are still logged.`;
+  return `[+] Authentication successful.\n[+] Established secure shell as '${emp.name}' (${emp.role}).\n[*] WARNING: Valid credentials bypass initial trace, but actions are still logged.${world[ipStr]?.isRivalNode ? '
+[+] STEALTH ENTRY: Rival defenses did not trigger. You are inside undetected.' : ''}`;
         // Territory: if target is rival-held, reduce defense
         if (world[targetIP]?.owner && world[targetIP].owner !== 'player') {
           setWorld(prev => ({
@@ -2382,7 +2399,13 @@ const COMMANDS = {// ← your existing command object starts here
         if (newPrices._event) {
           setTerminal(prev => [...prev, { type: 'out', text: `\n[DARKNET FEED] ${newPrices._event}\n`, isNew: true }]);
         }
-        
+       // Save territory control for passive income from previous region
+        const prevPlayerNodes = Object.keys(world).filter(k => k !== 'local' && world[k]?.owner === 'player').length;
+        const prevTotal = Object.keys(world).filter(k => k !== 'local').length;
+        if (prevPlayerNodes > 0) {
+          const passiveRate = Math.floor(prevPlayerNodes * 100); // ₿100 per controlled node per tick
+          setTerminal(prev => [...prev, { type: 'out', text: `[*] Previous region secured. ${prevPlayerNodes}/${prevTotal} nodes held.\n[+] Passive income from held territory: +₿${passiveRate.toLocaleString()}/hr`, isNew: true }]);
+        } 
         // Reset WiFi state for new region (different networks)
         setWifiNetworks([]);
         setWifiState({ mon: false, scanned: false, focused: false, capFile: false, hshake: false, cracked: false, pwd: null, connected: false, targetBssid: null });
@@ -2733,6 +2756,23 @@ if (!hasEntry || !hasHit) {
       }
     };
   });
+              // Territory effects based on virus role
+        const virusRoles = virus.recipe || {};
+        if (virusRoles.spread && virusRoles.spread > 2) {
+          // High-spread virus: auto-claim 1-2 adjacent unclaimed nodes
+          const unclaimed = Object.entries(world).filter(([k, n]) => k !== 'local' && !n.owner);
+          const claimCount = Math.min(virusRoles.spread - 1, unclaimed.length, 2);
+          for (let i = 0; i < claimCount; i++) {
+            const [claimIP] = unclaimed[i];
+            setWorld(prev => ({ ...prev, [claimIP]: { ...prev[claimIP], owner: 'player', defense: 10 } }));
+            setBotnet(prev => [...prev, claimIP]);
+          }
+          if (claimCount > 0) out += `\n[+] VIRAL SPREAD: ${claimCount} adjacent node${claimCount > 1 ? 's' : ''} claimed by your worm.`;
+        }
+        if (virusRoles.hide && virusRoles.hide > 2 && world[targetIP]?.owner && world[targetIP].owner !== 'player') {
+          // High-stealth virus on rival node: parasitic — siphon income without them knowing
+          out += `\n[+] PARASITIC MODE: Stealth miner deployed on rival node. Siphoning income.`;
+        }
   return next;
 });
             out += `[+] Worm propagation successful. +${infected.length} node(s) added to botnet.\n`;
@@ -2872,6 +2912,16 @@ if (!hasEntry || !hasHit) {
         setIsProcessing(false);
         
         const contractMsg = verifyContract(targetIP, 'sniff');
+       // Territory intel: if near rival nodes, reveal their next target
+        const nearbyRivals = rivals.filter(r => r.status === 'active' || r.status === 'hostile');
+        if (nearbyRivals.length > 0 && Math.random() < 0.6) {
+          const rival = nearbyRivals[Math.floor(Math.random() * nearbyRivals.length)];
+          const playerNodes = Object.entries(world).filter(([k, n]) => k !== 'local' && n.owner === 'player');
+          if (playerNodes.length > 0) {
+            const targetNode = playerNodes[Math.floor(Math.random() * playerNodes.length)];
+            out += `\n\n[INTERCEPTED — ${rival.handle}] Planning attack on ${targetNode[0]} (${targetNode[1].org?.orgName || 'your node'}). Reinforce it.`;
+          }
+        }
         
         // NOTICE: ${contractMsg} is now attached to the very end of this string!
         return `[+] ettercap: MITM active. Sniffed ${node.org.employees?.length || 3} hosts.\n────────────────────────────────────\n${comms}\n────────────────────────────────────\n[!] Trace +10%. ARP anomalies may trigger IDS.${contractMsg}`;
@@ -3727,6 +3777,7 @@ return `[+] ${actionResult}\n[+] CHAOS +10`;
 ╚══════════════════════════════════════════════════════════╝
 
 [SIGINT] Underground forums buzzing: ${rival.handle} has gone dark.`;
+          ${(() => { const v = checkVictoryConditions(); return v ? `\n\n[!!!] VICTORY CONDITION MET: ${v.type}! Type 'territory' for results.` : ''; })()}
 }
          
           if (gameMode === 'operator') {
@@ -4617,7 +4668,22 @@ if (typeof rawData === 'string' && rawData.includes('[STORY_TRIGGER]')) {
       setTerminal(prev => [...prev, { type: 'out', text: `[*] Decoding data stream...`, isNew: false }]);
 
       const contextHint = rawData.includes('[HASH]') ? 'password hashes file' : (fileName?.endsWith('.eml') ? 'internal email between employees' : 'standard server file');
-      
+      // If this is a rival node, generate tactical intel
+      if (world[targetIP]?.isRivalNode) {
+        const rival = rivals.find(r => r.id === world[targetIP].rivalId);
+        if (rival && (fileName === 'target_list.txt' || fileName === 'config.json')) {
+          const playerNodes = Object.entries(world).filter(([k, n]) => k !== 'local' && n.owner === 'player');
+          const weakest = playerNodes.sort(([, a], [, b]) => (a.defense || 0) - (b.defense || 0))[0];
+          const intelContent = fileName === 'target_list.txt'
+            ? `[INTEL] ${rival.handle}'s target list:\n  Priority 1: ${weakest ? weakest[0] + ' (DEF: ' + (weakest[1].defense || 0) + ')' : 'None identified'}\n  Priority 2: Scanning for new exploitation targets\n  Status: ${rival.status === 'hostile' ? 'ACTIVE OFFENSIVE' : 'MONITORING'}`
+            : `[INTEL] Botnet config:\n  Nodes: ${Object.values(world).filter(n => n.owner === rival.id).length}\n  Core: ${rival.ip}\n  Expansion rate: ${rival.skillMod > 1 ? 'AGGRESSIVE' : 'MODERATE'}\n  Vulnerability: ${rival.vulnerability}`;
+          setWorld(prev => ({
+            ...prev,
+            [targetIP]: { ...prev[targetIP], contents: { ...prev[targetIP].contents, [fullPath]: intelContent } }
+          }));
+          return intelContent;
+        }
+      }
       let aiText = "";
       try {
         const system = `You are a backend file generator for a hacking simulator called HEXOVERRIDE. Generate realistic file contents for the organization "${world[targetIP]?.org?.orgName || 'Unknown'}". Write MAX 8 lines. Match the file extension exactly. Hide useful intel naturally. Never use markdown.`;
@@ -4886,7 +4952,11 @@ phy0    wlan0           ath9k_htc       Qualcomm Atheros AR9271
             let output = `\n[+] TARGET SELECTED: ${selectedNet.essid}\n`;
             output += `\n CH  ${ch} ][ Elapsed: 45s ][ ${new Date().toTimeString().slice(0,8)}\n\n BSSID              PWR  Beacons  #Data   CH   ENC    ESSID\n\n ${selectedNet.bssid}  ${String(pwr).padStart(3)}     1523    8847   ${String(ch).padStart(2)}   ${encLabel.padEnd(6)} ${selectedNet.essid}\n\n STATION            PWR   Frames  Device\n`;
             clients.forEach(c => { output += ` ${c.mac}  ${String(c.pwr || c.signal || -40).padStart(3)}   ${String(c.frames || 1000).padStart(6)}  ${c.dev || c.device || 'Unknown'}\n`; });
-            
+            // Tag networks with territory context
+const rivalNodeCount = Object.values(world).filter(n => n.isRivalNode).length;
+if (rivalNodeCount > 0) {
+  output += `\n[*] TERRITORY INTEL: ${rivalNodeCount} rival-held nodes detected in area. WiFi access may provide flanking routes.`;
+}
             setWifiState(prev => ({ ...prev, scanned: true, focused: true, capFile: true, targetBssid: selectedNet.bssid }));
             // Update the target in wifiNetworks
             setWifiNetworks(prev => prev.map(n => ({ ...n, target: n.bssid === selectedNet.bssid })));
@@ -5220,6 +5290,8 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
               const newNode = generateNewTarget('mid', null, directorRef.current?.modifiers);
               newNode.data.region = currentRegion;
               newNode.data.org = { orgName: t.org, type: 'government', industry: 'Corporate', employees: [] };
+              newNode.data.owner = 'player';
+              newNode.data.defense = 15;
               newNode.data.wifiSpawned = true;
               setWorld(prev => ({ ...prev, [t.ip]: newNode.data }));
             }
@@ -5237,7 +5309,7 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
           setIsProcessing(false);
           playSuccess();
           const contractMsg = verifyContract(null, 'connect');
-          return `[+] Connected to ${targetName}!\n[+] IP: 10.0.${nextSubnet}.187 | Gateway: 10.0.${nextSubnet}.1\n\n[!] New targets added to network map:\n    • 10.0.${nextSubnet}.20 — File Server\n    • 10.0.${nextSubnet}.30 — Database Server\n    • 10.0.${nextSubnet}.50 — Domain Controller\n\n[*] Run 'nmap' to scan internal network${contractMsg}`;
+          return `[+] Connected to ${targetName}!\n[+] IP: 10.0.${nextSubnet}.187 ${Object.values(world).some(n => n.isRivalNode) ? '\n\n[*] FLANKING POSITION: These nodes are behind rival lines. Use this foothold to attack their core from the rear.' : ''} | Gateway: 10.0.${nextSubnet}.1\n\n[!] New targets added to network map:\n    • 10.0.${nextSubnet}.20 — File Server\n    • 10.0.${nextSubnet}.30 — Database Server\n    • 10.0.${nextSubnet}.50 — Domain Controller\n\n[*] Run 'nmap' to scan internal network${contractMsg}`;
         }
 
         // ═══ FIELD MODE: Requires connect flag ═══
@@ -6017,6 +6089,27 @@ territory: async () => {
 
         if (playerPct >= 80) out += `\n\n[!!!] DOMINATION THRESHOLD REACHED. You control this region.`;
         else if (playerPct >= 60) out += `\n\n[!] Controlling majority. Push to 80% for domination victory.`;
+  const victory = checkVictoryConditions();
+        if (victory) {
+          const elapsed = Date.now() - (director.startTime || Date.now());
+          const minutes = Math.floor(elapsed / 60000);
+          const eliminated = rivals.filter(r => r.status === 'destroyed').length;
+          const recruited = rivals.filter(r => r.recruited).length;
+          out += `\n\n╔══════════════════════════════════════════════════════════╗`;
+          out += `\n║              MAP CONTROL: COMPLETE                       ║`;
+          out += `\n╠══════════════════════════════════════════════════════════╣`;
+          out += `\n║  Victory: ${victory.type.padEnd(46)}║`;
+          out += `\n║  Time: ${String(minutes).padEnd(4)} minutes${' '.repeat(39)}║`;
+          out += `\n║  Rivals Eliminated: ${String(eliminated).padEnd(3)} | Recruited: ${String(recruited).padEnd(14)}║`;
+          out += `\n║  Total Earnings: ₿${money.toLocaleString().padEnd(38)}║`;
+          out += `\n║  Nodes Controlled: ${String(playerNodes.length).padEnd(2)}/${String(total).padEnd(37)}║`;
+          out += `\n╠══════════════════════════════════════════════════════════╣`;
+          out += `\n║  BONUS: ₿500,000 + 200 REP                              ║`;
+          out += `\n║  Travel to a new region to start a new campaign.         ║`;
+          out += `\n╚══════════════════════════════════════════════════════════╝`;
+          setMoney(m => m + 500000);
+          setReputation(r => r + 200);
+        }
 
         return out;
       },

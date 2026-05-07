@@ -74,16 +74,7 @@ export const DESTRUCTION_BOUNTY = {
   LEGEND: 1000000,
 };
 
-// ============================================================================
-// TRADE & RECRUIT SYSTEM
-// ============================================================================
 
-
-
-export const RECRUIT_COST = {
-  fear:    { SKIDDIE: 2000, GREY_HAT: 15000, BLACK_HAT: 50000, APT_OPERATOR: 200000, LEGEND: 500000 },
-  respect: { SKIDDIE: 5000, GREY_HAT: 30000, BLACK_HAT: 100000, APT_OPERATOR: 400000, LEGEND: 1000000 },
-};
 
 export function getTradeDiscount(relationship) {
   const discount = Math.min(0.4, Math.max(0, (relationship - 20) / 200));

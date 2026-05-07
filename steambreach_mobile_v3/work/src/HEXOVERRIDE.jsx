@@ -1673,7 +1673,7 @@ const completeContractAndRemove = (id) => {
     let out = `Starting Nmap 7.93...\nNmap scan report for ${ip} (${node.name || node.org?.orgName || 'Unknown'})\nHost is up (0.01s latency).\n\nPORT     STATE SERVICE\n${port}/tcp   open  ${svc}\n`;
     if (node.org?.employees?.length) {
       out += `\n[*] OSINT: ${node.org.employees.length} employee records found via LinkedIn scrape.`;
-      node.org.employees.forEach(emp => { out += `\n    ${emp.name} <${emp.email}@${ip}> — ${emp.role}`; });
+      node.org.employees.forEach(emp => { out += `\n    ${emp.name} <${emp.email}> — ${emp.role}`; });
     }
     if (exp === 'hydra') out += `\n\n[!] VULN: Weak SSH Credentials → 'hydra ${ip}'`;
     if (exp === 'sqlmap') out += `\n\n[!] VULN: SQL Injection → 'sqlmap ${ip}'`;
@@ -2932,6 +2932,7 @@ if (!hasEntry || !hasHit) {
         if (!isInside) return "[-] Must be on a remote host.";
         if (privilege !== 'root') return "[-] Root required for C2 payload.";
         if (botnet.includes(targetIP)) return "[-] Beacon already active.";
+        if (world[targetIP]?.owner && world[targetIP].owner !== 'player') return `[-] Rival presence detected on this node. Run 'purge' first to remove ${world[targetIP]?.rivalHandle || 'rival'}'s beacon.`;
        setBotnet(prev => [...prev, targetIP]);
         setWorld(prev => ({
   ...prev,
@@ -3731,6 +3732,14 @@ return `[+] ${actionResult}\n[+] CHAOS +10`;
   const rivalIdx = rivals.findIndex(r => r.id === world[targetIP].rivalId);
   if (rivalIdx === -1) return '[-] Rival data corrupted.';
   const rival = rivals[rivalIdx];
+          if (rival.status === 'destroyed') {
+              // Rival already eliminated — just destroy the node, no bounty
+              setWorld(prev => { const nw = { ...prev }; delete nw[targetIP]; return nw; });
+              setIsInside(false); setTargetIP(null); setCurrentDir('~'); setPrivilege('local');
+              setIsProcessing(false);
+            
+              return `[*] Node destroyed. ${rival.handle} was already eliminated — no additional bounty.`;
+            }
   if (privilege !== 'root') return '[-] shred: Permission denied. Need root.';
 
   const DESTRUCTION_BOUNTY = {
@@ -3747,6 +3756,18 @@ return `[+] ${actionResult}\n[+] CHAOS +10`;
   Object.entries(rival.stash || {}).forEach(([key, qty]) => {
     if (qty > 0) setStash(prev => ({ ...prev, [key]: (prev[key] || 0) + qty }));
   });
+
+          // Free all remaining nodes owned by this rival
+            setWorld(prev => {
+              const nw = { ...prev };
+              Object.keys(nw).forEach(ip => {
+                if (nw[ip]?.owner === rival.id && ip !== targetIP) {
+                  nw[ip] = { ...nw[ip], owner: null, isRivalNode: false, rivalHandle: null, rivalId: null, isCore: false };
+                }
+              });
+              delete nw[targetIP];
+              return nw;
+            });
 
   // Destroy rival
   setRivals(prev => prev.map((r, i) => i === rivalIdx
@@ -6177,8 +6198,8 @@ territory: async () => {
           setWorld(prev => {
             const nw = { ...prev };
             Object.keys(nw).forEach(ip => {
-              if (nw[ip]?.owner === rivalId && ip !== targetIP) {
-                nw[ip] = { ...nw[ip], defense: Math.max(0, (nw[ip].defense || 0) - 15) };
+             if (nw[ip]?.owner === rivalId && ip !== targetIP) {
+                nw[ip] = { ...nw[ip], owner: null, defense: Math.max(0, (nw[ip].defense || 0) - 15), isRivalNode: false, rivalHandle: null, rivalId: null, isCore: false };
               }
             });
             return nw;

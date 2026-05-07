@@ -3776,8 +3776,8 @@ return `[+] ${actionResult}\n[+] CHAOS +10`;
 ║  Rep:        +50${' '.repeat(41)}║
 ╚══════════════════════════════════════════════════════════╝
 
-[SIGINT] Underground forums buzzing: ${rival.handle} has gone dark.`;
-          ${(() => { const v = checkVictoryConditions(); return v ? `\n\n[!!!] VICTORY CONDITION MET: ${v.type}! Type 'territory' for results.` : ''; })()}
+[SIGINT] Underground forums buzzing: ${rival.handle} has gone dark.`${(() => { const v = checkVictoryConditions(); return v ? `\n\n[!!!] VICTORY CONDITION MET: ${v.type}! Type 'territory' for results.` : ''; })()};
+          
 }
          
           if (gameMode === 'operator') {

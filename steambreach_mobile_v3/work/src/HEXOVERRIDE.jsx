@@ -1161,7 +1161,86 @@ setVirusScans({});
 
     return () => clearInterval(bonusInterval);
   }, [screen, operator, rivals, money, zeroDays, world, looted]);
+// ── RIVAL TERRITORY AI TICK ──────────────────────────────────────────────
+  useEffect(() => {
+    if (screen !== 'game' || !operator) return;
+    const activeRivals = rivals.filter(r => r.status === 'active' || r.status === 'hostile');
+    if (activeRivals.length === 0) return;
 
+    const territoryTick = setInterval(() => {
+      activeRivals.forEach(rival => {
+        const rivalNodes = Object.entries(world).filter(([, n]) => n.owner === rival.id);
+        if (rivalNodes.length === 0) return;
+
+        // --- EXPANSION: claim 1 adjacent unclaimed node ---
+        const expansionChance = { 0.5: 0.3, 0.8: 0.4, 1.0: 0.5, 1.3: 0.6, 1.8: 0.8 }[rival.skillMod] || 0.4;
+        if (Math.random() < expansionChance) {
+          const unclaimed = Object.entries(world).filter(([k, n]) => k !== 'local' && !n.owner && !n.isRivalNode);
+          if (unclaimed.length > 0) {
+            const target = unclaimed[Math.floor(Math.random() * unclaimed.length)];
+            setWorld(prev => ({
+              ...prev,
+              [target[0]]: {
+                ...prev[target[0]],
+                owner: rival.id,
+                defense: Math.floor(10 + rival.skillMod * 10),
+                isRivalNode: true,
+                rivalHandle: rival.handle,
+                rivalId: rival.id,
+              }
+            }));
+          }
+        }
+
+        // --- FORTIFICATION: increase defense on existing nodes ---
+        if (Math.random() < 0.3) {
+          const weakest = rivalNodes.sort(([, a], [, b]) => (a.defense || 0) - (b.defense || 0))[0];
+          if (weakest && (weakest[1].defense || 0) < 80) {
+            setWorld(prev => ({
+              ...prev,
+              [weakest[0]]: { ...prev[weakest[0]], defense: Math.min(80, (prev[weakest[0]]?.defense || 0) + 5) }
+            }));
+          }
+        }
+
+        // --- ATTACK: probe player's weakest border node ---
+        if (rival.status === 'hostile' || (rival.relationship < -20 && Math.random() < 0.3)) {
+          const playerNodes = Object.entries(world).filter(([k, n]) => k !== 'local' && n.owner === 'player');
+          if (playerNodes.length === 0) return;
+          const weakest = playerNodes.sort(([, a], [, b]) => (a.defense || 0) - (b.defense || 0))[0];
+          const [targetIP, targetNode] = weakest;
+          const attackPower = Math.floor(rival.skillMod * 20 + rivalNodes.length * 3);
+          const targetDef = targetNode.defense || 0;
+
+          if (attackPower > targetDef) {
+            // Attack succeeds — flip node
+            setWorld(prev => ({
+              ...prev,
+              [targetIP]: {
+                ...prev[targetIP],
+                owner: rival.id,
+                defense: Math.floor(attackPower * 0.3),
+                isRivalNode: true,
+                rivalHandle: rival.handle,
+                rivalId: rival.id,
+              }
+            }));
+            setBotnet(prev => prev.filter(ip => ip !== targetIP));
+            setProxies(prev => prev.filter(ip => ip !== targetIP));
+            setTerminal(prev => [...prev, { type: 'out', text: `\n[!!!] NODE CAPTURED: ${targetIP} taken by ${rival.handle}!\n[-] Botnet: -1 | Your territory is shrinking.\n[*] Counter-attack with: hping3 ${targetIP}`, isNew: true }]);
+            playHeatSpike();
+          } else {
+            // Attack fails — just alert
+            if (Math.random() < 0.5) {
+              setTerminal(prev => [...prev, { type: 'out', text: `\n[!] ${rival.handle} probed your node ${targetIP} (DEF: ${targetDef}). Attack deflected.`, isNew: true }]);
+            }
+          }
+        }
+      });
+    }, 45000); // Every 45 seconds
+
+    return () => clearInterval(territoryTick);
+  }, [screen, operator, rivals, world, botnet, proxies]);
   const trackCommand = useCallback((cmd, success) => {
     setDirector(prev => {
       const m = { ...prev.metrics };
@@ -2226,6 +2305,13 @@ const COMMANDS = {// ← your existing command object starts here
   setIsProcessing(false);
   
   return `[+] Authentication successful.\n[+] Established secure shell as '${emp.name}' (${emp.role}).\n[*] WARNING: Valid credentials bypass initial trace, but actions are still logged.`;
+        // Territory: if target is rival-held, reduce defense
+        if (world[targetIP]?.owner && world[targetIP].owner !== 'player') {
+          setWorld(prev => ({
+            ...prev,
+            [targetIP]: { ...prev[targetIP], defense: Math.max(0, (prev[targetIP]?.defense || 0) - 15) }
+          }));
+        }
 },
 
       sendmail: async () => {
@@ -2928,6 +3014,11 @@ if (!hasEntry || !hasHit) {
             const newAlert = Math.max(nw[arg1].blueTeam.alertLevel - effectiveness, 0);
             nw[arg1] = { ...nw[arg1], blueTeam: { ...nw[arg1].blueTeam, alertLevel: newAlert, activeHunting: false } };
           }
+          // Territory: reduce defense on target node
+          if (nw[arg1]?.defense !== undefined) {
+            const defReduction = Math.floor(power * 3);
+            nw[arg1] = { ...nw[arg1], defense: Math.max(0, (nw[arg1].defense || 0) - defReduction) };
+          }
           return nw;
         });
 
@@ -2935,7 +3026,8 @@ if (!hasEntry || !hasHit) {
         playSuccess();
         setIsProcessing(false);
 
-        let out = `[+] hping3 flood complete. ${effectiveness}% service disruption achieved on ${arg1}.\n[+] Target SOC overwhelmed — Blue Team alert level reduced.\n[!] Heat +5% (reflected traffic logged upstream).`;
+        const newDef = world[arg1]?.defense !== undefined ? Math.max(0, (world[arg1].defense || 0) - Math.floor(power * 3)) : null;
+        let out = `[+] hping3 flood complete. ${effectiveness}% service disruption achieved on ${arg1}.\n[+] Target SOC overwhelmed — Blue Team alert level reduced.${newDef !== null ? `\n[+] Defense: ${(world[arg1]?.defense || 0)} → ${newDef}` : ''}\n[!] Heat +5% (reflected traffic logged upstream).`;
         if (power >= 5) out += `\n[+] CRITICAL MASS: ${power}-node flood crashed their IDS/IPS entirely. Monitoring offline.`;
         return out;
       },
@@ -3747,6 +3839,19 @@ return `[+] ${actionResult}\n[+] CHAOS +10`;
                 }
               }
             }
+            // Territory: lock rival out of node for 5 min
+              if (world[targetIP]?.owner && world[targetIP].owner !== 'player') {
+                const lockedOwner = world[targetIP].owner;
+                setWorld(prev => ({ ...prev, [targetIP]: { ...prev[targetIP], owner: null, defense: 0 } }));
+                setTimeout(() => {
+                  setWorld(prev => {
+                    if (!prev[targetIP]?.owner) { // Only restore if unclaimed
+                      return { ...prev, [targetIP]: { ...prev[targetIP], owner: lockedOwner, defense: 15 } };
+                    }
+                    return prev;
+                  });
+                }, 300000); // 5 min lockout
+              }
             return msg;
           };
 
@@ -4075,6 +4180,8 @@ return `[+] ${actionResult}\n[+] CHAOS +10`;
             const newNode = generateNewTarget(null, targetIP, directorRef.current?.modifiers, world[targetIP]);
             newNode.data.region = currentRegion;
             newNodes.push(newNode);
+            newNode.data.owner = 'player';
+            newNode.data.defense = 20;
             setWorld(prev => ({ ...prev, [newNode.ip]: newNode.data }));
             setBotnet(prev => [...prev, newNode.ip]);
             setTerminal(prev => [...prev, { type: 'out', text: `[*] ${newNode.ip}:445 - WIN! Meterpreter session ${i + 1} opened`, isNew: false }]);
@@ -4111,6 +4218,8 @@ return `[+] ${actionResult}\n[+] CHAOS +10`;
             const newNode = generateNewTarget(null, targetIP, directorRef.current?.modifiers, world[targetIP]);
             newNode.data.region = currentRegion;
             newNodes.push(newNode);
+            newNode.data.owner = 'player';
+            newNode.data.defense = 20;
             setWorld(prev => ({ ...prev, [newNode.ip]: newNode.data }));
             setBotnet(prev => [...prev, newNode.ip]);
           }
@@ -4133,8 +4242,10 @@ return `[+] ${actionResult}\n[+] CHAOS +10`;
           const newNode = generateNewTarget(null, targetIP, directorRef.current?.modifiers, world[targetIP]);
           newNode.data.region = currentRegion;
           newNodes.push(newNode);
-          setWorld(prev => ({ ...prev, [newNode.ip]: newNode.data }));
-          setBotnet(prev => [...prev, newNode.ip]);
+          newNode.data.owner = 'player';
+            newNode.data.defense = 20;
+            setWorld(prev => ({ ...prev, [newNode.ip]: newNode.data }));
+            setBotnet(prev => [...prev, newNode.ip]);
         }
 
         setHeat(h => Math.min(h + 30, 100));

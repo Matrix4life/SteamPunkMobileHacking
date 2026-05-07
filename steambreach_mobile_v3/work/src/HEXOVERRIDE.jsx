@@ -5976,9 +5976,31 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
         if (rival.status === 'destroyed') return `[-] ${rival.handle} has been eliminated.`;
         if (rival.recruited) return `[-] ${rival.handle} already works for you.`;
         if (rival.relationship < 0) return `[-] ${rival.handle} refuses to negotiate. Relationship too hostile (${rival.relationship}).\n[*] Gift BTC or stop raiding to improve relations.`;
-        const discountPct = Math.round((1 - getTradeDiscount(rival.relationship)) * 100);
-        setPendingInteraction({ kind: 'negotiate', rivalId: rival.id, rivalHandle: rival.handle });
-        return `[*] Opening encrypted channel to ${rival.handle}...\n[+] SECURE CHANNEL ESTABLISHED${discountPct > 0 ? ` (${discountPct}% loyalty discount)` : ''}\n\n╔══════════════════════════════════════════════════════════╗\n║  TRADE MENU: ${rival.handle.toUpperCase().padEnd(42)}║\n╠══════════════════════════════════════════════════════════╣\n║  1. Buy Zero-Day    — Random exploit from their vault   ║\n║  2. Sell Stash      — Your commodities → their BTC      ║\n║  3. Buy Intel       — Reveal a node or rival weakness    ║\n║  4. Request Backup  — Botnet muscle for one operation    ║\n║  5. Gift BTC        — Send ₿ to improve relationship    ║\n║  6. Exit            — Close channel                      ║\n╚══════════════════════════════════════════════════════════╝\n\n[*] Type a number (1-6) to select.`;
+
+        const discount = getTradeDiscount(rival.relationship);
+        const discountPct = Math.round((1 - discount) * 100);
+
+        setPendingInteraction({
+          kind: 'negotiate',
+          rivalId: rival.id,
+          rivalHandle: rival.handle,
+        });
+
+        return `[*] Opening encrypted channel to ${rival.handle}...
+[+] SECURE CHANNEL ESTABLISHED${discountPct > 0 ? ` (${discountPct}% loyalty discount)` : ''}
+
+╔══════════════════════════════════════════════════════════╗
+║  TRADE MENU: ${rival.handle.toUpperCase().padEnd(42)}║
+╠══════════════════════════════════════════════════════════╣
+║  1. Buy Zero-Day    — Random exploit from their vault   ║
+║  2. Sell Stash      — Your commodities → their BTC      ║
+║  3. Buy Intel       — Reveal a hidden node or weakness   ║
+║  4. Request Backup  — Botnet muscle for one operation    ║
+║  5. Gift BTC        — Send ₿ to improve relationship    ║
+║  6. Exit            — Close channel                      ║
+╚══════════════════════════════════════════════════════════╝
+
+[*] Type a number (1-6) to select.`;
       },
 
       recruit: async () => {

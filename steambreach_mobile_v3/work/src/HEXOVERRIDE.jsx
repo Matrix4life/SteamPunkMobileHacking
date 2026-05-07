@@ -2320,8 +2320,8 @@ const COMMANDS = {// ← your existing command object starts here
   setTrace(0); // Zero trace for valid credentials
   setIsProcessing(false);
   
-  return `[+] Authentication successful.\n[+] Established secure shell as '${emp.name}' (${emp.role}).\n[*] WARNING: Valid credentials bypass initial trace, but actions are still logged.${world[ipStr]?.isRivalNode ? '
-[+] STEALTH ENTRY: Rival defenses did not trigger. You are inside undetected.' : ''}`;
+  return `[+] Authentication successful.\n[+] Established secure shell as '${emp.name}' (${emp.role}).\n[*] WARNING:
+[+] STEALTH ENTRY: Rival defenses did not trigger. You are inside undetected.`;
         // Territory: if target is rival-held, reduce defense
         if (world[targetIP]?.owner && world[targetIP].owner !== 'player') {
           setWorld(prev => ({

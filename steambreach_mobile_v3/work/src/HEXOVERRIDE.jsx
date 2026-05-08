@@ -1090,9 +1090,17 @@ setVirusScans({});
       if (candidates.length === 0) return;
 
       const attacker = candidates[Math.floor(Math.random() * candidates.length)];
-      const attack = rivalAttacksPlayer(attacker, { rep: reputation, btc: money, proxyCount: proxies.length, stash 
-                                                  // --- RIVAL CHATTER: periodic messages based on relationship ---
-      rivals.filter(r => r.status === 'active' || r.status === 'hostile').forEach(rival => {
+      const attack = rivalAttacksPlayer(attacker, {
+  rep: reputation,
+  btc: money,
+  proxyCount: proxies.length,
+  stash
+});
+
+// --- RIVAL CHATTER: periodic messages based on relationship ---
+rivals
+  .filter(r => r.status === 'active' || r.status === 'hostile')
+  .forEach(rival => {
         if (Math.random() > 0.15) return; // 15% chance per tick per rival
         const rivalNodeCount = Object.values(world).filter(n => n.owner === rival.id).length;
         const playerNodeCount = Object.values(world).filter(n => n.owner === 'player').length;

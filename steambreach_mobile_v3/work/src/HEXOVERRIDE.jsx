@@ -560,84 +560,6 @@ const generateStory = async (ip, orgData) => {
   const terminalEndRef = useRef(null);
   const inputRef = useRef(null);
 
-  // ── CONTRACT BOARD REFRESH ──────────────────────────────────────────────────
-// Bug: contracts are generated once per node discovery in nmap(). After
-// completeContractAndRemove() filters them out, no mechanism refills the board.
-// Fix: watch contracts.length; when it drops below MIN_CONTRACTS, generate
-// new contracts from already-discovered nodes.
-
-const MIN_CONTRACTS = 3;
-const CONTRACT_COOLDOWN_MS = 60 * 1000; // don't spam; wait 60s between refreshes
-const lastContractRefresh = useRef(0);
-
-useEffect(() => {
-  if (screen !== 'game' || !operator) return;
-  if (contracts.length >= MIN_CONTRACTS) return;
-
-  // Throttle: don't refresh more than once per minute
-  const now = Date.now();
-  if (now - lastContractRefresh.current < CONTRACT_COOLDOWN_MS) return;
-  lastContractRefresh.current = now;
-
-  // Build pool of eligible nodes:
-  // - not 'local', not hidden, not a rival node
-  // - not already targeted by an active contract
-  const activeTargetIPs = new Set(contracts.map(c => c.targetIP));
-
-  const eligibleIPs = Object.keys(world).filter(ip => {
-    if (ip === 'local') return false;
-    if (world[ip]?.isHidden) return false;
-    if (world[ip]?.isRivalNode) return false;
-    if (activeTargetIPs.has(ip)) return false;
-    return true;
-  });
-
-  if (eligibleIPs.length === 0) return;
-
-  // Shuffle and pick enough to refill up to MIN_CONTRACTS
-  const needed = MIN_CONTRACTS - contracts.length;
-  const shuffled = [...eligibleIPs].sort(() => Math.random() - 0.5);
-  const toGenerate = shuffled.slice(0, needed);
-
-  toGenerate.forEach(ip => {
-    const node = world[ip];
-    if (!node) return;
-
-    generateAIContract(ip, node, reputation, world).then(aiContract => {
-      if (!aiContract) return;
-
-      const newContract = {
-        id: `CTR-${Date.now().toString(36).toUpperCase()}`,
-        targetIP: ip,
-        targetName: node.org?.orgName || ip,
-        startTime: null,
-        active: false,
-        completed: false,
-        ...aiContract,
-        // Cap rewards on early game to avoid runaway economy
-        repReward: Math.min(aiContract.repReward ?? 5, director.metrics.contractsCompleted <= 5 ? 5 : 999),
-        reward:    Math.min(aiContract.reward    ?? 0, director.metrics.contractsCompleted <= 5 ? 2000 : 9999999),
-      };
-
-      setContracts(prev => {
-        // Guard: don't exceed 8, don't double-add same target
-        if (prev.length >= 8) return prev;
-        if (prev.some(c => c.targetIP === ip)) return prev;
-        return [...prev, newContract];
-      });
-
-      setTerminal(prev => [...prev, {
-        type: 'out',
-        text: `[FIXER] New contract ${newContract.id} posted for ${node.org?.orgName || ip}.\n[*] Type 'contracts' to review.`,
-        isNew: true,
-      }]);
-    });
-  });
-
-// eslint-disable-next-line react-hooks/exhaustive-deps
-}, [contracts.length, screen, operator]);
-// ^^ contracts.length as dep means this fires on every add/remove.
-// The throttle ref prevents the async calls from stacking.
         
          // Add state:
 const [soundMap, setSoundMapState] = useState({});
@@ -1870,6 +1792,86 @@ const completeContractAndRemove = (id) => {
       setActiveContract(null);
     }
   };
+
+  // ── CONTRACT BOARD REFRESH ──────────────────────────────────────────────────
+// Bug: contracts are generated once per node discovery in nmap(). After
+// completeContractAndRemove() filters them out, no mechanism refills the board.
+// Fix: watch contracts.length; when it drops below MIN_CONTRACTS, generate
+// new contracts from already-discovered nodes.
+
+const MIN_CONTRACTS = 3;
+const CONTRACT_COOLDOWN_MS = 60 * 1000; // don't spam; wait 60s between refreshes
+const lastContractRefresh = useRef(0);
+
+useEffect(() => {
+  if (screen !== 'game' || !operator) return;
+  if (contracts.length >= MIN_CONTRACTS) return;
+
+  // Throttle: don't refresh more than once per minute
+  const now = Date.now();
+  if (now - lastContractRefresh.current < CONTRACT_COOLDOWN_MS) return;
+  lastContractRefresh.current = now;
+
+  // Build pool of eligible nodes:
+  // - not 'local', not hidden, not a rival node
+  // - not already targeted by an active contract
+  const activeTargetIPs = new Set(contracts.map(c => c.targetIP));
+
+  const eligibleIPs = Object.keys(world).filter(ip => {
+    if (ip === 'local') return false;
+    if (world[ip]?.isHidden) return false;
+    if (world[ip]?.isRivalNode) return false;
+    if (activeTargetIPs.has(ip)) return false;
+    return true;
+  });
+
+  if (eligibleIPs.length === 0) return;
+
+  // Shuffle and pick enough to refill up to MIN_CONTRACTS
+  const needed = MIN_CONTRACTS - contracts.length;
+  const shuffled = [...eligibleIPs].sort(() => Math.random() - 0.5);
+  const toGenerate = shuffled.slice(0, needed);
+
+  toGenerate.forEach(ip => {
+    const node = world[ip];
+    if (!node) return;
+
+    generateAIContract(ip, node, reputation, world).then(aiContract => {
+      if (!aiContract) return;
+
+      const newContract = {
+        id: `CTR-${Date.now().toString(36).toUpperCase()}`,
+        targetIP: ip,
+        targetName: node.org?.orgName || ip,
+        startTime: null,
+        active: false,
+        completed: false,
+        ...aiContract,
+        // Cap rewards on early game to avoid runaway economy
+        repReward: Math.min(aiContract.repReward ?? 5, director.metrics.contractsCompleted <= 5 ? 5 : 999),
+        reward:    Math.min(aiContract.reward    ?? 0, director.metrics.contractsCompleted <= 5 ? 2000 : 9999999),
+      };
+
+      setContracts(prev => {
+        // Guard: don't exceed 8, don't double-add same target
+        if (prev.length >= 8) return prev;
+        if (prev.some(c => c.targetIP === ip)) return prev;
+        return [...prev, newContract];
+      });
+
+      setTerminal(prev => [...prev, {
+        type: 'out',
+        text: `[FIXER] New contract ${newContract.id} posted for ${node.org?.orgName || ip}.\n[*] Type 'contracts' to review.`,
+        isNew: true,
+      }]);
+    });
+  });
+
+// eslint-disable-next-line react-hooks/exhaustive-deps
+}, [contracts.length, screen, operator]);
+// ^^ contracts.length as dep means this fires on every add/remove.
+// The throttle ref prevents the async calls from stacking.
+  
   const selectNodeFromMap = (ip) => {
     const node = world[ip]; if (!node) return;
     const port = node.port || 22; const svc = node.svc || 'ssh'; const exp = node.exp || 'hydra';

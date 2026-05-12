@@ -1,3 +1,6 @@
+import MarketBoard from './components/MarketBoard';
+import MobileQuickBar from './components/MobileQuickBar';
+import { startMusic, setIntensity, stopMusic, triggerDrop } from './musicSystem';
 import IntroCinematic from './components/IntroCinematic';
 import HelpMenu from './components/HelpMenu';
 import RadialMenu from './components/RadialMenu';

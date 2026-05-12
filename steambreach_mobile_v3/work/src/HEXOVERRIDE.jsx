@@ -3168,7 +3168,10 @@ if (!hasEntry || !hasHit) {
           if ((isFirstScan || Math.random() < 0.3) && contracts.length < 8) {
             out += `\n[FIXER] Signal intercepted. Negotiating custom darknet contract...`;
             
-            generateAIContract(newNode.ip, newNode.data, reputation, world).then(aiContract => {
+            generateAIContract(newNode.ip, newNode.data, reputation, world, {
+  skillScore: director.skillScore,
+  contractsCompleted: director.metrics.contractsCompleted,
+}).then(aiContract => {
               if (aiContract) {
                 let adjustedRep = aiContract.repReward;
                 let adjustedMoney = aiContract.reward;

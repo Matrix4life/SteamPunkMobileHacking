@@ -643,7 +643,7 @@ useEffect(() => {
   useEffect(() => {
     if (screen !== 'game' || isMobile) return;
     const focusKeeper = setInterval(() => {
-      if (inputRef.current && !isProcessing && !showHelpMenu && document.activeElement !== inputRef.current) {
+      if (inputRef.current && !isProcessing && !showHelpMenu && !showNotes && document.activeElement !== inputRef.current) {
         // Don't steal focus from buttons, inputs, or active text selections
         const activeTag = document.activeElement?.tagName;
         const hasSelection = window.getSelection()?.toString().length > 0;
@@ -1959,6 +1959,7 @@ useEffect(() => {
   };
 
   const handleCommand = async (e, directCmd) => {
+    if (showNotes) return;
     if (!directCmd && (e.key !== 'Enter' || isProcessing)) return;
     if (e?.preventDefault) e.preventDefault();
     let trimmed = directCmd || input.trim();
@@ -7207,7 +7208,7 @@ if (screen === 'soundmanager') {
                 onChange={e => setPlayerNotes(e.target.value.slice(0, 2000))}
                 placeholder="jot targets, IPs, plans..."
                 autoFocus
-                style={{width:'100%',height:200,background:'#080810',color:'#a9dc76',border:'1px solid #2d2a2e',fontFamily:'monospace',fontSize:12,padding:10,resize:'vertical',boxSizing:'border-box',outline:'none',lineHeight:1.6}}
+                onKeyDown={e => e.stopPropagation()}           style={{width:'100%',height:200,background:'#080810',color:'#a9dc76',border:'1px solid #2d2a2e',fontFamily:'monospace',fontSize:12,padding:10,resize:'vertical',boxSizing:'border-box',outline:'none',lineHeight:1.6}}
               />
               <div style={{display:'flex',gap:8,marginTop:10}}>
                 <button onClick={() => { saveGame(operator); setTerminal(prev => [...prev, {type:'out',text:'[+] Notes saved.',isNew:true}]); }} style={{background:'#a9dc76',color:'#08080c',border:'none',padding:'6px 16px',fontFamily:'monospace',fontWeight:'bold',cursor:'pointer',fontSize:12}}>SAVE</button>

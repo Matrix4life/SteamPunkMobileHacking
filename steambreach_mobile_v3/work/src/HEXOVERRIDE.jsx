@@ -647,7 +647,7 @@ useEffect(() => {
         // Don't steal focus from buttons, inputs, or active text selections
         const activeTag = document.activeElement?.tagName;
         const hasSelection = window.getSelection()?.toString().length > 0;
-        if (activeTag !== 'BUTTON' && activeTag !== 'INPUT' && !hasSelection) {
+        if (activeTag !== 'BUTTON' && activeTag !== 'INPUT' && activeTag !== 'TEXTAREA' && !hasSelection) {
           inputRef.current.focus();
         }
       }

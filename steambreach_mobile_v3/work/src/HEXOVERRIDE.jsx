@@ -1090,57 +1090,64 @@ setVirusScans({});
     if (screen !== 'game' || !operator || rivals.length === 0) return;
 
     const retaliationTick = setInterval(() => {
-rivals
-  .filter(r => r.status === 'active' || r.status === 'hostile')
-  .forEach(rival => {
-    if (Math.random() > 0.15) return;
-    // ... (existing chatter messages, no change)
-  });
+      // --- RIVAL CHATTER: runs every tick regardless of hostility ---
+      rivals
+        .filter(r => r.status === 'active' || r.status === 'hostile')
+        .forEach(rival => {
+          if (Math.random() > 0.15) return;
+          const rivalNodeCount = Object.values(world).filter(n => n.owner === rival.id).length;
+          const playerNodeCount = Object.values(world).filter(n => n.owner === 'player').length;
+          let messages;
+          if (rival.status === 'hostile' && rival.relationship < -50) {
+            messages = [
+              `[${rival.handle}] "You've made a powerful enemy. Sleep with one eye open."`,
+              `[${rival.handle}] "I'm coming for everything you've built."`,
+              `[${rival.handle}] "Your nodes. Your wallet. Your reputation. All mine soon."`,
+            ];
+          } else if (rivalNodeCount > playerNodeCount) {
+            messages = [
+              `[${rival.handle}] "I control more of this network than you do. Accept it."`,
+              `[${rival.handle}] "Your territory is pathetic compared to mine."`,
+              `[${rival.handle}] "Maybe you should stick to scanning WiFi networks."`,
+            ];
+          } else if (playerNodeCount > rivalNodeCount * 2) {
+            messages = [
+              `[${rival.handle}] "You think you've won? I'm just getting started."`,
+              `[${rival.handle}] "Enjoy your little empire while it lasts."`,
+              `[${rival.handle}] "I've been watching your moves. I know your weaknesses."`,
+            ];
+          } else {
+            messages = [
+              `[${rival.handle}] "Interesting operation you're running. Be a shame if something happened to it."`,
+              `[${rival.handle}] "I know you're out there. I can see your traffic."`,
+              `[${rival.handle}] "The underground is watching both of us. Don't disappoint."`,
+            ];
+          }
+          setTerminal(prev => [...prev, { type: 'out', text: `\n${messages[Math.floor(Math.random() * messages.length)]}`, isNew: true }]);
+        });
 
-// Raids only from hostile candidates
-const candidates = rivals.filter(r => r.status !== 'destroyed' && (r.status === 'hostile' || r.relationship <= -20));
-if (candidates.length === 0) return;attacker, {
-  rep: reputation,
-  btc: money,
-  proxyCount: proxies.length,
-  stash
-});
+      // Natural escalation — passive rivals slowly go hostile
+      rivals
+        .filter(r => r.status === 'active' && r.status !== 'destroyed' && !r.recruited)
+        .forEach(rival => {
+          if (Math.random() > 0.08) return;
+          const newRel = Math.max(-100, rival.relationship - 5);
+          setRivals(prev => prev.map(r => r.id !== rival.id ? r : {
+            ...r,
+            relationship: newRel,
+            status: newRel <= -20 ? 'hostile' : r.status,
+          }));
+        });
 
-// --- RIVAL CHATTER: periodic messages based on relationship ---
-rivals
-  .filter(r => r.status === 'active' || r.status === 'hostile')
-  .forEach(rival => {
-        if (Math.random() > 0.15) return; // 15% chance per tick per rival
-        const rivalNodeCount = Object.values(world).filter(n => n.owner === rival.id).length;
-        const playerNodeCount = Object.values(world).filter(n => n.owner === 'player').length;
-        
-        let messages;
-        if (rival.status === 'hostile' && rival.relationship < -50) {
-          messages = [
-            `[${rival.handle}] "You've made a powerful enemy. Sleep with one eye open."`,
-            `[${rival.handle}] "I'm coming for everything you've built."`,
-            `[${rival.handle}] "Your nodes. Your wallet. Your reputation. All mine soon."`,
-          ];
-        } else if (rivalNodeCount > playerNodeCount) {
-          messages = [
-            `[${rival.handle}] "I control more of this network than you do. Accept it."`,
-            `[${rival.handle}] "Your territory is pathetic compared to mine."`,
-            `[${rival.handle}] "Maybe you should stick to scanning WiFi networks."`,
-          ];
-        } else if (playerNodeCount > rivalNodeCount * 2) {
-          messages = [
-            `[${rival.handle}] "You think you've won? I'm just getting started."`,
-            `[${rival.handle}] "Enjoy your little empire while it lasts."`,
-            `[${rival.handle}] "I've been watching your moves. I know your weaknesses."`,
-          ];
-        } else {
-          messages = [
-            `[${rival.handle}] "Interesting operation you're running. Be a shame if something happened to it."`,
-            `[${rival.handle}] "I know you're out there. I can see your traffic."`,
-            `[${rival.handle}] "The underground is watching both of us. Don't disappoint."`,
-          ];
-        }
-        setTerminal(prev => [...prev, { type: 'out', text: `\n${messages[Math.floor(Math.random() * messages.length)]}`, isNew: true }]);
+      const candidates = rivals.filter(r => r.status !== 'destroyed' && (r.status === 'hostile' || r.relationship <= -20));
+      if (candidates.length === 0) return;
+
+      const attacker = candidates[Math.floor(Math.random() * candidates.length)];
+      const attack = rivalAttacksPlayer(attacker, {
+        rep: reputation,
+        btc: money,
+        proxyCount: proxies.length,
+        stash,
       });
       if (!attack) return;
 

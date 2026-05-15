@@ -754,7 +754,9 @@ useEffect(() => {
     const handleGlobalKey = (e) => {
       if (screen === 'game') {
         if (e.key === 'Escape') {
-          if (showHelpMenu) {
+       if (showNotes) {
+            setShowNotes(false);
+          } else if (showHelpMenu) {
             setShowHelpMenu(false);
           } else if (isInside || isChatting) {
             setIsInside(false); setTargetIP(null); setCurrentDir('~'); setPrivilege('local'); setIsChatting(false);
@@ -767,6 +769,10 @@ useEffect(() => {
         if (e.key === 'Tab') {
           e.preventDefault(); 
           setShowHelpMenu(prev => !prev);
+        }
+        if (e.key === 'F2') {
+          e.preventDefault();
+          setShowNotes(prev => !prev);
         }
       }
     };

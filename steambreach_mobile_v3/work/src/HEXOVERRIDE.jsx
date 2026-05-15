@@ -1090,11 +1090,16 @@ setVirusScans({});
     if (screen !== 'game' || !operator || rivals.length === 0) return;
 
     const retaliationTick = setInterval(() => {
-      const candidates = rivals.filter(r => r.status !== 'destroyed' && (r.status === 'hostile' || r.relationship <= -20));
-      if (candidates.length === 0) return;
+rivals
+  .filter(r => r.status === 'active' || r.status === 'hostile')
+  .forEach(rival => {
+    if (Math.random() > 0.15) return;
+    // ... (existing chatter messages, no change)
+  });
 
-      const attacker = candidates[Math.floor(Math.random() * candidates.length)];
-      const attack = rivalAttacksPlayer(attacker, {
+// Raids only from hostile candidates
+const candidates = rivals.filter(r => r.status !== 'destroyed' && (r.status === 'hostile' || r.relationship <= -20));
+if (candidates.length === 0) return;attacker, {
   rep: reputation,
   btc: money,
   proxyCount: proxies.length,
@@ -1234,6 +1239,15 @@ rivals
       activeRivals.forEach(rival => {
         const rivalNodes = Object.entries(world).filter(([, n]) => n.owner === rival.id);
         if (rivalNodes.length === 0) return;
+
+        if (rival.status === 'active' && Math.random() < 0.08) {
+  const newRel = Math.max(-100, rival.relationship - 5);
+  setRivals(prev => prev.map(r => r.id !== rival.id ? r : {
+    ...r,
+    relationship: newRel,
+    status: newRel <= -20 ? 'hostile' : r.status,
+  }));
+}
 
         // --- EXPANSION: claim 1 adjacent unclaimed node ---
         const expansionChance = { 0.5: 0.3, 0.8: 0.4, 1.0: 0.5, 1.3: 0.6, 1.8: 0.8 }[rival.skillMod] || 0.4;
@@ -3993,6 +4007,15 @@ return `[+] ${actionResult}\n[+] CHAOS +10`;
             }
             return nw;
           });
+        // Rival spawn check (same as exfil)
+const newRivalS = checkRivalSpawn(reputation, rivals);
+if (newRivalS) {
+  setRivals(prev => [...prev, ensureRivalStash(newRivalS)]);
+  const rivalNodeData = generateRivalNode(newRivalS);
+  const clusterNodes = generateRivalCluster(newRivalS, rivalNodeData);
+  setWorld(prev => ({ ...prev, [newRivalS.ip]: rivalNodeData, ...clusterNodes }));
+  setTerminal(prev => [...prev, { type: 'out', text: `\n[!!!] NEW RIVAL DETECTED [!!!]\n[*] ${newRivalS.handle} (${newRivalS.archetypeName}) is watching your stash routes.\n[*] Core: ${newRivalS.ip} ☠ + ${Object.keys(clusterNodes).length} outpost nodes\n[*] Type "dossier ${newRivalS.handle}" for intel.`, isNew: true }]);
+}
 
        const contractMsg = verifyContract(targetIP, 'exfil');
         setIsProcessing(false);

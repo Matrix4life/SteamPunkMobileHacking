@@ -110,6 +110,7 @@ const HEXOVERRIDE = () => {
 );
 
   const [gameMode, setGameMode] = useState('arcade');
+  const [playerNotes, setPlayerNotes] = useState('');
   const [terminal, setTerminal] = useState([]);
   const [input, setInput] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -848,6 +849,7 @@ useEffect(() => {
     operator, gameMode, money, reputation, heat, botnet, proxies, looted, wipedNodes,
     inventory, rig, partsBag, softwareOwned, btcIndex, consumables, stash, currentRegion, marketPrices, world, unlockedFiles, contracts, director, morality, pendingInteraction, wifiState,
     rivals, zeroDays, rivalRaidCooldowns, virusFragments, virusInventory, virusArchive, virusScans,
+    playerNotes,
     terminalHistory: terminal.slice(-200),
     timestamp: Date.now(),
   });
@@ -897,6 +899,7 @@ setVirusInventory(
 );
 setVirusArchive(data.virusArchive || []);
 setVirusScans(data.virusScans || {});
+setPlayerNotes(data.playerNotes || '');
     if (data.terminalHistory?.length) {
       setTerminal(data.terminalHistory.map(t => ({ ...t, isNew: false })));
     }
@@ -963,7 +966,7 @@ setVirusScans(data.virusScans || {});
     setMorality({ chaos: 0, signal: 0 });
     setPendingInteraction(null);
     setWifiState({ mon: false, scanned: false, focused: false, capFile: false, hshake: false, cracked: false, pwd: null, connected: false, targetBssid: null, connectedBssid: null, subnetIndex: 0 });
-    setRivals([]); setZeroDays([]);
+    setRivals([]); setZeroDays([]); setPlayerNotes('');
     setRivalRaidCooldowns({});
     setVirusFragments({
   entry: [],
@@ -5088,7 +5091,8 @@ if (typeof rawData === 'string' && rawData.includes('[STORY_TRIGGER]')) {
       setTerminal(prev => [...prev, { type: 'out', text: aiText, isNew: true }]);
       return null;
     }
-
+    
+notes: async () => { setScreen('notes'); return ''; },
     // 6. Normal File Output
     setTerminal(prev => [...prev, { type: 'out', text: rawData, isNew: true }]);
     
@@ -6964,6 +6968,66 @@ if (screen === 'cinematic') {
                 </div>
               )}
             </div>
+            if (screen === 'notes') {
+    const c = activeContract;
+    return (
+      <div style={{ background: '#08080c', minHeight: '100vh', color: '#78dce8', fontFamily: 'monospace', padding: '20px', maxWidth: 720, margin: '0 auto' }}>
+        <div style={{ borderBottom: '1px solid #2d2a2e', paddingBottom: 10, marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ fontSize: 18, letterSpacing: 2 }}>[ OPERATOR NOTEBOOK ]</span>
+          <button onClick={() => setScreen('game')} style={{ background: 'none', border: '1px solid #2d2a2e', color: '#78dce8', padding: '4px 12px', cursor: 'pointer', fontFamily: 'monospace' }}>✕ CLOSE</button>
+        </div>
+
+        {c ? (
+          <div style={{ background: '#0f0f14', border: '1px solid #ffd866', padding: '12px 16px', marginBottom: 20, fontSize: 13 }}>
+            <div style={{ color: '#ffd866', marginBottom: 8, letterSpacing: 1 }}>▶ ACTIVE CONTRACT: {c.id}</div>
+            <div style={{ color: '#a9dc76' }}>TARGET: {c.targetName} ({c.targetIP})</div>
+            {c.objectives?.map((o, i) => (
+              <div key={i} style={{ color: '#78dce8', marginTop: 4 }}>
+                OBJ {i + 1}: {o.type?.toUpperCase()} {o.file ? `→ exfil "${o.file}"` : ''} {o.tool ? `→ use ${o.tool}` : ''} on {o.ip || c.targetIP}
+              </div>
+            ))}
+            <div style={{ color: '#ff6188', marginTop: 6 }}>
+              HEAT CAP: {c.heatCap}% &nbsp;|&nbsp; REWARD: ₿{c.reward?.toLocaleString()} &nbsp;|&nbsp; REP: +{c.repReward}
+            </div>
+            {c.forbidden_tools?.length > 0 && (
+              <div style={{ color: '#fc9867', marginTop: 4 }}>⚠ FORBIDDEN: {c.forbidden_tools.join(', ')}</div>
+            )}
+          </div>
+        ) : (
+          <div style={{ color: '#2d2a2e', border: '1px solid #2d2a2e', padding: '10px 16px', marginBottom: 20, fontSize: 13 }}>
+            No active contract. Accept one from the contracts board.
+          </div>
+        )}
+
+        <div style={{ color: '#a9dc76', fontSize: 12, marginBottom: 6, letterSpacing: 1 }}>// NOTES — {playerNotes.length}/2000</div>
+        <textarea
+          value={playerNotes}
+          onChange={e => setPlayerNotes(e.target.value.slice(0, 2000))}
+          placeholder={'// jot targets, passwords, plans...\n// e.g. 10.0.0.5 — SSH weak creds, sliver planted\n// hydra → pwnkit → exfil db_backup.sql'}
+          style={{
+            width: '100%', height: 320, background: '#0a0a10', color: '#a9dc76',
+            border: '1px solid #2d2a2e', fontFamily: 'monospace', fontSize: 13,
+            padding: 12, resize: 'vertical', boxSizing: 'border-box',
+            outline: 'none', lineHeight: 1.6,
+          }}
+        />
+        <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
+          <button
+            onClick={() => { saveGame(operator); setTerminal(prev => [...prev, { type: 'out', text: '[+] Notes saved.', isNew: true }]); }}
+            style={{ background: '#a9dc76', color: '#08080c', border: 'none', padding: '8px 20px', fontFamily: 'monospace', fontWeight: 'bold', cursor: 'pointer', letterSpacing: 1 }}
+          >
+            SAVE NOTES
+          </button>
+          <button
+            onClick={() => setPlayerNotes('')}
+            style={{ background: 'none', border: '1px solid #ff6188', color: '#ff6188', padding: '8px 20px', fontFamily: 'monospace', cursor: 'pointer' }}
+          >
+            CLEAR
+          </button>
+        </div>
+      </div>
+    );
+  }
             {/* Right column — desktop only */}
             {!compact&&(
               <div style={{display:'flex',flexDirection:'column',gap:12,minWidth:0}}>

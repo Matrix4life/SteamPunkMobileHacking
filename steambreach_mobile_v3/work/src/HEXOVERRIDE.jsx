@@ -7078,7 +7078,7 @@ if (screen === 'cinematic') {
               </div>
             ))}
             <div style={{ color: '#ff6188', marginTop: 6 }}>
-              HEAT CAP: {c.heatCap}% &nbsp;|&nbsp; REWARD: ₿{c.reward?.toLocaleString()} &nbsp;|&nbsp; REP: +{c.repReward}
+              HEAT CAP: {c.heatCap}% {' | '} REWARD: ₿{c.reward?.toLocaleString()} {' | '} REP: +{c.repReward}
             </div>
             {c.forbidden_tools?.length > 0 && (
               <div style={{ color: '#fc9867', marginTop: 4 }}>⚠ FORBIDDEN: {c.forbidden_tools.join(', ')}</div>

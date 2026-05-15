@@ -19,7 +19,7 @@ export default function NetworkMap({
 }) {
   const svgRef = useRef(null);
   const [hoveredNode, setHoveredNode] = useState(null);
-const [hoveredGateway, setHoveredGateway] = useState(false);  // ADD THIS
+  const [hoveredGateway, setHoveredGateway] = useState(false);
   const [showWifiLayer, setShowWifiLayer] = useState(false);
   const [hoveredWifi, setHoveredWifi] = useState(null);
   
@@ -397,9 +397,9 @@ const [hoveredGateway, setHoveredGateway] = useState(false);  // ADD THIS
             return (
               <g key={`ln-${ip}`}>
                 <line x1={startX} y1={startY} x2={node.x} y2={node.y} stroke={lineColor} strokeWidth="0.5" opacity={isInfected && !hoveredGateway && hoveredNode !== ip ? 0 : (isHacking && !isActive && !isInfected && !linkHot ? 0.1 : 0.3)} style={{ transition: 'opacity 0.3s ease' }} />
-{(isActive || linkHot || (isInfected && (hoveredGateway || hoveredNode === ip))) && (
-  <line x1={startX} y1={startY} x2={node.x} y2={node.y} stroke={lineColor} strokeWidth={linkHot ? 1.8 : (isActive ? 1.5 : 1)} className={infectionState === 'quarantined' ? 'proxy-stream' : 'data-stream'} opacity={infectionState === 'dead' ? 0.35 : 1} style={{ filter: linkHot ? `drop-shadow(0 0 5px ${lineColor})` : undefined }} />
-)}
+                {(isActive || linkHot || (isInfected && (hoveredGateway || hoveredNode === ip))) && (
+                  <line x1={startX} y1={startY} x2={node.x} y2={node.y} stroke={lineColor} strokeWidth={linkHot ? 1.8 : (isActive ? 1.5 : 1)} className={infectionState === 'quarantined' ? 'proxy-stream' : 'data-stream'} opacity={infectionState === 'dead' ? 0.35 : 1} style={{ filter: linkHot ? `drop-shadow(0 0 5px ${lineColor})` : undefined }} />
+                )}
               </g>
             );
           })}

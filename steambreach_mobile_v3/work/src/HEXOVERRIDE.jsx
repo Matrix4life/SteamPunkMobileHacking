@@ -117,7 +117,8 @@ const HEXOVERRIDE = () => {
   const [showMobileKeyboard, setShowMobileKeyboard] = useState(false);
   const [mobileSelectedTarget, setMobileSelectedTarget] = useState(null);
   const [devMode, setDevMode] = useState(false);
-  const [showHelpMenu, setShowHelpMenu] = useState(false);
+  const [showHelpMenu, setShowHelpMenu] = useState(false);   
+  const [showNotes, setShowNotes] = useState(false);
   const [money, setMoney] = useState(0);
   const [reputation, setReputation] = useState(0);
   const [heat, setHeat] = useState(0);
@@ -5109,7 +5110,7 @@ if (typeof rawData === 'string' && rawData.includes('[STORY_TRIGGER]')) {
       pwd: async () => currentDir,
       clear: async () => { setTerminal([]); return ''; },
       save: async () => { saveGame(operator); return `[+] Game saved: "${operator}"`; },
-      notes: async () => { setScreen('notes'); return ''; },
+      notes: async () => { setShowNotes(prev => !prev); return ''; },
       menu: async () => {
         if (isInside) return "[-] Exit current session before returning to main menu.";
         saveGame(`auto_${operator}`); setScreen('intro'); setMenuMode('main'); setDeleteTarget(null); setMenuIndex(0); return '';
@@ -7162,6 +7163,55 @@ if (screen === 'soundmanager') {
       )}
 
       {showHelpMenu && <HelpPanel onClose={() => setShowHelpMenu(false)} devMode={devMode} gameMode={gameMode} />}
+
+      {showNotes && (() => {
+        const c = activeContract;
+        const objLine = (o, i) => {
+          let s = 'OBJ ' + (i + 1) + ': ' + (o.type || '').toUpperCase();
+          if (o.file) s += ' — exfil ' + o.file;
+          if (o.tool) s += ' — use ' + o.tool;
+          s += ' on ' + (o.ip || (c && c.targetIP) || '?');
+          return s;
+        };
+        return (
+          <div style={{position:'fixed',top:0,left:0,right:0,bottom:0,zIndex:9999,display:'flex',alignItems:'center',justifyContent:'center',background:'rgba(0,0,0,0.75)'}}>
+            <div style={{background:'#0d0d12',border:'1px solid #2d2a2e',width:'min(680px,95vw)',maxHeight:'85vh',overflowY:'auto',fontFamily:'monospace',padding:'18px 20px',position:'relative'}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',borderBottom:'1px solid #2d2a2e',paddingBottom:10,marginBottom:14}}>
+                <span style={{color:'#78dce8',fontSize:14,letterSpacing:2}}>[ OPERATOR NOTEBOOK ]</span>
+                <button onClick={() => setShowNotes(false)} style={{background:'none',border:'none',color:'#ff6188',fontFamily:'monospace',fontSize:16,cursor:'pointer',padding:'0 4px'}}>✕</button>
+              </div>
+              {c ? (
+                <div style={{background:'#0a0a10',border:'1px solid #ffd866',padding:'10px 14px',marginBottom:14,fontSize:12}}>
+                  <div style={{color:'#ffd866',marginBottom:6,letterSpacing:1}}>CONTRACT: {c.id}</div>
+                  <div style={{color:'#a9dc76'}}>TARGET: {c.targetName} ({c.targetIP})</div>
+                  {(c.objectives || []).map((o, i) => (
+                    <div key={i} style={{color:'#78dce8',marginTop:3}}>{objLine(o, i)}</div>
+                  ))}
+                  <div style={{color:'#ff6188',marginTop:6,fontSize:11}}>HEAT CAP: {c.heatCap}% | REWARD: {c.reward ? c.reward.toLocaleString() : 0} | REP: +{c.repReward}</div>
+                  {(c.forbidden_tools || []).length > 0 && (
+                    <div style={{color:'#fc9867',marginTop:3,fontSize:11}}>FORBIDDEN: {(c.forbidden_tools || []).join(', ')}</div>
+                  )}
+                </div>
+              ) : (
+                <div style={{color:'#444',fontSize:12,marginBottom:14}}>No active contract.</div>
+              )}
+              <div style={{color:'#555',fontSize:11,marginBottom:4}}>NOTES ({playerNotes.length}/2000)</div>
+              <textarea
+                value={playerNotes}
+                onChange={e => setPlayerNotes(e.target.value.slice(0, 2000))}
+                placeholder="jot targets, IPs, plans..."
+                autoFocus
+                style={{width:'100%',height:200,background:'#080810',color:'#a9dc76',border:'1px solid #2d2a2e',fontFamily:'monospace',fontSize:12,padding:10,resize:'vertical',boxSizing:'border-box',outline:'none',lineHeight:1.6}}
+              />
+              <div style={{display:'flex',gap:8,marginTop:10}}>
+                <button onClick={() => { saveGame(operator); setTerminal(prev => [...prev, {type:'out',text:'[+] Notes saved.',isNew:true}]); }} style={{background:'#a9dc76',color:'#08080c',border:'none',padding:'6px 16px',fontFamily:'monospace',fontWeight:'bold',cursor:'pointer',fontSize:12}}>SAVE</button>
+                <button onClick={() => setPlayerNotes('')} style={{background:'none',border:'1px solid #ff6188',color:'#ff6188',padding:'6px 16px',fontFamily:'monospace',cursor:'pointer',fontSize:12}}>CLEAR</button>
+                <button onClick={() => setShowNotes(false)} style={{background:'none',border:'1px solid #2d2a2e',color:'#78dce8',padding:'6px 16px',fontFamily:'monospace',cursor:'pointer',fontSize:12,marginLeft:'auto'}}>CLOSE</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {!(isMobile && isKeyboardOpen) && (
       <div style={{ display: 'flex', gap: '8px', margin: '6px 0', flexDirection: isMobile ? 'column' : 'row' }}>

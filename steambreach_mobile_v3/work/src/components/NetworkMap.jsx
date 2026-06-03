@@ -12,6 +12,8 @@ export default function NetworkMap({
   isMobile = false,
   contracts = [],
   activeContract = null,
+  // RIVALS LAYER (NEW)
+  rivals = [],
   // WiFi Integration
   wifiState = {},
   wifiNetworks = [],
@@ -30,6 +32,34 @@ export default function NetworkMap({
   const [hasDragged, setHasDragged] = useState(false);
 
   const isHacking = Boolean(targetIP);
+
+  // ─── RIVALS LAYER HELPERS (NEW) ───────────────────────────
+  // Derive a display status from the rival object's real fields.
+  const rivalStatus = (r) => {
+    if (!r || r.status === 'destroyed') return { key: 'destroyed', c: COLORS.textDim, label: 'DESTROYED' };
+    if (r.recruited || r.relationship >= 50) return { key: 'allied', c: COLORS.secondary, label: 'ALLIED' };
+    if (r.relationship <= -15) return { key: 'hostile', c: COLORS.rivalTerritory || '#ff2255', label: 'HOSTILE' };
+    return { key: 'neutral', c: COLORS.warning, label: 'NEUTRAL' };
+  };
+  const rivalById = (id) => (rivals || []).find(r => r.id === id);
+  const coreNodeFor = (rid) => Object.entries(world).find(([, n]) => n.rivalId === rid && n.isCore);
+  const [selectedRivalId, setSelectedRivalId] = useState(null);
+
+  // Re-center the camera on a rival's core node (matches the wheel-zoom transform model).
+  const focusRival = (r) => {
+    setSelectedRivalId(r.id);
+    const entry = coreNodeFor(r.id);
+    const el = svgRef.current;
+    if (!entry || !el) return;
+    const core = entry[1];
+    const rect = el.getBoundingClientRect();
+    const toPx = (v, total) => (typeof v === 'string' && v.includes('%')) ? (parseFloat(v) / 100) * total : parseFloat(v);
+    const px = toPx(core.x, rect.width);
+    const py = toPx(core.y, rect.height);
+    const z = 1.6;
+    setCam({ z, x: rect.width / 2 - px * z, y: rect.height / 2 - py * z });
+    setHoveredNode(entry[0]);
+  };
 
   const getInfectionVisual = (node = {}) => {
     const state = node?.infection?.state || 'idle';
@@ -437,6 +467,41 @@ export default function NetworkMap({
              </g>
           )}
 
+          {/* ─── RIVAL TERRITORY LAYER (NEW): auras, handles, threat vectors ─── */}
+          {(rivals || []).map(r => {
+            const entry = coreNodeFor(r.id);
+            if (!entry) return null;
+            const core = entry[1];
+            const st = rivalStatus(r);
+            const auraR = expanded ? (isMobile ? 90 : 70) : 24;
+            const gx = "50%", gy = expanded ? "90%" : "85%";
+            const dead = st.key === 'destroyed';
+            return (
+              <g key={`rival-terr-${r.id}`} opacity={dead ? 0.5 : 1} style={{ pointerEvents: 'none' }}>
+                {/* territory aura */}
+                <circle cx={core.x} cy={core.y} r={auraR} fill={st.c} opacity="0.06" />
+                <circle cx={core.x} cy={core.y} r={auraR} fill="none" stroke={st.c} strokeWidth="1"
+                  strokeDasharray={st.key === 'hostile' ? '2 6' : '6 6'} opacity="0.4"
+                  style={{ animation: st.key === 'hostile' ? 'nodeIdlePulse 2.2s ease-in-out infinite' : 'none' }} />
+                {/* threat (hostile) / ally feed vector to gateway */}
+                {expanded && (st.key === 'hostile' || st.key === 'allied') && (
+                  <line x1={core.x} y1={core.y} x2={gx} y2={gy} stroke={st.c}
+                    strokeWidth={st.key === 'hostile' ? 2 : 1.6}
+                    strokeDasharray={st.key === 'hostile' ? '4 7' : '8 8'}
+                    className="data-stream" opacity="0.55"
+                    style={{ filter: `drop-shadow(0 0 4px ${st.c})` }} />
+                )}
+                {/* handle + status label */}
+                {expanded && !isMobile && (
+                  <text x={core.x} y={core.y} dy={-(auraR + 8)} fill={st.c} fontSize="11px" textAnchor="middle"
+                    fontWeight="bold" style={{ letterSpacing: '1px', filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.9))' }}>
+                    @{r.handle} · {r.archetypeName || ''} · {st.label}
+                  </text>
+                )}
+              </g>
+            );
+          })}
+
           {Object.keys(world).filter(k => k !== 'local' && !world[k].isHidden).map(ip => {
             const node = world[ip];
             const isProxy = proxies.includes(ip);
@@ -490,6 +555,18 @@ export default function NetworkMap({
                     {node.owner === 'player' && expanded && <circle cx="0" cy="0" r={r + 3} fill="none" stroke={COLORS.territory || '#22C55E'} strokeWidth={node.fortified ? 2 : 1} opacity="0.4" />}
                     {/* Core skull icon */}
                     {node.isCore && expanded && <text x="0" y={isMobile ? -20 : -14} fill={COLORS.rivalTerritory || '#ff2255'} fontSize={isMobile ? '10px' : '7px'} textAnchor="middle" fontFamily="inherit" style={{ fontWeight: 'bold', filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.9))' }}>☠ CORE</text>}
+
+                    {/* Zero-day vault badge on rival cores (NEW) */}
+                    {node.isCore && expanded && (() => {
+                      const _rv = rivalById(node.rivalId);
+                      if (!_rv || !(_rv.zeroDays && _rv.zeroDays.length)) return null;
+                      return (
+                        <g transform={`translate(${r + 5}, ${-(r + 5)})`}>
+                          <polygon points="0,-7 7,0 0,7 -7,0" fill="#0c0d13" stroke={COLORS.chat || '#ab9df2'} strokeWidth="1.2" />
+                          <text x="0" y="2.5" textAnchor="middle" fill={COLORS.chat || '#ab9df2'} fontSize="8px" fontWeight="bold" fontFamily="inherit">{_rv.zeroDays.length}</text>
+                        </g>
+                      );
+                    })()}
                     
                     <circle cx="0" cy="0" r={r} fill={nodeColor} opacity={node?.infection?.state === 'dead' ? 0.35 : 1} />
                     
@@ -693,6 +770,99 @@ export default function NetworkMap({
             {isMobile ? 'DRAG TO PAN • PINCH TO ZOOM • TAP NODE FOR INFO' : 'SCROLL TO ZOOM • DRAG TO PAN'}
          </div>
       )}
+
+      {/* ─── RIVALS ROSTER PANEL (NEW) ─── */}
+      {expanded && !showWifiLayer && (rivals || []).length > 0 && !isMobile && (
+        <div style={{
+          position: 'absolute', top: '40px', right: '8px', width: '210px', zIndex: 13,
+          background: 'rgba(8,12,18,0.92)', border: `1px solid ${COLORS.border}`, borderRadius: '4px',
+          padding: '10px', backdropFilter: 'blur(6px)', pointerEvents: 'auto'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+            <span style={{ color: COLORS.rivalTerritory || '#ff2255', fontSize: '9px', letterSpacing: '2px', fontWeight: 'bold' }}>☠ RIVAL OPERATORS</span>
+            <span style={{ color: COLORS.textDim, fontSize: '9px' }}>{rivals.filter(r => r.status !== 'destroyed').length} ACTIVE</span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+            {rivals.map(r => {
+              const st = rivalStatus(r);
+              const sel = selectedRivalId === r.id;
+              return (
+                <button key={r.id} onClick={(e) => { e.stopPropagation(); focusRival(r); }} style={{
+                  textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit', width: '100%',
+                  background: sel ? `${st.c}22` : 'rgba(255,255,255,0.02)',
+                  border: `1px solid ${sel ? st.c : COLORS.border}`, borderRadius: '3px', padding: '6px 8px',
+                  display: 'flex', flexDirection: 'column', gap: '3px'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
+                      <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: st.c, flexShrink: 0, boxShadow: st.key === 'hostile' ? `0 0 6px ${st.c}` : 'none' }} />
+                      <span style={{ color: st.c, fontSize: '11px', fontWeight: 'bold', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>@{r.handle}</span>
+                    </span>
+                    <span style={{ color: st.c, fontSize: '8px', letterSpacing: '1px' }}>{st.label}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9px', color: COLORS.textDim }}>
+                    <span>{r.archetypeName || r.archetype}</span>
+                    <span>{r.bitcoin > 0 ? '₿' + (r.bitcoin >= 1000 ? (r.bitcoin / 1000).toFixed(0) + 'k' : r.bitcoin) : '—'}</span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ─── RIVAL DOSSIER (NEW) ─── */}
+      {expanded && !showWifiLayer && selectedRivalId && rivalById(selectedRivalId) && (() => {
+        const r = rivalById(selectedRivalId);
+        const st = rivalStatus(r);
+        const relPct = (clamp(r.relationship, -100, 100) + 100) / 200 * 100;
+        const relC = r.relationship > 15 ? COLORS.secondary : r.relationship < -15 ? (COLORS.rivalTerritory || '#ff2255') : COLORS.warning;
+        const actions = {
+          hostile: ['raid', 'taunt', 'dossier'],
+          neutral: ['negotiate', 'buy 0-day', 'raid'],
+          allied: ['request backup', 'buy intel', 'dismiss'],
+          destroyed: ['— infrastructure eliminated —'],
+        }[st.key] || [];
+        return (
+          <div style={{
+            position: 'absolute', bottom: '12px', left: '12px', width: '240px', zIndex: 14, pointerEvents: 'auto',
+            background: 'rgba(8,12,18,0.96)', border: `1px solid ${st.c}`, borderRadius: '4px', padding: '12px 14px',
+            backdropFilter: 'blur(8px)', boxShadow: `0 8px 32px rgba(0,0,0,0.8), 0 0 16px ${st.c}40`,
+            opacity: isHacking ? 0.3 : 1, transition: 'opacity 0.3s ease'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: `1px solid ${COLORS.borderActive || COLORS.border}`, paddingBottom: '6px', marginBottom: '8px' }}>
+              <span style={{ color: st.c, fontWeight: 'bold', fontSize: '13px', letterSpacing: '1px' }}>@{r.handle}</span>
+              <span onClick={() => setSelectedRivalId(null)} style={{ color: COLORS.textDim, fontSize: '11px', cursor: 'pointer' }}>✕</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+              <span style={{ color: COLORS.text, fontSize: '11px' }}>{r.archetypeName || r.archetype}</span>
+              <span style={{ color: COLORS.bgDark, background: st.c, fontSize: '8px', fontWeight: 'bold', padding: '2px 6px', borderRadius: '2px', letterSpacing: '1px' }}>{st.label}</span>
+            </div>
+            {[['REP', r.reputation, COLORS.text],
+              ['BOUNTY', r.bitcoin > 0 ? '₿' + r.bitcoin.toLocaleString() : '—', COLORS.warning],
+              ['0-DAYS', (r.zeroDays?.length || 0) > 0 ? r.zeroDays.length : 'none', (r.zeroDays?.length || 0) > 0 ? (COLORS.chat || '#ab9df2') : COLORS.textDim],
+              ['SECURITY', r.security ?? '—', COLORS.primary]].map(([k, v, c]) => (
+              <div key={k} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', margin: '4px 0' }}>
+                <span style={{ color: COLORS.textDim }}>{k}</span><span style={{ color: c, fontWeight: 600 }}>{v}</span>
+              </div>
+            ))}
+            <div style={{ margin: '8px 0 4px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: COLORS.textDim, marginBottom: '3px' }}>
+                <span>RELATIONSHIP</span><span style={{ color: relC }}>{r.relationship > 0 ? '+' : ''}{r.relationship}</span>
+              </div>
+              <div style={{ height: '5px', background: COLORS.border, borderRadius: '3px', position: 'relative' }}>
+                <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: relPct + '%', background: relC, borderRadius: '3px', boxShadow: `0 0 5px ${relC}` }} />
+                <div style={{ position: 'absolute', left: '50%', top: '-2px', bottom: '-2px', width: '1px', background: COLORS.borderActive || COLORS.border }} />
+              </div>
+            </div>
+            <div style={{ marginTop: '9px', paddingTop: '8px', borderTop: `1px solid ${COLORS.borderActive || COLORS.border}`, display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+              {actions.map((a, i) => (
+                <span key={i} style={{ fontSize: '9px', color: i === 0 && st.key !== 'destroyed' ? st.c : COLORS.textDim, border: `1px solid ${i === 0 && st.key !== 'destroyed' ? st.c + '80' : COLORS.border}`, borderRadius: '2px', padding: '3px 6px' }}>{a}</span>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

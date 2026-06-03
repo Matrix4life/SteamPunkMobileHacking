@@ -973,7 +973,7 @@ setVirusScans(data.virusScans || {});
     setMorality({ chaos: 0, signal: 0 });
     setPendingInteraction(null);
     setWifiState({ mon: false, scanned: false, focused: false, capFile: false, hshake: false, cracked: false, pwd: null, connected: false, targetBssid: null, connectedBssid: null, subnetIndex: 0 });
-    const buildStarterWorld = () => {
+    function buildStarterWorld() {
   const octet = () => Math.floor(Math.random() * 255);
   const randIP = () => `${octet()}.${octet()}.${octet()}.${octet()}`;
   const STARTER_NODES = [
@@ -1027,8 +1027,9 @@ setVirusScans(data.virusScans || {});
     starterRivals.push(rival);
   });
   return { world, rivals: starterRivals };
+}
 
-    const starter = buildStarterWorld();
+const starter = buildStarterWorld();
     setWorld(starter.world);
     setRivals(starter.rivals); setZeroDays([]);
     setPlayerNotes('');

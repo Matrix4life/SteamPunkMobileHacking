@@ -14,6 +14,8 @@ export default function NetworkMap({
   activeContract = null,
   // RIVALS LAYER (NEW)
   rivals = [],
+  onRivalCommand = () => {},
+  rivalConflicts = [],   // [[rivalIdA, rivalIdB], …] — active turf wars (optional)
   // WiFi Integration
   wifiState = {},
   wifiNetworks = [],
@@ -38,7 +40,7 @@ export default function NetworkMap({
   const rivalStatus = (r) => {
     if (!r || r.status === 'destroyed') return { key: 'destroyed', c: COLORS.textDim, label: 'DESTROYED' };
     if (r.recruited || r.relationship >= 50) return { key: 'allied', c: COLORS.secondary, label: 'ALLIED' };
-    if (r.relationship <= -15) return { key: 'hostile', c: COLORS.rivalTerritory || '#ff2255', label: 'HOSTILE' };
+    if (r.status === 'hostile' || r.relationship <= -15) return { key: 'hostile', c: COLORS.rivalTerritory || '#ff2255', label: 'HOSTILE' };
     return { key: 'neutral', c: COLORS.warning, label: 'NEUTRAL' };
   };
   const rivalById = (id) => (rivals || []).find(r => r.id === id);
@@ -502,6 +504,31 @@ export default function NetworkMap({
             );
           })}
 
+          {/* ─── RIVAL-vs-RIVAL TURF WARS (NEW) ─── */}
+          {expanded && (rivalConflicts || []).map((pair, idx) => {
+            const ea = coreNodeFor(pair[0]); const eb = coreNodeFor(pair[1]);
+            if (!ea || !eb) return null;
+            const a = ea[1], b = eb[1];
+            const mx = `${(parseFloat(a.x) + parseFloat(b.x)) / 2}%`;
+            const my = `${(parseFloat(a.y) + parseFloat(b.y)) / 2}%`;
+            return (
+              <g key={`war-${idx}`} style={{ pointerEvents: 'none' }}>
+                <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke={COLORS.danger} strokeWidth="1.5"
+                  strokeDasharray="3 5" opacity="0.5" className="data-stream"
+                  style={{ filter: `drop-shadow(0 0 4px ${COLORS.danger})` }} />
+                {/* clash marker at midpoint */}
+                <g transform={`translate(${mx}, ${my})`} style={{ animation: 'infectPulse 1s ease-in-out infinite' }}>
+                  <circle cx="0" cy="0" r="7" fill="rgba(8,12,18,0.9)" stroke={COLORS.danger} strokeWidth="1" />
+                  <text x="0" y="3" textAnchor="middle" fill={COLORS.danger} fontSize="8px" fontWeight="bold" fontFamily="inherit">⚔</text>
+                </g>
+                {!isMobile && (
+                  <text x={mx} y={my} dy="-12" textAnchor="middle" fill={COLORS.danger} fontSize="8px"
+                    fontWeight="bold" style={{ letterSpacing: '1px', filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.9))' }}>TURF WAR</text>
+                )}
+              </g>
+            );
+          })}
+
           {Object.keys(world).filter(k => k !== 'local' && !world[k].isHidden).map(ip => {
             const node = world[ip];
             const isProxy = proxies.includes(ip);
@@ -802,7 +829,7 @@ export default function NetworkMap({
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9px', color: COLORS.textDim }}>
                     <span>{r.archetypeName || r.archetype}</span>
-                    <span>{r.bitcoin > 0 ? '₿' + (r.bitcoin >= 1000 ? (r.bitcoin / 1000).toFixed(0) + 'k' : r.bitcoin) : '—'}</span>
+                    <span>{r.btc > 0 ? '₿' + (r.btc >= 1000 ? (r.btc / 1000).toFixed(0) + 'k' : r.btc) : '—'}</span>
                   </div>
                 </button>
               );
@@ -818,10 +845,10 @@ export default function NetworkMap({
         const relPct = (clamp(r.relationship, -100, 100) + 100) / 200 * 100;
         const relC = r.relationship > 15 ? COLORS.secondary : r.relationship < -15 ? (COLORS.rivalTerritory || '#ff2255') : COLORS.warning;
         const actions = {
-          hostile: ['raid', 'taunt', 'dossier'],
-          neutral: ['negotiate', 'buy 0-day', 'raid'],
-          allied: ['request backup', 'buy intel', 'dismiss'],
-          destroyed: ['— infrastructure eliminated —'],
+          hostile:   [{ label: 'raid', cmd: `raid ${r.handle}` }, { label: 'taunt', cmd: `taunt ${r.handle}` }, { label: 'dossier', cmd: `dossier ${r.handle}` }],
+          neutral:   [{ label: 'negotiate', cmd: `negotiate ${r.handle}` }, { label: 'recruit', cmd: `recruit ${r.handle}` }, { label: 'raid', cmd: `raid ${r.handle}` }],
+          allied:    [{ label: 'negotiate', cmd: `negotiate ${r.handle}` }, { label: 'dismiss', cmd: `dismiss ${r.handle}` }, { label: 'dossier', cmd: `dossier ${r.handle}` }],
+          destroyed: [],
         }[st.key] || [];
         return (
           <div style={{
@@ -838,9 +865,10 @@ export default function NetworkMap({
               <span style={{ color: COLORS.text, fontSize: '11px' }}>{r.archetypeName || r.archetype}</span>
               <span style={{ color: COLORS.bgDark, background: st.c, fontSize: '8px', fontWeight: 'bold', padding: '2px 6px', borderRadius: '2px', letterSpacing: '1px' }}>{st.label}</span>
             </div>
-            {[['REP', r.reputation, COLORS.text],
-              ['BOUNTY', r.bitcoin > 0 ? '₿' + r.bitcoin.toLocaleString() : '—', COLORS.warning],
+            {[['REP', r.rep, COLORS.text],
+              ['BOUNTY', r.btc > 0 ? '₿' + r.btc.toLocaleString() : '—', COLORS.warning],
               ['0-DAYS', (r.zeroDays?.length || 0) > 0 ? r.zeroDays.length : 'none', (r.zeroDays?.length || 0) > 0 ? (COLORS.chat || '#ab9df2') : COLORS.textDim],
+              ['WEAKNESS', r.vulnerability || '—', COLORS.primary],
               ['SECURITY', r.security ?? '—', COLORS.primary]].map(([k, v, c]) => (
               <div key={k} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', margin: '4px 0' }}>
                 <span style={{ color: COLORS.textDim }}>{k}</span><span style={{ color: c, fontWeight: 600 }}>{v}</span>
@@ -856,8 +884,22 @@ export default function NetworkMap({
               </div>
             </div>
             <div style={{ marginTop: '9px', paddingTop: '8px', borderTop: `1px solid ${COLORS.borderActive || COLORS.border}`, display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-              {actions.map((a, i) => (
-                <span key={i} style={{ fontSize: '9px', color: i === 0 && st.key !== 'destroyed' ? st.c : COLORS.textDim, border: `1px solid ${i === 0 && st.key !== 'destroyed' ? st.c + '80' : COLORS.border}`, borderRadius: '2px', padding: '3px 6px' }}>{a}</span>
+              {st.key === 'destroyed' ? (
+                <span style={{ fontSize: '9px', color: COLORS.textDim, fontStyle: 'italic' }}>— infrastructure eliminated —</span>
+              ) : actions.map((a, i) => (
+                <button key={a.label} onClick={(e) => {
+                  e.stopPropagation();
+                  // On mobile the expanded map covers the terminal — collapse so output is visible.
+                  if (isMobile) toggleExpand();
+                  onRivalCommand(a.cmd);
+                }} style={{
+                  fontSize: '9px', fontFamily: 'inherit', cursor: 'pointer',
+                  color: i === 0 ? st.c : COLORS.textDim,
+                  background: i === 0 ? `${st.c}18` : 'transparent',
+                  border: `1px solid ${i === 0 ? st.c + '80' : COLORS.border}`,
+                  borderRadius: '2px', padding: '4px 8px', letterSpacing: '0.5px',
+                  WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation',
+                }}>{a.label}</button>
               ))}
             </div>
           </div>

@@ -964,7 +964,7 @@ setVirusScans(data.virusScans || {});
     setStash({ cc_dumps: 0, ssn_fullz: 0, botnets: 0, exploits: 0, zerodays: 0 });
     setCurrentRegion('us-gov'); setMarketPrices(generateMarketPrices('us-gov'));
     setUnlockedFiles([]); setContracts([]);
-    setWorld(DEFAULT_WORLD);
+   
     setDirector(DEFAULT_DIRECTOR); directorRef.current = DEFAULT_DIRECTOR;
     setTerminal([]); setIsInside(false); setTargetIP(null);
     setPrivilege('local'); setCurrentDir('~'); setMapExpanded(false);
@@ -973,7 +973,9 @@ setVirusScans(data.virusScans || {});
     setMorality({ chaos: 0, signal: 0 });
     setPendingInteraction(null);
     setWifiState({ mon: false, scanned: false, focused: false, capFile: false, hshake: false, cracked: false, pwd: null, connected: false, targetBssid: null, connectedBssid: null, subnetIndex: 0 });
-    setRivals([]); setZeroDays([]);
+    const starter = buildStarterWorld();
+setWorld(starter.world);
+setRivals(starter.rivals); setZeroDays([]);
     setPlayerNotes('');
     setRivalRaidCooldowns({});
     setVirusFragments({

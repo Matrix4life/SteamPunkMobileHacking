@@ -973,6 +973,61 @@ setVirusScans(data.virusScans || {});
     setMorality({ chaos: 0, signal: 0 });
     setPendingInteraction(null);
     setWifiState({ mon: false, scanned: false, focused: false, capFile: false, hshake: false, cracked: false, pwd: null, connected: false, targetBssid: null, connectedBssid: null, subnetIndex: 0 });
+    const buildStarterWorld = () => {
+  const octet = () => Math.floor(Math.random() * 255);
+  const randIP = () => `${octet()}.${octet()}.${octet()}.${octet()}`;
+  const STARTER_NODES = [
+    { sec: 'low',  exp: 'hydra',      x: '18%', y: '22%', name: 'home-network' },
+    { sec: 'low',  exp: 'sqlmap',     x: '72%', y: '18%', name: 'public-wifi-04' },
+    { sec: 'low',  exp: 'curl',       x: '30%', y: '68%', name: 'desktop-pc-22' },
+    { sec: 'mid',  exp: 'msfconsole', x: '80%', y: '55%', name: 'Greenfield Consulting' },
+    { sec: 'mid',  exp: 'sqlmap',     x: '55%', y: '75%', name: 'Metro Legal Group' },
+    { sec: 'mid',  exp: 'hydra',      x: '20%', y: '50%', name: 'Harbor Financial' },
+    { sec: 'high', exp: 'msfconsole', x: '85%', y: '25%', name: 'Sentinel Networks' },
+    { sec: 'high', exp: 'sqlmap',     x: '60%', y: '30%', name: 'Atlas Defense Grp' },
+  ];
+  const exploitMap = {
+    hydra: { port: 22, svc: 'ssh' },
+    sqlmap: { port: 80, svc: 'http' },
+    msfconsole: { port: 445, svc: 'smb' },
+    curl: { port: 8080, svc: 'http-alt' },
+  };
+  const world = { ...DEFAULT_WORLD };
+  STARTER_NODES.forEach(n => {
+    const ip = randIP();
+    const vuln = exploitMap[n.exp];
+    world[ip] = {
+      name: n.name, sec: n.sec,
+      port: vuln.port, svc: vuln.svc, exp: n.exp,
+      val: n.sec === 'high' ? 75000 : n.sec === 'mid' ? 15000 : 2000,
+      isHoneypot: false, x: n.x, y: n.y, parentIP: null,
+      files: { '/': ['home/', 'var/'], '/home': ['user/'], '/home/user': ['data.txt'] },
+      contents: { '/home/user/data.txt': '[PENDING_GENERATION]' },
+      org: { orgName: n.name, type: n.sec === 'high' ? 'corporation' : 'smallbiz', industry: 'General', employees: [] },
+      blueTeam: { alertLevel: 0, patchedVulns: [], changedPasswords: [], activeHunting: false, lastIncident: null },
+      commsGenerated: false, slackChannelGenerated: false,
+      owner: null, defense: 0, fortified: false, isCore: false,
+    };
+  });
+  const STARTER_POSITIONS = [
+    { x: '12%', y: '45%' },
+    { x: '88%', y: '72%' },
+    { x: '50%', y: '15%' },
+  ];
+  const starterRivals = [];
+  STARTER_POSITIONS.forEach(pos => {
+    const rival = generateRival(50);
+    const coreData = generateRivalNode(rival);
+    coreData.x = pos.x;
+    coreData.y = pos.y;
+    const coreIP = rival.ip;
+    world[coreIP] = coreData;
+    const cluster = generateRivalCluster(rival, coreData);
+    Object.assign(world, cluster);
+    starterRivals.push(rival);
+  });
+  return { world, rivals: starterRivals };
+};
     const starter = buildStarterWorld();
     setWorld(starter.world);
     setRivals(starter.rivals); setZeroDays([]);
@@ -1996,71 +2051,7 @@ useEffect(() => {
     setIsProcessing(false);
   };
 // Pre-seeds the world with starter nodes + rivals so the map looks populated
-const buildStarterWorld = () => {
-  const octet = () => Math.floor(Math.random() * 255);
-  const randIP = () => `${octet()}.${octet()}.${octet()}.${octet()}`;
 
-  const STARTER_NODES = [
-    { sec: 'low',  exp: 'hydra',      x: '18%', y: '22%', name: 'home-network' },
-    { sec: 'low',  exp: 'sqlmap',     x: '72%', y: '18%', name: 'public-wifi-04' },
-    { sec: 'low',  exp: 'curl',       x: '30%', y: '68%', name: 'desktop-pc-22' },
-    { sec: 'mid',  exp: 'msfconsole', x: '80%', y: '55%', name: 'Greenfield Consulting' },
-    { sec: 'mid',  exp: 'sqlmap',     x: '55%', y: '75%', name: 'Metro Legal Group' },
-    { sec: 'mid',  exp: 'hydra',      x: '20%', y: '50%', name: 'Harbor Financial' },
-    { sec: 'high', exp: 'msfconsole', x: '85%', y: '25%', name: 'Sentinel Networks' },
-    { sec: 'high', exp: 'sqlmap',     x: '60%', y: '30%', name: 'Atlas Defense Grp' },
-  ];
-
-  const exploitMap = {
-    hydra: { port: 22, svc: 'ssh' },
-    sqlmap: { port: 80, svc: 'http' },
-    msfconsole: { port: 445, svc: 'smb' },
-    curl: { port: 8080, svc: 'http-alt' },
-  };
-
-  const world = { ...DEFAULT_WORLD };
-
-  STARTER_NODES.forEach(n => {
-    const ip = randIP();
-    const vuln = exploitMap[n.exp];
-    world[ip] = {
-      name: n.name,
-      sec: n.sec,
-      port: vuln.port, svc: vuln.svc, exp: n.exp,
-      val: n.sec === 'high' ? 75000 : n.sec === 'mid' ? 15000 : 2000,
-      isHoneypot: false,
-      x: n.x, y: n.y,
-      parentIP: null,
-      files: { '/': ['home/', 'var/'], '/home': ['user/'], '/home/user': ['data.txt'] },
-      contents: { '/home/user/data.txt': '[PENDING_GENERATION]' },
-      org: { orgName: n.name, type: n.sec === 'high' ? 'corporation' : 'smallbiz', industry: 'General', employees: [] },
-      blueTeam: { alertLevel: 0, patchedVulns: [], changedPasswords: [], activeHunting: false, lastIncident: null },
-      commsGenerated: false, slackChannelGenerated: false,
-      owner: null, defense: 0, fortified: false, isCore: false,
-    };
-  });
-
-  // Spawn 3 starter rivals with fixed positions spread across the map
-  const STARTER_POSITIONS = [
-    { x: '12%', y: '45%' },
-    { x: '88%', y: '72%' },
-    { x: '50%', y: '15%' },
-  ];
-
-  const starterRivals = [];
-  STARTER_POSITIONS.forEach(pos => {
-    const rival = generateRival(50); // low rep = skiddie/grey hat tier
-    const coreData = generateRivalNode(rival);
-    coreData.x = pos.x;
-    coreData.y = pos.y;
-    const coreIP = rival.ip;
-    world[coreIP] = coreData;
-    const cluster = generateRivalCluster(rival, coreData);
-    Object.assign(world, cluster);
-    starterRivals.push(rival);
-  });
-
-  return { world, rivals: starterRivals };
 };
   const handleCommand = async (e, directCmd) => {
     if (showNotes) return;

@@ -1247,6 +1247,42 @@ setVirusScans({});
 
     return () => clearInterval(bonusInterval);
   }, [screen, operator, rivals, money, zeroDays, world, looted]);
+// ── RIVAL-vs-RIVAL TURF WARS (auto) ──────────────────────────────────────
+useEffect(() => {
+  if (screen !== 'game' || !operator) return;
+  const tick = setInterval(() => {
+    setRivalConflicts(prev => {
+      const live = rivals.filter(r => r.status !== 'destroyed');
+      if (live.length < 2 || prev.length >= 2 || Math.random() >= 0.30) return prev;
+
+      const a = live[Math.floor(Math.random() * live.length)];
+      let b = live[Math.floor(Math.random() * live.length)], guard = 0;
+      while (b.id === a.id && guard++ < 10) b = live[Math.floor(Math.random() * live.length)];
+      if (b.id === a.id ||
+          prev.some(w => [a.id, b.id].some(id => w[0] === id || w[1] === id))) return prev;
+
+      queueMicrotask(() => {
+        setTerminal(t => [...t, { type: 'out',
+          text: `\n[UNDERGROUND] Turf war erupts: ${a.handle} vs ${b.handle}.`, isNew: true }]);
+        setTimeout(() => {
+          const winner = (a.skillMod + Math.random()) >= (b.skillMod + Math.random()) ? a : b;
+          const loser  = winner.id === a.id ? b : a;
+          setRivals(rs => rs.map(r =>
+            r.id === winner.id ? { ...r, rep: r.rep + 10 } :
+            r.id === loser.id  ? { ...r, btc: Math.floor(r.btc * 0.85) } : r));
+          setRivalConflicts(w => w.filter(x =>
+            !((x[0] === a.id && x[1] === b.id) || (x[0] === b.id && x[1] === a.id))));
+          setTerminal(t => [...t, { type: 'out',
+            text: `[UNDERGROUND] ${winner.handle} routed ${loser.handle}. Territory shifts.`, isNew: true }]);
+        }, 30000);
+      });
+
+      return [...prev, [a.id, b.id]];
+    });
+  }, 45000);
+  return () => clearInterval(tick);
+}, [screen, operator, rivals]);
+  
 // ── RIVAL TERRITORY AI TICK ──────────────────────────────────────────────
   useEffect(() => {
     if (screen !== 'game' || !operator) return;
@@ -6207,6 +6243,7 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
         const now = Date.now();
         const cooldownMs = 15 * 60 * 1000;
         const lastRaid = rivalRaidCooldowns[rival.id] || 0;
+        const [rivalConflicts, setRivalConflicts] = useState([]);
         const elapsed = now - lastRaid;
         const raidFactor = elapsed >= cooldownMs ? 1 : clamp(elapsed / cooldownMs, 0.25, 1);
         
@@ -7224,6 +7261,8 @@ if (screen === 'soundmanager') {
       <div style={{ display: 'flex', gap: '8px', margin: '6px 0', flexDirection: isMobile ? 'column' : 'row' }}>
         <NetworkMap
           world={world} botnet={botnet} proxies={proxies} looted={looted} targetIP={targetIP} trace={trace} inventory={inventory} rivals={rivals} 
+          onRivalCommand={(cmd) => handleCommand(null, cmd)}
+          rivalConflicts={rivalConflicts}
           selectNodeFromMap={selectNodeFromMap} expanded={mapExpanded} toggleExpand={() => setMapExpanded(e => !e)} currentRegion={currentRegion}
           consumables={consumables}
           money={money}

@@ -476,32 +476,37 @@ export default function NetworkMap({
             const core = entry[1];
             const st = rivalStatus(r);
             const auraR = expanded ? (isMobile ? 90 : 70) : 24;
-            const gx = "50%", gy = expanded ? "90%" : "85%";
-            const dead = st.key === 'destroyed';
-            return (
-              <g key={`rival-terr-${r.id}`} opacity={dead ? 0.5 : 1} style={{ pointerEvents: 'none' }}>
-                {/* territory aura */}
-                <circle cx={core.x} cy={core.y} r={auraR} fill={st.c} opacity="0.06" />
-                <circle cx={core.x} cy={core.y} r={auraR} fill="none" stroke={st.c} strokeWidth="1"
-                  strokeDasharray={st.key === 'hostile' ? '2 6' : '6 6'} opacity="0.4"
-                  style={{ animation: st.key === 'hostile' ? 'nodeIdlePulse 2.2s ease-in-out infinite' : 'none' }} />
-                {/* threat (hostile) / ally feed vector to gateway */}
-                {expanded && (st.key === 'hostile' || st.key === 'allied') && (
-                  <line x1={core.x} y1={core.y} x2={gx} y2={gy} stroke={st.c}
-                    strokeWidth={st.key === 'hostile' ? 2 : 1.6}
-                    strokeDasharray={st.key === 'hostile' ? '4 7' : '8 8'}
-                    className="data-stream" opacity="0.55"
-                    style={{ filter: `drop-shadow(0 0 4px ${st.c})` }} />
-                )}
-                {/* handle + status label */}
-                {expanded && !isMobile && (
-                  <text x={core.x} y={core.y} dy={-(auraR + 8)} fill={st.c} fontSize="11px" textAnchor="middle"
-                    fontWeight="bold" style={{ letterSpacing: '1px', filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.9))' }}>
-                    @{r.handle} · {r.archetypeName || ''} · {st.label}
-                  </text>
-                )}
-              </g>
-            );
+const gx = "50%", gy = expanded ? "90%" : "85%";
+const dead = st.key === 'destroyed';
+// Convert % string coords to SVG viewBox units (100% = viewBox width/height)
+const toSVG = (v, total) => (typeof v === 'string' && v.includes('%')) ? (parseFloat(v) / 100) * total : parseFloat(v);
+const VW = 1600, VH = 1000; // match your SVG viewBox
+const cx = toSVG(core.x, VW);
+const cy = toSVG(core.y, VH);
+return (
+  <g key={`rival-terr-${r.id}`} opacity={dead ? 0.5 : 1} style={{ pointerEvents: 'none' }}>
+    {/* territory aura */}
+    <circle cx={cx} cy={cy} r={auraR} fill={st.c} opacity="0.06" />
+    <circle cx={cx} cy={cy} r={auraR} fill="none" stroke={st.c} strokeWidth="1"
+      strokeDasharray={st.key === 'hostile' ? '2 6' : '6 6'} opacity="0.4"
+      style={{ animation: st.key === 'hostile' ? 'nodeIdlePulse 2.2s ease-in-out infinite' : 'none' }} />
+    {/* threat (hostile) / ally feed vector to gateway */}
+    {expanded && (st.key === 'hostile' || st.key === 'allied') && (
+      <line x1={cx} y1={cy} x2={gx} y2={gy} stroke={st.c}
+        strokeWidth={st.key === 'hostile' ? 2 : 1.6}
+        strokeDasharray={st.key === 'hostile' ? '4 7' : '8 8'}
+        className="data-stream" opacity="0.55"
+        style={{ filter: `drop-shadow(0 0 4px ${st.c})` }} />
+    )}
+    {/* handle + status label */}
+    {expanded && !isMobile && (
+      <text x={cx} y={cy} dy={-(auraR + 8)} fill={st.c} fontSize="11px" textAnchor="middle"
+        fontWeight="bold" style={{ letterSpacing: '1px', filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.9))' }}>
+        @{r.handle} · {r.archetypeName || ''} · {st.label}
+      </text>
+    )}
+  </g>
+);
           })}
 
           {/* ─── RIVAL-vs-RIVAL TURF WARS (NEW) ─── */}

@@ -974,8 +974,8 @@ setVirusScans(data.virusScans || {});
     setPendingInteraction(null);
     setWifiState({ mon: false, scanned: false, focused: false, capFile: false, hshake: false, cracked: false, pwd: null, connected: false, targetBssid: null, connectedBssid: null, subnetIndex: 0 });
     const starter = buildStarterWorld();
-setWorld(starter.world);
-setRivals(starter.rivals); setZeroDays([]);
+    setWorld(starter.world);
+    setRivals(starter.rivals); setZeroDays([]);
     setPlayerNotes('');
     setRivalRaidCooldowns({});
     setVirusFragments({

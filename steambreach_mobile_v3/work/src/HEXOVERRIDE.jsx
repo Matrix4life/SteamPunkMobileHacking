@@ -195,11 +195,12 @@ const HEXOVERRIDE = () => {
   const wardriveIntervalRef = useRef(null);
 
   // ─── RIVALS & ZERO-DAY COLLECTIBLES ───
-  const [rivals, setRivals] = useState([]);
-  const [playerNotes, setPlayerNotes] = useState('');
-  const [zeroDays, setZeroDays] = useState([]);
-  const [rivalRaidCooldowns, setRivalRaidCooldowns] = useState({});
-  const [virusFragments, setVirusFragments] = useState({
+ const [rivals, setRivals] = useState([]);
+const [rivalRaidCooldowns, setRivalRaidCooldowns] = useState({});
+const [rivalConflicts, setRivalConflicts] = useState([]);
+const [playerNotes, setPlayerNotes] = useState('');
+const [zeroDays, setZeroDays] = useState([]);
+const [virusFragments, setVirusFragments] = useState({
   entry: [],
   hit: [],
   spread: [],
@@ -207,7 +208,6 @@ const HEXOVERRIDE = () => {
   trigger: [],
   stay: [],
 });
-
 const [virusInventory, setVirusInventory] = useState([]);
 const [virusArchive, setVirusArchive] = useState([]);
 const [virusScans, setVirusScans] = useState({});
@@ -6245,7 +6245,7 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
         const now = Date.now();
         const cooldownMs = 15 * 60 * 1000;
         const lastRaid = rivalRaidCooldowns[rival.id] || 0;
-        const [rivalConflicts, setRivalConflicts] = useState([]);
+      
         const elapsed = now - lastRaid;
         const raidFactor = elapsed >= cooldownMs ? 1 : clamp(elapsed / cooldownMs, 0.25, 1);
         

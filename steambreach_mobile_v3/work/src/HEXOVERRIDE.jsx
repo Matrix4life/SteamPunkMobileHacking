@@ -7223,7 +7223,7 @@ if (screen === 'soundmanager') {
       {!(isMobile && isKeyboardOpen) && (
       <div style={{ display: 'flex', gap: '8px', margin: '6px 0', flexDirection: isMobile ? 'column' : 'row' }}>
         <NetworkMap
-          world={world} botnet={botnet} proxies={proxies} looted={looted} targetIP={targetIP} trace={trace} inventory={inventory}
+          world={world} botnet={botnet} proxies={proxies} looted={looted} targetIP={targetIP} trace={trace} inventory={inventory} rivals={rivals} 
           selectNodeFromMap={selectNodeFromMap} expanded={mapExpanded} toggleExpand={() => setMapExpanded(e => !e)} currentRegion={currentRegion}
           consumables={consumables}
           money={money}

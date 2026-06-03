@@ -1027,7 +1027,7 @@ setVirusScans(data.virusScans || {});
     starterRivals.push(rival);
   });
   return { world, rivals: starterRivals };
-};
+
     const starter = buildStarterWorld();
     setWorld(starter.world);
     setRivals(starter.rivals); setZeroDays([]);

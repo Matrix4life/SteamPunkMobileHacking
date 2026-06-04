@@ -155,6 +155,9 @@ const HEXOVERRIDE = () => {
   const [currentDir, setCurrentDir] = useState('~');
   const [mapExpanded, setMapExpanded] = useState(false);
   const [showRig, setShowRig] = useState(false);
+  const [feed, setFeed] = useState([]);
+  const [showFeed, setShowFeed] = useState(true);
+
   const [isChatting, setIsChatting] = useState(false);
   const [chatTarget, setChatTarget] = useState('');
   const [chatHistory, setChatHistory] = useState([]);
@@ -615,6 +618,7 @@ useEffect(() => {
       if (screen === 'game') {
         if (showHelpMenu) { setShowHelpMenu(false); }
         else if (showRig) { setShowRig(false); }
+        else if (showFeed) { setShowFeed(false); }
         else if (mapExpanded) { setMapExpanded(false); }
         else if (showMobileKeyboard) { setShowMobileKeyboard(false); }
         else if (isChatting) { /* let the game handle exit */ }
@@ -1281,7 +1285,7 @@ setVirusScans({});
           if (unknownIPs.length > 0) {
             const ip = unknownIPs[Math.floor(Math.random() * unknownIPs.length)];
             const orgName = world[ip]?.org?.orgName || ip;
-            setTerminal(prev => [...prev, { type: 'out', text: `\n[INTEL — ${r.handle}] Tip: ${orgName} (${ip}) — Exploit: ${world[ip]?.exp || 'unknown'}`, isNew: true }]);
+            addOutput(`[INTEL — ${r.handle}] Tip: ${orgName} (${ip}) — Exploit: ${world[ip]?.exp || 'unknown'}`);
           }
         }
         // Fear recruit betrayal: ~0.25% per check (every 60s)
@@ -1299,7 +1303,7 @@ setVirusScans({});
           const rivalNode = generateRivalNode({ ...r, security: Math.min(100, r.security + 20) });
           setWorld(prev => ({ ...prev, [r.ip]: rivalNode }));
           playHeatSpike();
-          setTerminal(prev => [...prev, { type: 'out', text: `\n[!!!] BETRAYAL — ${r.handle} HAS GONE ROGUE [!!!]\n[-] Wallet drained: ₿${stolenBtc.toLocaleString()}\n[-] Zero-days stolen: ${stolenZDCount}\n[!] ${r.handle} is now HOSTILE with +20% security.`, isNew: true }]);
+          addOutput(`[!!!] BETRAYAL — ${r.handle} HAS GONE ROGUE [!!!]\n[-] Wallet drained: ₿${stolenBtc.toLocaleString()}\n[-] Zero-days stolen: ${stolenZDCount}\n[!] ${r.handle} is now HOSTILE with +20% security.`);
         }
       });
     }, 60000);
@@ -1321,8 +1325,7 @@ useEffect(() => {
           prev.some(w => [a.id, b.id].some(id => w[0] === id || w[1] === id))) return prev;
 
       queueMicrotask(() => {
-        setTerminal(t => [...t, { type: 'out',
-          text: `\n[UNDERGROUND] Turf war erupts: ${a.handle} vs ${b.handle}.`, isNew: true }]);
+        addOutput(`[UNDERGROUND] Turf war erupts: ${a.handle} vs ${b.handle}.`);
         setTimeout(() => {
           const winner = (a.skillMod + Math.random()) >= (b.skillMod + Math.random()) ? a : b;
           const loser  = winner.id === a.id ? b : a;
@@ -1331,8 +1334,7 @@ useEffect(() => {
             r.id === loser.id  ? { ...r, btc: Math.floor(r.btc * 0.85) } : r));
           setRivalConflicts(w => w.filter(x =>
             !((x[0] === a.id && x[1] === b.id) || (x[0] === b.id && x[1] === a.id))));
-          setTerminal(t => [...t, { type: 'out',
-            text: `[UNDERGROUND] ${winner.handle} routed ${loser.handle}. Territory shifts.`, isNew: true }]);
+          addOutput(`[UNDERGROUND] ${winner.handle} routed ${loser.handle}. Territory shifts.`);
         }, 30000);
       });
 
@@ -1377,7 +1379,7 @@ useEffect(() => {
               `[${rival.handle}] ${target[1].org?.orgName || target[0]} is mine now. Try and take it.`,
               `[${rival.handle}] Expanding operations. Your move.`,
             ];
-            setTerminal(prev => [...prev, { type: 'out', text: `\n[RIVAL OPS] ${taunts[Math.floor(Math.random() * taunts.length)]}`, isNew: true }]);
+            addOutput(`[RIVAL OPS] ${taunts[Math.floor(Math.random() * taunts.length)]}`);
           }
         }
         
@@ -1439,7 +1441,7 @@ useEffect(() => {
                 `"I own ${targetIP} now. Come take it back — if you can."`,
                 `"Your botnet is shrinking. Mine is growing. See the pattern?"`,
               ];
-              setTerminal(prev => [...prev, { type: 'out', text: `\n[!!!] NODE CAPTURED: ${targetIP} taken by ${rival.handle}!\n[-] Botnet: -1 | Your territory is shrinking.\n\n  ${rival.handle}: ${attackTaunts[Math.floor(Math.random() * attackTaunts.length)]}\n\n[*] Counter-attack with: hping3 ${targetIP}`, isNew: true }]);
+              addOutput(`[!!!] NODE CAPTURED: ${targetIP} taken by ${rival.handle}!\n[-] Botnet: -1 | Your territory is shrinking.\n  ${rival.handle}: ${attackTaunts[Math.floor(Math.random() * attackTaunts.length)]}\n[*] Counter-attack with: hping3 ${targetIP}`);
             playHeatSpike();
           } else {
             // Attack fails — just alert
@@ -1450,7 +1452,7 @@ useEffect(() => {
                 `"Testing your walls. Found a few cracks."`,
                 `"Scouting your network. You should be worried."`,
               ];
-              setTerminal(prev => [...prev, { type: 'out', text: `\n[!] ${rival.handle} probed your node ${targetIP} (DEF: ${targetDef}). Attack deflected.\n  ${rival.handle}: ${probeTaunts[Math.floor(Math.random() * probeTaunts.length)]}`, isNew: true }]);
+              addOutput(`[!] ${rival.handle} probed your node ${targetIP} (DEF: ${targetDef}). Attack deflected.\n  ${rival.handle}: ${probeTaunts[Math.floor(Math.random() * probeTaunts.length)]}`);
             }
           }
         }
@@ -1495,7 +1497,7 @@ useEffect(() => {
           `"You destroyed my network. I destroyed my old identity. New name, same grudge."`,
         ];
 
-        setTerminal(prev => [...prev, { type: 'out', text: `\n[!!!] RIVAL RESPAWN [!!!]\n[*] ${rival.handle} has returned!\n[*] New core: ${newIP} ☠ + ${Object.keys(cluster).length} outpost nodes\n[*] Status: HOSTILE | They want revenge.\n\n  ${rival.handle}: ${respawnMessages[Math.floor(Math.random() * respawnMessages.length)]}`, isNew: true }]);
+        addOutput(`[!!!] RIVAL RESPAWN [!!!]\n[*] ${rival.handle} has returned!\n[*] New core: ${newIP} ☠ + ${Object.keys(cluster).length} outpost nodes\n[*] Status: HOSTILE | They want revenge.\n  ${rival.handle}: ${respawnMessages[Math.floor(Math.random() * respawnMessages.length)]}`);
       });
     }, 45000); // Every 45 seconds
 
@@ -1565,7 +1567,7 @@ useEffect(() => {
         const { heat: curHeat, proxies: curProxies } = activeState.current;
         if (curHeat > 80 && Math.random() < 0.03) {
           setIsInside(false); setTargetIP(null); setCurrentDir('~'); setPrivilege('local');
-          setTerminal(prev => [...prev.map(t => ({ ...t, isNew: false })), { type: 'out', text: `\n[!!!] ACTIVE THREAT HUNTING DETECTED [!!!]\n[-] Blue Team SOC Analyst manually severed the connection.\n`, isNew: true }]);
+          addOutput(`[!!!] ACTIVE THREAT HUNTING DETECTED [!!!]\n[-] Blue Team SOC Analyst manually severed the connection.`);
           trackTraced();
           return;
         }
@@ -1677,7 +1679,7 @@ useEffect(() => {
         }
         // CROSSING INTO CRITICAL — ANNOUNCE WALLET FREEZE
         if (tier === 'CRITICAL' && prevTier !== 'MANHUNT') {
-          setTerminal(prev => [...prev, { type: 'out', text: `[!] WALLET FROZEN: Law enforcement has flagged your transaction channels.\n[!] Shop and market purchases DISABLED until heat drops below 75%.`, isNew: true }]);
+          addOutput(`[!] WALLET FROZEN: Law enforcement has flagged your transaction channels.\n[!] Shop and market purchases DISABLED until heat drops below 75%.`);
         }
         // DROPPING OUT OF CRITICAL — ANNOUNCE THAW
         if ((tier === 'HOT' || tier === 'WARM' || tier === 'COLD') && (prevTier === 'CRITICAL' || prevTier === 'MANHUNT')) {
@@ -2054,6 +2056,54 @@ useEffect(() => {
   };
 // Pre-seeds the world with starter nodes + rivals so the map looks populated
 
+  // ── INTEL FEED ROUTING ──
+  const FEED_TAGS = ['[UNDERGROUND]', '[SIGINT]', '[CHATTER]', '[SOC]', '[FIXER]', '[MARKET]', '[INTEL]', '[RIVAL', '[ALLY', 'Turf war', 'Territory shifts', 'BETRAYAL', 'GONE ROGUE', 'Budget cuts', 'tightening protocols', 'NODE CAPTURED', 'COUNTER-ATTACK', 'RIVAL OPS', 'RIVAL RESPAWN', 'THREAT HUNTING', 'WALLET FROZEN', 'DARKNET FEED', 'probed your node'];
+  const addOutput = (text, forceFeed = false, forceTerminal = false) => {
+    if (forceTerminal) {
+      setTerminal(prev => [...prev, { type: 'out', text, isNew: true }]);
+      return;
+    }
+    const isFeed = forceFeed || FEED_TAGS.some(tag => text.includes(tag));
+    if (isFeed) {
+      setFeed(prev => [...prev.slice(-80), { text, time: Date.now(), isNew: true }]);
+    } else {
+      setTerminal(prev => [...prev, { type: 'out', text, isNew: true }]);
+    }
+  };
+
+  // ── INTEL FEED PANEL ──
+  const FeedPanel = () => (
+    <div style={{
+      background: '#0a0a0f', border: '1px solid #2d2a2e', borderRadius: 4,
+      padding: '8px 10px', maxHeight: isMobile ? 150 : 320, overflowY: 'auto',
+      fontFamily: 'monospace', fontSize: '11px', lineHeight: '1.5',
+      minWidth: isMobile ? '100%' : 280, maxWidth: isMobile ? '100%' : 340,
+      display: 'flex', flexDirection: 'column',
+    }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, borderBottom: '1px solid #2d2a2e', paddingBottom: 4 }}>
+        <span style={{ color: '#ff6188', fontWeight: 'bold', letterSpacing: '1.5px', fontSize: '10px' }}>◆ INTEL FEED</span>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <span style={{ color: '#7c7a82', fontSize: '10px' }}>{feed.length} MSGS</span>
+          <span onClick={() => setShowFeed(false)} style={{ color: '#7c7a82', cursor: 'pointer', fontSize: '12px' }}>✕</span>
+        </div>
+      </div>
+      {feed.length === 0
+        ? <div style={{ color: '#4a4750', fontStyle: 'italic' }}>Monitoring channels...</div>
+        : feed.slice(-30).map((f, i) => {
+          const total = Math.min(feed.length, 30);
+          return (
+            <div key={i} style={{ color: f.text.includes('HOSTILE') || f.text.includes('!!!') || f.text.includes('CAPTURED') || f.text.includes('COUNTER-ATTACK') ? '#ff6188' : f.text.includes('ALLY') || f.text.includes('FIXER') ? '#a9dc76' : f.text.includes('UNDERGROUND') ? '#ffd866' : f.text.includes('DARKNET') || f.text.includes('MARKET') ? '#fc9867' : '#78dce8', marginBottom: 3, opacity: i < total - 10 ? 0.5 : 0.5 + (i - (total - 10)) * 0.05 }}>
+              <span style={{ color: '#4a4750', marginRight: 6, fontSize: '9px' }}>{new Date(f.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+              {f.text.replace(/\n/g, ' ').replace(/\[/g, '').replace(/\]/g, '·').slice(0, 120)}
+            </div>
+          );
+        })
+      }
+      <div style={{ borderTop: '1px solid #2d2a2e', paddingTop: 4, marginTop: 'auto', color: '#4a4750', fontSize: '9px', letterSpacing: '0.5px' }}>
+        type 'feed' to toggle · ESC to close
+      </div>
+    </div>
+  );
 
   const handleCommand = async (e, directCmd) => {
     if (showNotes) return;
@@ -2304,7 +2354,7 @@ if (isInside && trace > 70 && Math.random() < 0.4 && !BENIGN_CMDS.includes(cmd))
             `"My IDS lit up like a christmas tree. You're not subtle."`,
             `"So you found my node. Finding your way out will be harder."`,
           ];
-          setTerminal(prev => [...prev, { type: 'out', text: `\n[${rivalObj.handle}] ${breachReactions[Math.floor(Math.random() * breachReactions.length)]}`, isNew: true }]);
+          addOutput(`[${rivalObj.handle}] ${breachReactions[Math.floor(Math.random() * breachReactions.length)]}`);
         }
         // Counter-attack: rival hits your weakest node
         const playerNodes = Object.entries(world).filter(([k, n]) => k !== 'local' && n.owner === 'player');
@@ -2321,11 +2371,11 @@ if (isInside && trace > 70 && Math.random() < 0.4 && !BENIGN_CMDS.includes(cmd))
                 return prev;
               });
               setBotnet(prev => prev.filter(ip => ip !== weakest[0]));
-              setTerminal(prev => [...prev, { type: 'out', text: `\n[!!!] COUNTER-ATTACK: ${node.rivalHandle} seized your node ${weakest[0]} while you were distracted!\n[-] Your weakest node was undefended. Fortify your territory.`, isNew: true }]);
+              addOutput(`[!!!] COUNTER-ATTACK: ${node.rivalHandle} seized your node ${weakest[0]} while you were distracted!\n[-] Your weakest node was undefended. Fortify your territory.`);
             }, 5000); // 5 second delay
           } else {
             setTimeout(() => {
-              setTerminal(prev => [...prev, { type: 'out', text: `\n[!] ${node.rivalHandle} counter-attacked ${weakest[0]} but your defenses held (DEF: ${weakest[1].defense || 0}).`, isNew: true }]);
+              addOutput(`[!] ${node.rivalHandle} counter-attacked ${weakest[0]} but your defenses held (DEF: ${weakest[1].defense || 0}).`);
             }, 5000);
           }
         }
@@ -2830,7 +2880,7 @@ const COMMANDS = {// ← your existing command object starts here
         const newPrices = generateMarketPrices(targetRegion);
         setMarketPrices(newPrices);
         if (newPrices._event) {
-          setTerminal(prev => [...prev, { type: 'out', text: `\n[DARKNET FEED] ${newPrices._event}\n`, isNew: true }]);
+          addOutput(`[DARKNET FEED] ${newPrices._event}`);
         }
        // Save territory control for passive income from previous region
         const prevPlayerNodes = Object.keys(world).filter(k => k !== 'local' && world[k]?.owner === 'player').length;
@@ -3319,7 +3369,7 @@ if (!hasEntry || !hasHit) {
                 };
                 
                 setContracts(prev => [...prev, newContract]);
-                setTerminal(prev => [...prev, { type: 'out', text: `\n[FIXER] Contract ${newContract.id} ready. Type 'contracts' to view.`, isNew: true }]);
+                addOutput(`[FIXER] Contract ${newContract.id} ready. Type 'contracts' to view.`);
               }
             });
           }
@@ -5232,9 +5282,13 @@ if (typeof rawData === 'string' && rawData.includes('[STORY_TRIGGER]')) {
         return '[*] HARDWARE merged into MARKET hub. Use: market';
       },
       rig: async () => {
-  setShowRig(prev => !prev);
-  return showRig ? '[*] Rig panel closed.' : '[*] DECK STATUS — opening rig display...';
-},
+        setShowRig(prev => !prev);
+        return showRig ? '[*] Rig panel closed.' : '[*] DECK STATUS — opening rig display...';
+      },
+      feed: async () => {
+        setShowFeed(prev => !prev);
+        return showFeed ? '[*] Intel feed hidden.' : '[*] Intel feed opened.';
+      },
       status: async () => {
   const d = director; const score = d.skillScore; const maxHops = getMaxProxySlots(inventory, d.modifiers);
   let threatLevel = 'STANDARD';
@@ -6645,7 +6699,7 @@ territory: async () => {
           const purgeReactions = wasCore
             ? [`"You destroyed my core?! This isn't over."`, `"My command center... you'll PAY for this."`, `"Impressive. Enjoy it. I'm rebuilding already."`]
             : [`"One outpost means nothing. I have more."`, `"You think taking one node matters? Cute."`, `"That was bait anyway. Check YOUR network."`];
-          setTerminal(prev => [...prev, { type: 'out', text: `\n[${rival.handle}] ${purgeReactions[Math.floor(Math.random() * purgeReactions.length)]}`, isNew: true }]);
+          addOutput(`[${rival.handle}] ${purgeReactions[Math.floor(Math.random() * purgeReactions.length)]}`);
         }
         if (wasCore) {
           // Eliminate the rival
@@ -7333,14 +7387,14 @@ if (screen === 'soundmanager') {
             setTerminal(prev => [...prev, { type: 'out', text: `[*] Target: ${net.essid} (${net.bssid}, Ch${net.ch})`, isNew: true }]);
           }}
         />
-       {showRig && (
-  <RigDisplay 
-    rig={rig}
-    inventory={inventory} heat={heat} isProcessing={isProcessing} expanded={mapExpanded} toggleExpand={() => setMapExpanded(e => !e)}
-    isMobile={isMobile}
-    onClose={() => setShowRig(false)}
-  />
-)}
+        {showRig && (
+          <RigDisplay 
+            rig={rig}
+            inventory={inventory} heat={heat} isProcessing={isProcessing} expanded={mapExpanded} toggleExpand={() => setMapExpanded(e => !e)}
+            isMobile={isMobile}
+          />
+        )}
+        {showFeed && <FeedPanel />}
       </div>
       )}
 

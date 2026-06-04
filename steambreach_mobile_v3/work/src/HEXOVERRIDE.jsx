@@ -614,6 +614,7 @@ useEffect(() => {
       // Determine what "back" means based on current state
       if (screen === 'game') {
         if (showHelpMenu) { setShowHelpMenu(false); }
+        else if (showRig) { setShowRig(false); }
         else if (mapExpanded) { setMapExpanded(false); }
         else if (showMobileKeyboard) { setShowMobileKeyboard(false); }
         else if (isChatting) { /* let the game handle exit */ }
@@ -7332,11 +7333,12 @@ if (screen === 'soundmanager') {
             setTerminal(prev => [...prev, { type: 'out', text: `[*] Target: ${net.essid} (${net.bssid}, Ch${net.ch})`, isNew: true }]);
           }}
         />
-        {showRig && (
+       {showRig && (
   <RigDisplay 
     rig={rig}
     inventory={inventory} heat={heat} isProcessing={isProcessing} expanded={mapExpanded} toggleExpand={() => setMapExpanded(e => !e)}
     isMobile={isMobile}
+    onClose={() => setShowRig(false)}
   />
 )}
       </div>

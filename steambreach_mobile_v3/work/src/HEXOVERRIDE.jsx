@@ -1197,7 +1197,7 @@ setVirusScans({});
               `[${rival.handle}] "The underground is watching both of us. Don't disappoint."`,
             ];
           }
-          setTerminal(prev => [...prev, { type: 'out', text: `\n${messages[Math.floor(Math.random() * messages.length)]}`, isNew: true }]);
+          addOutput(`${messages[Math.floor(Math.random() * messages.length)]}`, true);
         });
 
       // Natural escalation — passive rivals slowly go hostile
@@ -1982,11 +1982,7 @@ useEffect(() => {
         return [...prev, newContract];
       });
 
-      setTerminal(prev => [...prev, {
-        type: 'out',
-        text: `[FIXER] New contract ${newContract.id} posted for ${node.org?.orgName || ip}.\n[*] Type 'contracts' to review.`,
-        isNew: true,
-      }]);
+      addOutput(`[FIXER] New contract ${newContract.id} posted for ${node.org?.orgName || ip}.\n[*] Type 'contracts' to review.`);
     });
   });
 
@@ -2075,32 +2071,31 @@ useEffect(() => {
   const FeedPanel = () => (
     <div style={{
       background: '#0a0a0f', border: '1px solid #2d2a2e', borderRadius: 4,
-      padding: '8px 10px', maxHeight: isMobile ? 150 : 320, overflowY: 'auto',
-      fontFamily: 'monospace', fontSize: '11px', lineHeight: '1.5',
-      minWidth: isMobile ? '100%' : 280, maxWidth: isMobile ? '100%' : 340,
+      padding: '6px 10px', maxHeight: isMobile ? 100 : 130, overflowY: 'auto',
+      fontFamily: 'monospace', fontSize: '11px', lineHeight: '1.4',
+      width: '100%', margin: '4px 0',
       display: 'flex', flexDirection: 'column',
     }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, borderBottom: '1px solid #2d2a2e', paddingBottom: 4 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4, borderBottom: '1px solid #2d2a2e', paddingBottom: 3 }}>
         <span style={{ color: '#ff6188', fontWeight: 'bold', letterSpacing: '1.5px', fontSize: '10px' }}>◆ INTEL FEED</span>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <span style={{ color: '#7c7a82', fontSize: '10px' }}>{feed.length} MSGS</span>
           <span onClick={() => setShowFeed(false)} style={{ color: '#7c7a82', cursor: 'pointer', fontSize: '12px' }}>✕</span>
         </div>
       </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
       {feed.length === 0
         ? <div style={{ color: '#4a4750', fontStyle: 'italic' }}>Monitoring channels...</div>
-        : feed.slice(-30).map((f, i) => {
-          const total = Math.min(feed.length, 30);
+        : feed.slice(-15).map((f, i) => {
+          const total = Math.min(feed.length, 15);
           return (
-            <div key={i} style={{ color: f.text.includes('HOSTILE') || f.text.includes('!!!') || f.text.includes('CAPTURED') || f.text.includes('COUNTER-ATTACK') ? '#ff6188' : f.text.includes('ALLY') || f.text.includes('FIXER') ? '#a9dc76' : f.text.includes('UNDERGROUND') ? '#ffd866' : f.text.includes('DARKNET') || f.text.includes('MARKET') ? '#fc9867' : '#78dce8', marginBottom: 3, opacity: i < total - 10 ? 0.5 : 0.5 + (i - (total - 10)) * 0.05 }}>
+            <div key={i} style={{ color: f.text.includes('HOSTILE') || f.text.includes('!!!') || f.text.includes('CAPTURED') || f.text.includes('COUNTER-ATTACK') ? '#ff6188' : f.text.includes('ALLY') || f.text.includes('FIXER') ? '#a9dc76' : f.text.includes('UNDERGROUND') ? '#ffd866' : f.text.includes('DARKNET') || f.text.includes('MARKET') ? '#fc9867' : '#78dce8', opacity: i < total - 8 ? 0.4 : 0.4 + (i - (total - 8)) * 0.075 }}>
               <span style={{ color: '#4a4750', marginRight: 6, fontSize: '9px' }}>{new Date(f.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-              {f.text.replace(/\n/g, ' ').replace(/\[/g, '').replace(/\]/g, '·').slice(0, 120)}
+              {f.text.replace(/\n/g, ' ').replace(/\[/g, '').replace(/\]/g, '·').slice(0, 140)}
             </div>
           );
         })
       }
-      <div style={{ borderTop: '1px solid #2d2a2e', paddingTop: 4, marginTop: 'auto', color: '#4a4750', fontSize: '9px', letterSpacing: '0.5px' }}>
-        type 'feed' to toggle · ESC to close
       </div>
     </div>
   );
@@ -2473,11 +2468,7 @@ const verifyContract = (ip, objectiveType) => {
 
     const newContract = generateWiFiContract(network, reputation, directorRef.current?.modifiers);
     setContracts(prev => [...prev, newContract]);
-    setTerminal(prev => [...prev, {
-      type: 'out',
-      text: `[FIXER] Wireless contract ${newContract.id} posted for ${network.essid}.\n[*] Type 'contracts' to review.`,
-      isNew: true
-    }]);
+    addOutput(`[FIXER] Wireless contract ${newContract.id} posted for ${network.essid}.\n[*] Type 'contracts' to review.`);
   };
 
   const getExfilDrop = (orgType, sec, fileName = '') => {
@@ -7394,9 +7385,10 @@ if (screen === 'soundmanager') {
             isMobile={isMobile}
           />
         )}
-        {showFeed && <FeedPanel />}
       </div>
       )}
+
+      {showFeed && <FeedPanel />}
 
       <div style={{ flexGrow: 1, overflowY: 'auto', margin: '4px 0', paddingRight: '8px', fontSize: isMobile ? '13px' : 'inherit', scrollbarWidth: 'thin', scrollbarColor: `${COLORS.border} transparent` }}>
         {terminal.map((t, i) => {

@@ -2071,27 +2071,25 @@ useEffect(() => {
   const FeedPanel = () => (
     <div style={{
       background: '#0a0a0f', border: '1px solid #2d2a2e', borderRadius: 4,
-      padding: '6px 10px', maxHeight: isMobile ? 100 : 130, overflowY: 'auto',
+      padding: '8px 10px', overflowY: 'auto',
       fontFamily: 'monospace', fontSize: '11px', lineHeight: '1.4',
-      width: '100%', margin: '4px 0',
+      width: 340, minWidth: 340,
       display: 'flex', flexDirection: 'column',
+      scrollbarWidth: 'thin', scrollbarColor: `${COLORS.border} transparent`,
     }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4, borderBottom: '1px solid #2d2a2e', paddingBottom: 3 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, borderBottom: '1px solid #2d2a2e', paddingBottom: 4 }}>
         <span style={{ color: '#ff6188', fontWeight: 'bold', letterSpacing: '1.5px', fontSize: '10px' }}>◆ INTEL FEED</span>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <span style={{ color: '#7c7a82', fontSize: '10px' }}>{feed.length} MSGS</span>
-          <span onClick={() => setShowFeed(false)} style={{ color: '#7c7a82', cursor: 'pointer', fontSize: '12px' }}>✕</span>
-        </div>
+        <span style={{ color: '#7c7a82', fontSize: '10px' }}>{feed.length} MSGS</span>
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1 }}>
       {feed.length === 0
         ? <div style={{ color: '#4a4750', fontStyle: 'italic' }}>Monitoring channels...</div>
-        : feed.slice(-15).map((f, i) => {
-          const total = Math.min(feed.length, 15);
+        : feed.slice(-40).map((f, i) => {
+          const total = Math.min(feed.length, 40);
           return (
-            <div key={i} style={{ color: f.text.includes('HOSTILE') || f.text.includes('!!!') || f.text.includes('CAPTURED') || f.text.includes('COUNTER-ATTACK') ? '#ff6188' : f.text.includes('ALLY') || f.text.includes('FIXER') ? '#a9dc76' : f.text.includes('UNDERGROUND') ? '#ffd866' : f.text.includes('DARKNET') || f.text.includes('MARKET') ? '#fc9867' : '#78dce8', opacity: i < total - 8 ? 0.4 : 0.4 + (i - (total - 8)) * 0.075 }}>
+            <div key={i} style={{ color: f.text.includes('HOSTILE') || f.text.includes('!!!') || f.text.includes('CAPTURED') || f.text.includes('COUNTER-ATTACK') ? '#ff6188' : f.text.includes('ALLY') || f.text.includes('FIXER') ? '#a9dc76' : f.text.includes('UNDERGROUND') ? '#ffd866' : f.text.includes('DARKNET') || f.text.includes('MARKET') ? '#fc9867' : '#78dce8', marginBottom: 2, opacity: i < total - 12 ? 0.35 : 0.35 + (i - (total - 12)) * 0.055 }}>
               <span style={{ color: '#4a4750', marginRight: 6, fontSize: '9px' }}>{new Date(f.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-              {f.text.replace(/\n/g, ' ').replace(/\[/g, '').replace(/\]/g, '·').slice(0, 140)}
+              {f.text.replace(/\n/g, ' ').replace(/\[/g, '').replace(/\]/g, '·').slice(0, 120)}
             </div>
           );
         })
@@ -7388,9 +7386,8 @@ if (screen === 'soundmanager') {
       </div>
       )}
 
-      {showFeed && <FeedPanel />}
-
-      <div style={{ flexGrow: 1, overflowY: 'auto', margin: '4px 0', paddingRight: '8px', fontSize: isMobile ? '13px' : 'inherit', scrollbarWidth: 'thin', scrollbarColor: `${COLORS.border} transparent` }}>
+      <div style={{ display: 'flex', gap: '8px', flexGrow: 1, overflow: 'hidden', margin: '4px 0' }}>
+      <div style={{ flex: 1, overflowY: 'auto', paddingRight: '8px', fontSize: isMobile ? '13px' : 'inherit', scrollbarWidth: 'thin', scrollbarColor: `${COLORS.border} transparent` }}>
         {terminal.map((t, i) => {
           let inColor = isChatting ? COLORS.chat : (t.remote ? COLORS.primary : COLORS.textDim);
           return (
@@ -7420,6 +7417,8 @@ if (screen === 'soundmanager') {
           );
         })}
         <div ref={terminalEndRef} style={{ height: '8px' }} />
+      </div>
+      {!isMobile && <FeedPanel />}
       </div>
 
       {isMobile && screen === 'game' &&  (

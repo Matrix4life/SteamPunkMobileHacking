@@ -2054,7 +2054,7 @@ useEffect(() => {
 
   // ── INTEL FEED ROUTING ──
   const FEED_TAGS = ['[UNDERGROUND]', '[SIGINT]', '[CHATTER]', '[SOC]', '[FIXER]', '[MARKET]', '[INTEL]', '[RIVAL', '[ALLY', 'Turf war', 'Territory shifts', 'BETRAYAL', 'GONE ROGUE', 'Budget cuts', 'tightening protocols', 'NODE CAPTURED', 'COUNTER-ATTACK', 'RIVAL OPS', 'RIVAL RESPAWN', 'THREAT HUNTING', 'WALLET FROZEN', 'DARKNET FEED', 'probed your node'];
-  const addOutput = (text, forceFeed = false, forceTerminal = false) => {
+  function addOutput(text, forceFeed = false, forceTerminal = false) {
     if (forceTerminal) {
       setTerminal(prev => [...prev, { type: 'out', text, isNew: true }]);
       return;
@@ -2065,7 +2065,7 @@ useEffect(() => {
     } else {
       setTerminal(prev => [...prev, { type: 'out', text, isNew: true }]);
     }
-  };
+  }
 
   // ── INTEL FEED PANEL ──
   const FeedPanel = () => (

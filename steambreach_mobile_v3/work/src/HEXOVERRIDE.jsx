@@ -567,6 +567,7 @@ const generateStory = async (ip, orgData) => {
 
   const terminalEndRef = useRef(null);
   const inputRef = useRef(null);
+  const feedEndRef = useRef(null);
 
         
          // Add state:
@@ -2054,6 +2055,7 @@ useEffect(() => {
 
   // ── INTEL FEED ROUTING ──
   const FEED_TAGS = ['[UNDERGROUND]', '[SIGINT]', '[CHATTER]', '[SOC]', '[FIXER]', '[MARKET]', '[INTEL]', '[RIVAL', '[ALLY', 'Turf war', 'Territory shifts', 'BETRAYAL', 'GONE ROGUE', 'Budget cuts', 'tightening protocols', 'NODE CAPTURED', 'COUNTER-ATTACK', 'RIVAL OPS', 'RIVAL RESPAWN', 'THREAT HUNTING', 'WALLET FROZEN', 'DARKNET FEED', 'probed your node'];
+  useEffect(() => { feedEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [feed]);
   function addOutput(text, forceFeed = false, forceTerminal = false) {
     if (forceTerminal) {
       setTerminal(prev => [...prev, { type: 'out', text, isNew: true }]);
@@ -2094,6 +2096,7 @@ useEffect(() => {
           );
         })
       }
+      <div ref={feedEndRef} />
       </div>
     </div>
   );

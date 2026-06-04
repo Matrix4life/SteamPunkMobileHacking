@@ -1006,7 +1006,7 @@ setVirusScans(data.virusScans || {});
       port: vuln.port, svc: vuln.svc, exp: n.exp,
       val: n.sec === 'high' ? 75000 : n.sec === 'mid' ? 15000 : 2000,
       isHoneypot: false, x: n.x, y: n.y, parentIP: null,
-      files: { '/': ['home/', 'var/'], '/home': ['user/'], '/home/user': ['data.txt'] },
+      files: { '/': ['home/', 'var/'], '/home': ['user/'], '/home/user': ['data.txt'], '/var': ['log/', 'backups/'], '/var/log': ['access.log'], '/var/backups': [] },
       contents: { '/home/user/data.txt': '[PENDING_GENERATION]' },
       org: { orgName: n.name, type: n.sec === 'high' ? 'corporation' : 'smallbiz', industry: 'General', employees: [] },
       blueTeam: { alertLevel: 0, patchedVulns: [], changedPasswords: [], activeHunting: false, lastIncident: null },

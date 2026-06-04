@@ -154,7 +154,7 @@ const HEXOVERRIDE = () => {
   const [privilege, setPrivilege] = useState('local');
   const [currentDir, setCurrentDir] = useState('~');
   const [mapExpanded, setMapExpanded] = useState(false);
-
+  const [showRig, setShowRig] = useState(false);
   const [isChatting, setIsChatting] = useState(false);
   const [chatTarget, setChatTarget] = useState('');
   const [chatHistory, setChatHistory] = useState([]);
@@ -5230,11 +5230,10 @@ if (typeof rawData === 'string' && rawData.includes('[STORY_TRIGGER]')) {
         openMarketHub();
         return '[*] HARDWARE merged into MARKET hub. Use: market';
       },
-      rig: async () => {
-        if (isInside) return "[-] Exit session first.";
-        openMarketHub();
-        return '[*] RIG merged into MARKET hub. Use: market';
-      },
+      rrig: async () => {
+  setShowRig(prev => !prev);
+  return showRig ? '[*] Rig panel closed.' : '[*] DECK STATUS — opening rig display...';
+},
       status: async () => {
   const d = director; const score = d.skillScore; const maxHops = getMaxProxySlots(inventory, d.modifiers);
   let threatLevel = 'STANDARD';
@@ -7333,11 +7332,13 @@ if (screen === 'soundmanager') {
             setTerminal(prev => [...prev, { type: 'out', text: `[*] Target: ${net.essid} (${net.bssid}, Ch${net.ch})`, isNew: true }]);
           }}
         />
-        <RigDisplay 
-          rig={rig} // <-- Pass the actual installed hardware
-          inventory={inventory} heat={heat} isProcessing={isProcessing} expanded={mapExpanded} toggleExpand={() => setMapExpanded(e => !e)}
-          isMobile={isMobile}
-        />
+        {showRig && (
+  <RigDisplay 
+    rig={rig}
+    inventory={inventory} heat={heat} isProcessing={isProcessing} expanded={mapExpanded} toggleExpand={() => setMapExpanded(e => !e)}
+    isMobile={isMobile}
+  />
+)}
       </div>
       )}
 

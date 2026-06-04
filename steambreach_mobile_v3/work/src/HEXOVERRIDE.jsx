@@ -5230,7 +5230,7 @@ if (typeof rawData === 'string' && rawData.includes('[STORY_TRIGGER]')) {
         openMarketHub();
         return '[*] HARDWARE merged into MARKET hub. Use: market';
       },
-      rrig: async () => {
+      rig: async () => {
   setShowRig(prev => !prev);
   return showRig ? '[*] Rig panel closed.' : '[*] DECK STATUS — opening rig display...';
 },

@@ -2053,7 +2053,7 @@ useEffect(() => {
   };
 // Pre-seeds the world with starter nodes + rivals so the map looks populated
 
-};
+
   const handleCommand = async (e, directCmd) => {
     if (showNotes) return;
     if (!directCmd && (e.key !== 'Enter' || isProcessing)) return;

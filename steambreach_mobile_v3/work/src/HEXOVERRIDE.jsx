@@ -153,7 +153,7 @@ const HEXOVERRIDE = () => {
   const [targetIP, setTargetIP] = useState(null);
   const [privilege, setPrivilege] = useState('local');
   const [currentDir, setCurrentDir] = useState('~');
-  const [mapExpanded, setMapExpanded] = useState(false);
+  const [mapExpanded, setMapExpanded] = useState(true);
   const [showRig, setShowRig] = useState(false);
   const [feed, setFeed] = useState([]);
   const [showFeed, setShowFeed] = useState(true);

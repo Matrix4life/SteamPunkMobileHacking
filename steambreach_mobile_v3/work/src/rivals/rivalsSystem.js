@@ -66,6 +66,67 @@ export const RIVAL_ARCHETYPES = {
   LEGEND: { name: 'Legend', repRange: [600, 1500], skillMod: 1.8, personality: 'Mythical status. Definitely exists.', btcRange: [200000, 2000000], zdSlots: [8, 15] },
 };
 
+// Persistent sandbox cast. Each operator has an independent agenda and daily rhythm.
+// Times are simulated world-clock hours, not real-world personal schedules.
+export const RIVAL_CAST = [
+  {handle:'MOTH', name:'Mara Voss', alias:'The Archivist', archetype:'GREY_HAT', home:'Old Relay', background:'Former public records analyst. Exposed an evidence purge and went underground to preserve forgotten histories.', goal:'Protect leaked evidence', fear:'Losing her archive', style:'guardian', trait:'Patient, remembers favors', routine:'archive research', rival:'CINDER', ally:'LANTERN', quote:'Some secrets deserve witnesses.', hours:[1,9], color:'#8CCFA6'},
+  {handle:'CINDER', name:'Dante Reyes', alias:'The Firestarter', archetype:'BLACK_HAT', home:'Burn District', background:'A street racer turned destructive intruder. A botched raid cost his closest friend a safe house.', goal:'Own the industrial grid', fear:'Being powerless', style:'raider', trait:'Impulsive and vengeful', routine:'street crew meeting', rival:'MOTH', ally:'RUST', quote:'If I cannot hold it, nobody can.', hours:[12,22], color:'#F28562'},
+  {handle:'LANTERN', name:'Imani Okafor', alias:'The Medic', archetype:'GREY_HAT', home:'Clinic Mesh', background:'Built a clandestine network so neighborhood clinics could operate during a blackout.', goal:'Keep the clinic mesh online', fear:'Collateral damage', style:'protector', trait:'Compassionate, stubborn', routine:'volunteer clinic shift', rival:'VEX', ally:'MOTH', quote:'A node is a person on the other end.', hours:[6,18], color:'#75DCCA'},
+  {handle:'VEX', name:'Nico Vale', alias:'The Broker', archetype:'BLACK_HAT', home:'Glass Market', background:'Raised around auction houses. Trades information because trust once got their family ruined.', goal:'Control the underground exchange', fear:'A deal without leverage', style:'merchant', trait:'Charming and transactional', routine:'broker negotiations', rival:'LANTERN', ally:'SABLE', quote:'Everything has a price, including loyalty.', hours:[10,2], color:'#D5AAFF'},
+  {handle:'SABLE', name:'Yelena Moroz', alias:'The Ghost', archetype:'APT_OPERATOR', home:'Quiet Sector', background:'Walked away from a covert operations unit and erased every trace of her former identity.', goal:'Stay invisible while gathering intelligence', fear:'Recognition', style:'spy', trait:'Cautious and calculating', routine:'dead-drop circuit', rival:'ORACLE', ally:'VEX', quote:'The best victory leaves no witness.', hours:[22,6], color:'#A5B7D1'},
+  {handle:'RUST', name:'Bo Mercer', alias:'The Mechanic', archetype:'SKIDDIE', home:'Scrapyard', background:'Rebuilds discarded hardware to keep his siblings housed; knows every forgotten maintenance tunnel.', goal:'Expand a salvage network', fear:'Losing his workshop', style:'builder', trait:'Loyal, easily provoked', routine:'hardware scavenging', rival:'PHANTOM', ally:'CINDER', quote:'Give me scraps. I will build a kingdom.', hours:[7,19], color:'#C49B6E'},
+  {handle:'ORACLE', name:'Dr. Jun Park', alias:'The Futurist', archetype:'LEGEND', home:'Predictive Spire', background:'An ex-research scientist obsessed with mapping the probability of every conflict.', goal:'Build a predictive intelligence empire', fear:'Chaos', style:'strategist', trait:'Detached and obsessive', routine:'simulation experiments', rival:'SABLE', ally:'ECHO', quote:'Every choice was already in the model.', hours:[4,16], color:'#F2CB7A'},
+  {handle:'ECHO', name:'Ari Bell', alias:'The Performer', archetype:'SKIDDIE', home:'Neon Ward', background:'Once a pirate radio host. Streams theatrical hacks to build a following and find an estranged brother.', goal:'Become a legendary underground name', fear:'Being forgotten', style:'showoff', trait:'Talkative and insecure', routine:'pirate broadcast', rival:'PHANTOM', ally:'ORACLE', quote:'If nobody hears it, did you even win?', hours:[17,4], color:'#FF91CA'},
+  {handle:'PHANTOM', name:'Samir Haddad', alias:'The Exile', archetype:'APT_OPERATOR', home:'Black Transit', background:'A former security architect blamed for a disaster he tried to prevent. Keeps moving between safe houses.', goal:'Uncover who framed him', fear:'Betrayal', style:'nomad', trait:'Suspicious and resilient', routine:'safe-house relocation', rival:'RUST', ally:'NULLSAINT', quote:'Never sleep where you were seen.', hours:[0,11], color:'#9BE1F2'},
+  {handle:'NULLSAINT', name:'Elise Ward', alias:'The Judge', archetype:'LEGEND', home:'Cathedral Net', background:'A once-celebrated whistleblower who now enforces a personal code of justice across compromised networks.', goal:'Punish predatory operators', fear:'Becoming what she hunts', style:'judge', trait:'Principled and relentless', routine:'reviewing breach reports', rival:'VEX', ally:'PHANTOM', quote:'You can hide your name, not your choices.', hours:[9,21], color:'#EBE5AF'},
+];
+
+export function createNamedRival(profile, index = 0) {
+  const archetype = RIVAL_ARCHETYPES[profile.archetype];
+  const generated = generateRival(100);
+  return {
+    ...generated,
+    id: `cast_${profile.handle.toLowerCase()}`,
+    handle: profile.handle,
+    archetype: profile.archetype,
+    archetypeName: archetype.name,
+    rep: archetype.repRange[0] + Math.floor((archetype.repRange[1]-archetype.repRange[0])*0.35),
+    btc: Math.floor((archetype.btcRange[0]+archetype.btcRange[1])*0.35),
+    skillMod: archetype.skillMod,
+    security: Math.min(95,Math.floor(45+archetype.skillMod*28)),
+    zeroDays: generateRivalZeroDays(archetype),
+    name: profile.name, alias: profile.alias, home: profile.home,
+    background: profile.background, goal: profile.goal, fear: profile.fear,
+    style: profile.style, personality: profile.trait, routine: profile.routine,
+    rival: profile.rival, ally: profile.ally, quote: profile.quote,
+    activeHours: profile.hours, color: profile.color,
+    activity:'Planning next move', mood:'focused', memories:[],
+    relationship: profile.style === 'protector' || profile.style === 'guardian' ? 15 : 0,
+    npcTick:0,
+  };
+}
+
+export function rivalIsActive(rival, hour) {
+  const [start,end] = rival.activeHours || [0,24];
+  return start < end ? hour >= start && hour < end : hour >= start || hour < end;
+}
+
+export function decideRivalAction(rival, hour, random = Math.random()) {
+  if (rival.status === 'destroyed' || rival.recruited) return {type:'idle', activity:rival.recruited ? 'Working with player' : 'Off-grid'};
+  if (!rivalIsActive(rival,hour)) return {type:'rest',activity:'Resting at safe house'};
+  const choices = {
+    guardian:['defend','defend','expand','social'], raider:['attack','attack','expand','defend'],
+    protector:['defend','defend','social','expand'], merchant:['trade','trade','expand','social'],
+    spy:['intel','intel','defend','expand'], builder:['fortify','fortify','expand','social'],
+    strategist:['intel','expand','defend','attack'], showoff:['broadcast','expand','attack','social'],
+    nomad:['move','defend','intel','expand'], judge:['intel','defend','attack','social'],
+  };
+  const options=choices[rival.style] || ['expand','defend','social'];
+  const type=options[Math.min(options.length-1,Math.floor(random*options.length))];
+  const activities={defend:'Securing home territory',fortify:'Upgrading perimeter',expand:'Scouting new territory',attack:'Planning a hostile takeover',social:`Checking on ${rival.ally || 'contacts'}`,trade:'Negotiating a private deal',intel:'Gathering intelligence',broadcast:'Broadcasting on pirate radio',move:'Changing safe houses'};
+  return {type,activity:activities[type] || rival.routine};
+}
+
 export const DESTRUCTION_BOUNTY = {
   SKIDDIE: 5000,
   GREY_HAT: 25000,

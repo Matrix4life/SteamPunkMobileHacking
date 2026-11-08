@@ -73,6 +73,7 @@ import {
   RARITY_TIERS,
   EXPLOIT_CATEGORIES,
   generateRival,
+  RIVAL_CAST, createNamedRival, decideRivalAction,
   rollForZeroDay,
   attemptRivalHack,
   rivalAttacksPlayer,
@@ -1015,21 +1016,19 @@ setVirusScans(data.virusScans || {});
       owner: null, defense: 0, fortified: false, isCore: false,
     };
   });
+  // Ten persistent named NPCs, spread around the perimeter of the sandbox.
   const STARTER_POSITIONS = [
-    { x: '12%', y: '45%' },
-    { x: '88%', y: '72%' },
-    { x: '50%', y: '15%' },
+    [11,23],[85,18],[15,73],[80,75],[48,9],
+    [7,48],[53,88],[32,51],[70,48],[47,35],
   ];
   const starterRivals = [];
-  STARTER_POSITIONS.forEach(pos => {
-    const rival = generateRival(50);
+  RIVAL_CAST.forEach((profile, index) => {
+    const rival = createNamedRival(profile, index);
     const coreData = generateRivalNode(rival);
-    coreData.x = pos.x;
-    coreData.y = pos.y;
-    const coreIP = rival.ip;
-    world[coreIP] = coreData;
-    const cluster = generateRivalCluster(rival, coreData);
-    Object.assign(world, cluster);
+    coreData.x = `${STARTER_POSITIONS[index][0]}%`;
+    coreData.y = `${STARTER_POSITIONS[index][1]}%`;
+    world[rival.ip] = coreData;
+    Object.assign(world, generateRivalCluster(rival, coreData));
     starterRivals.push(rival);
   });
   return { world, rivals: starterRivals };
@@ -1345,6 +1344,48 @@ useEffect(() => {
   return () => clearInterval(tick);
 }, [screen, operator, rivals]);
   
+// ── PERSISTENT NPC LIFE SIMULATION ────────────────────────────────────────
+// The world clock cycles one hour each minute. NPCs have work/rest schedules;
+// they remember conflicts and pursue different routines between player actions.
+  useEffect(() => {
+    if (screen !== 'game' || !operator || rivals.length === 0) return;
+    const npcTimer = setInterval(() => {
+      const hour = Math.floor(Date.now() / 60000) % 24;
+      const updates = rivals.map(r => ({r, action: decideRivalAction(r, hour)}));
+      setRivals(prev => prev.map(r => {
+        const next = updates.find(u => u.r.id === r.id);
+        if (!next) return r;
+        const {type,activity} = next.action;
+        const mood = r.relationship < -50 ? 'vengeful' : r.relationship > 40 ? 'trusting' : type === 'rest' ? 'resting' : 'focused';
+        const memory = type === 'attack' && r.relationship < -20 ? {time:Date.now(),event:'Plotted retaliation against player'} : null;
+        return {...r, activity, mood, npcTick:(r.npcTick || 0)+1,
+          memories: memory ? [...(r.memories || []).slice(-7),memory] : (r.memories || [])};
+      }));
+      // Character-specific decisions actively affect existing world territory.
+      setWorld(prev => {
+        const next={...prev};
+        for (const {r,action} of updates) {
+          if (r.recruited || r.status === 'destroyed') continue;
+          const owned=Object.entries(next).filter(([,n])=>n.owner===r.id);
+          if (!owned.length) continue;
+          if (action.type === 'defend' || action.type === 'fortify') {
+            const weakest=[...owned].sort((a,b)=>(a[1].defense || 0)-(b[1].defense || 0))[0];
+            if (weakest) next[weakest[0]]={...weakest[1],defense:Math.min(90,(weakest[1].defense || 0)+(action.type==='fortify'?8:4))};
+          } else if (action.type === 'expand' && Math.random()<0.45) {
+            // Prefer territory close to own network instead of random worldwide claims.
+            const core=owned.find(([,n])=>n.isCore) || owned[0];
+            const cx=parseFloat(core[1].x) || 50,cy=parseFloat(core[1].y) || 50;
+            const targets=Object.entries(next).filter(([ip,n])=>ip!=='local' && !n.owner && !n.isRivalNode)
+              .sort((a,b)=>Math.hypot((parseFloat(a[1].x)||50)-cx,(parseFloat(a[1].y)||50)-cy)-Math.hypot((parseFloat(b[1].x)||50)-cx,(parseFloat(b[1].y)||50)-cy));
+            if (targets.length) { const [ip,node]=targets[0]; next[ip]={...node,owner:r.id,isRivalNode:true,rivalId:r.id,rivalHandle:r.handle,defense:15}; }
+          }
+        }
+        return next;
+      });
+    },60000);
+    return () => clearInterval(npcTimer);
+  }, [screen,operator,rivals]);
+
 // ── RIVAL TERRITORY AI TICK ──────────────────────────────────────────────
   useEffect(() => {
     if (screen !== 'game' || !operator) return;
@@ -1357,7 +1398,7 @@ useEffect(() => {
         if (rivalNodes.length === 0) return;
 
         // --- EXPANSION: claim 1 adjacent unclaimed node ---
-        const expansionChance = { 0.5: 0.3, 0.8: 0.4, 1.0: 0.5, 1.3: 0.6, 1.8: 0.8 }[rival.skillMod] || 0.4;
+        const expansionChance = ({raider:0.65,strategist:0.55,showoff:0.5,builder:0.3,merchant:0.45,protector:0.22,guardian:0.2,spy:0.18,nomad:0.28,judge:0.3})[rival.style] ?? ({0.5:0.3,0.8:0.4,1.0:0.5,1.3:0.6,1.8:0.8}[rival.skillMod] || 0.4);
         if (Math.random() < expansionChance) {
           const unclaimed = Object.entries(world).filter(([k, n]) => k !== 'local' && !n.owner && !n.isRivalNode);
           if (unclaimed.length > 0) {
@@ -1412,7 +1453,7 @@ useEffect(() => {
         const originalNodeCount = { 0.5: 3, 0.8: 4, 1.0: 5, 1.3: 6, 1.8: 7 }[rival.skillMod] || 4;
         const lostNodes = Math.max(0, originalNodeCount - rivalNodes.length);
         const aggressionBoost = lostNodes * 0.15; // Each lost node increases attack chance by 15%
-        if (rival.status === 'hostile' || (rival.relationship < -20 && Math.random() < (0.3 + aggressionBoost))) {
+        if (rival.status === 'hostile' || (rival.relationship < -20 && Math.random() < (0.3 + aggressionBoost)) || (rival.style === 'raider' && Math.random() < 0.2)) {
           const playerNodes = Object.entries(world).filter(([k, n]) => k !== 'local' && n.owner === 'player');
           if (playerNodes.length === 0) return;
           const weakest = playerNodes.sort(([, a], [, b]) => (a.defense || 0) - (b.defense || 0))[0];
@@ -6282,6 +6323,7 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
          const icon = { active: '🟢', compromised: '🔴', hostile: '⚠️', friendly: '🤝', destroyed: '💀', recruited: '🤝' }[r.status] || '⚪';
           lines.push(`  ${icon} ${r.handle.padEnd(18)} ${String(r.rep).padStart(4)}   ${r.archetypeName.padEnd(14)}  ${r.ip}`);
         });
+        lines.push('', '  Unique lives: use dossier <handle> for biography, goals and activity.');
         lines.push('', `  Mode: ${gameMode.toUpperCase()} | dossier | raid | negotiate | recruit`);
         lines.push('  NOTE: Repeated raids on the same rival have diminishing returns for 15 minutes.');
         return lines.join('\n');
@@ -6323,11 +6365,20 @@ Example: aircrack-ng -w /usr/share/wordlists/rockyou.txt capture-01.cap`;
   ZERO-DAYS: ${rival.zeroDays.length} exploits
   ${Object.keys(rarityCount).length > 0 ? '├─ ' + Object.entries(rarityCount).map(([r, c]) => `${RARITY_TIERS[r]?.name || r}: ${c}`).join(', ') : '├─ None detected'}
 
+  IDENTITY:     ${rival.name || 'Unidentified'} ${rival.alias ? `— ${rival.alias}` : ''}
+  HOME SECTOR:  ${rival.home || 'Unknown'}
+  GOAL:         ${rival.goal || 'Expand influence'}
+  FEARS:        ${rival.fear || 'Unknown'}
+  CONNECTIONS:  Ally: ${rival.ally || 'None'} | Rival: ${rival.rival || 'None'}
+  CURRENT LIFE: ${rival.activity || 'Off-grid'} (${rival.mood || 'focused'})
+  BACKSTORY:    ${rival.background || 'No verified history.'}
+  PHILOSOPHY:   "${rival.quote || rival.personality}"
   PROFILE: "${rival.personality}"
 
   HISTORY:
   ├─ Attacks on you: ${rival.attackCount}
   └─ Your victories: ${rival.defeatCount}
+  RECENT MEMORY: ${(rival.memories || []).slice(-3).map(m => m.event).join(' | ') || 'No notable encounters yet'}
 
   ${rival.recruited ? `[RECRUITED — ${rival.recruitType.toUpperCase()}] Bonus active. Type "dismiss ${rival.handle}" to release.` : `[raid ${rival.handle}] to attack | [negotiate ${rival.handle}] to trade | [taunt ${rival.handle}] to provoke`}`;
       },

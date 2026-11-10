@@ -171,7 +171,7 @@ export default function GeoNetworkMap({ world = {}, rivals = [], rivalConflicts 
     onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={pointerUp}>
     <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
       {tiles.map(t => <img key={`${tileKind}-${tileZoom}-${t.tx}-${t.ty}`} alt="" draggable={false}
-        src={`https://a.basemaps.cartocdn.com/${tileKind}/${tileZoom}/${((t.tx % tileMax) + tileMax) % tileMax}/${t.ty}.png`}
+        src={`https://a.basemaps.cartocdn.com/${tileKind}/${tileZoom}/${((t.tx % tileMax) + tileMax) % tileMax}/${t.ty}.png?key=cb1_56fg_1_ed9f4ac246a1ffd72b4d59e5`}
         onError={() => setTileWarning(true)} onLoad={() => setTileWarning(false)}
         style={{ position: 'absolute', left: t.left, top: t.top, width: TILE + 1, height: TILE + 1, maxWidth: 'none' }} />)}
     </div>
